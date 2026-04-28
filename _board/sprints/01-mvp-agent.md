@@ -464,12 +464,20 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 ### Задача 6.5. Handler произвольного текста (`messages`) + тесты
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** M
 - **Зависит от:** Задача 6.2, Задача 6.3, Задача 2.2
 - **Связанные документы:** `_docs/commands.md` § «Произвольный текст»; `_docs/testing.md` §3.11.
 - **Затрагиваемые файлы:** `app/adapters/telegram/handlers/messages.py`, `tests/adapters/telegram/test_messages.py`.
+
+#### Definition of Done
+
+- [x] `build_text_handler` и `build_messages_router` реализованы: нетекстовый ввод, слишком длинный ввод, вызов `core.handle_user_task`, in-session суммаризация, разбивка длинного ответа.
+- [x] Ошибки LLM-слоя (`LLMTimeout`, `LLMUnavailable`, `LLMBadResponse`) дают человекочитаемые ответы и логируются.
+- [x] Падение in-session суммаризатора — `WARNING`, ответ пользователю не страдает.
+- [x] Покрыты все ветки из `_docs/testing.md` §3.11 для `test_messages.py`.
+- [x] `pytest -q` зелёный.
 
 ---
 
@@ -587,7 +595,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 6.2 | `core.handle_user_task` + smoke-тест             | high      | S     | Done   | 5.2                                          |
 | 6.3 | Handlers команд + тесты                          | high      | M     | Done   | 6.1                                          |
 | 6.4 | Handler `/new` + тесты                           | high      | S     | Done   | 2.4, 6.3                                     |
-| 6.5 | Handler произвольного текста + тесты             | high      | M     | Progress | 6.2, 6.3, 2.2                                |
+| 6.5 | Handler произвольного текста + тесты             | high      | M     | Done   | 6.2, 6.3, 2.2                                |
 | 6.6 | `LoggingMiddleware` + тесты                      | medium    | XS    | ToDo   | 1.2                                          |
 | 6.7 | Глобальный error handler + тесты                 | high      | XS    | ToDo   | 6.5                                          |
 | 6.8 | `app/main.py` (сборка) + smoke-тест              | high      | M     | ToDo   | все задачи Этапов 1–6                         |
@@ -613,3 +621,4 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 - **2026-04-28** — закрыта задача 6.2 (`core.handle_user_task` + тесты): `app/core/orchestrator.py`, `tests/core/test_orchestrator.py` (4 теста). Смок-тест сборки приложения перенесён в задачу 6.8 (`tests/test_main.py`).
 - **2026-04-28** — закрыта задача 6.3 (handlers `/start`, `/help`, `/models`, `/model`, `/prompt`, `/reset` + тесты): `app/adapters/telegram/handlers/commands.py`, `tests/adapters/telegram/test_commands.py` (10 тестов). Команда `/new` будет добавлена задачей 6.4.
 - **2026-04-28** — закрыта задача 6.4 (Handler `/new` + тесты): расширены `app/adapters/telegram/handlers/commands.py` и `tests/adapters/telegram/test_commands.py` (3 новых теста).
+- **2026-04-28** — закрыта задача 6.5 (Handler произвольного текста + тесты): `app/adapters/telegram/handlers/messages.py`, `tests/adapters/telegram/test_messages.py` (9 тестов).
