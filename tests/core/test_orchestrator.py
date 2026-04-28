@@ -64,6 +64,7 @@ async def test_passes_conversation_id_from_store(
             "chat_id": 777,
             "conversation_id": cid,
             "model": None,
+            "history": [],
         }
     ]
 
@@ -83,6 +84,55 @@ async def test_creates_conversation_id_for_new_user(
     cid_after = conversations.current_conversation_id(99)
     assert executor.calls[0]["conversation_id"] == cid_after
     assert cid_after  # не пусто
+
+
+async def test_orchestrator_passes_history(
+    conversations: ConversationStore,
+) -> None:
+    """`handle_user_task` достаёт историю из стора и пробрасывает в Executor."""
+    conversations.add_user_message(42, "Привет, я Радиф")
+    conversations.add_assistant_message(42, "Привет, Радиф")
+    conversations.add_user_message(42, "Как меня зовут?")
+    executor = _FakeExecutor()
+
+    await handle_user_task(
+        "Как меня зовут?",
+        user_id=42,
+        chat_id=1,
+        conversations=conversations,
+        executor=executor,
+    )
+
+    assert executor.calls[0]["history"] == [
+        {"role": "user", "content": "Привет, я Радиф"},
+        {"role": "assistant", "content": "Привет, Радиф"},
+        {"role": "user", "content": "Как меня зовут?"},
+    ]
+
+
+async def test_orchestrator_does_not_duplicate_goal(
+    conversations: ConversationStore,
+) -> None:
+    """Последний user-message в `history` совпадает с `goal` — без дубля.
+
+    Проверяется на уровне инварианта core: history передаётся целиком,
+    дедупликация — обязанность `Executor.run` (см. `_docs/memory.md` §2.4).
+    Здесь мы только убеждаемся, что core не модифицирует history.
+    """
+    conversations.add_user_message(7, "вопрос")
+    executor = _FakeExecutor()
+
+    await handle_user_task(
+        "вопрос",
+        user_id=7,
+        chat_id=1,
+        conversations=conversations,
+        executor=executor,
+    )
+
+    history = executor.calls[0]["history"]
+    assert history == [{"role": "user", "content": "вопрос"}]
+    assert executor.calls[0]["goal"] == "вопрос"
 
 
 async def test_forwards_model_override(conversations: ConversationStore) -> None:

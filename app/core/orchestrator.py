@@ -36,10 +36,12 @@ async def handle_user_task(
     """
 
     conversation_id = conversations.current_conversation_id(user_id)
+    history = conversations.get_history(user_id)
     return await executor.run(
         goal=text,
         user_id=user_id,
         chat_id=chat_id,
         conversation_id=conversation_id,
         model=model,
+        history=history,
     )
