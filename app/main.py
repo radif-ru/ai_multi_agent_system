@@ -80,7 +80,11 @@ async def _build_components(settings: Settings) -> _Components:
         max_messages=settings.history_max_messages,
         session_log_max_messages=settings.session_log_max_messages,
     )
-    summarizer = Summarizer(llm=llm, system_prompt=settings.summarization_prompt)
+    summarizer = Summarizer(
+        llm=llm,
+        system_prompt=settings.summarization_prompt,
+        chunk_messages=settings.summarizer_chunk_messages,
+    )
 
     semantic_memory: SemanticMemory | None = SemanticMemory(
         db_path=settings.memory_db_path, dimensions=settings.embedding_dimensions

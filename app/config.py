@@ -47,6 +47,7 @@ class Settings(BaseSettings):
         "Кратко и точно резюмируй ключевые факты и решения из этого диалога "
         "в 2–4 предложениях. Ответ — только текст резюме, без вступлений."
     )
+    summarizer_chunk_messages: int = 30
 
     # --- Memory (long-term) ---
     memory_db_path: Path = Path("data/memory.db")
@@ -104,6 +105,13 @@ class Settings(BaseSettings):
     def _check_session_log_max(cls, v: int) -> int:
         if v <= 0:
             raise ValueError("SESSION_LOG_MAX_MESSAGES must be > 0")
+        return v
+
+    @field_validator("summarizer_chunk_messages")
+    @classmethod
+    def _check_summarizer_chunk(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("SUMMARIZER_CHUNK_MESSAGES must be > 0")
         return v
 
     @model_validator(mode="after")
