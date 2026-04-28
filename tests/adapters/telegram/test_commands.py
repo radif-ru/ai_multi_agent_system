@@ -1,7 +1,7 @@
 """Тесты handler'ов команд Telegram-адаптера.
 
 См. `_docs/commands.md` (контракт), `_docs/testing.md` §3.11 (кейсы).
-Команда `/new` тестируется в задаче 6.4 — отдельным файлом.
+Команда `/new` тестируется в этом же файле (задача 6.4).
 """
 
 from __future__ import annotations
@@ -33,6 +33,41 @@ class _FakePrompts:
         self.agent_system_template = template
 
 
+class _FakeArchiver:
+    """Имитирует `Archiver.archive`.
+
+    Если `error` задан — бросает его из `archive(...)`.
+    Иначе возвращает `inserted`. Фиксирует вызовы.
+    """
+
+    def __init__(
+        self, *, inserted: int = 3, error: Exception | None = None
+    ) -> None:
+        self.inserted = inserted
+        self.error = error
+        self.calls: list[dict[str, Any]] = []
+
+    async def archive(
+        self,
+        history: Any,
+        *,
+        conversation_id: str,
+        user_id: int,
+        chat_id: int,
+    ) -> int:
+        self.calls.append(
+            {
+                "history": list(history),
+                "conversation_id": conversation_id,
+                "user_id": user_id,
+                "chat_id": chat_id,
+            }
+        )
+        if self.error is not None:
+            raise self.error
+        return self.inserted
+
+
 class _FakeRegistry:
     """Имитирует tools-/skills-registry в части `list_descriptions`."""
 
@@ -51,6 +86,7 @@ def _make_handlers(
     tools: _FakeRegistry | None = None,
     skills: _FakeRegistry | None = None,
     conversations: ConversationStore | None = None,
+    archiver: _FakeArchiver | None = None,
 ) -> dict[str, Any]:
     return build_command_handlers(
         settings=settings or _FakeSettings(),
@@ -62,16 +98,19 @@ def _make_handlers(
         ),
         skills=skills or _FakeRegistry([{"name": "demo", "description": "пример"}]),
         conversations=conversations or ConversationStore(max_messages=10),
+        archiver=archiver or _FakeArchiver(),
     )
 
 
 def _make_message(
-    user_id: int = 42, text: str = "/start"
+    user_id: int = 42, text: str = "/start", chat_id: int = 777
 ) -> tuple[MagicMock, AsyncMock]:
-    """Минимальный mock сообщения с .from_user.id и async .answer."""
-    msg = MagicMock(spec=["from_user", "answer", "text"])
+    """Минимальный mock сообщения с .from_user.id, .chat.id и async .answer."""
+    msg = MagicMock(spec=["from_user", "chat", "answer", "text"])
     msg.from_user = MagicMock()
     msg.from_user.id = user_id
+    msg.chat = MagicMock()
+    msg.chat.id = chat_id
     msg.text = text
     msg.answer = AsyncMock()
     return msg, msg.answer
@@ -248,3 +287,70 @@ async def test_reset_clears_conversation_and_settings() -> None:
     cid_after = conversations.current_conversation_id(42)
     assert cid_after != cid_before
     assert "очищен" in answer.await_args.args[0]
+
+
+# ---------- /new -------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_new_empty_history_rotates_and_replies() -> None:
+    conversations = ConversationStore(max_messages=10)
+    cid_before = conversations.current_conversation_id(42)
+    archiver = _FakeArchiver()
+    handlers = _make_handlers(conversations=conversations, archiver=archiver)
+    msg, answer = _make_message()
+
+    await handlers["new"](msg)
+
+    assert archiver.calls == []
+    assert conversations.current_conversation_id(42) != cid_before
+    assert "пуст" in answer.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_new_archives_clears_and_rotates() -> None:
+    conversations = ConversationStore(max_messages=10)
+    conversations.add_user_message(42, "вопрос")
+    conversations.add_assistant_message(42, "ответ")
+    cid_before = conversations.current_conversation_id(42)
+    archiver = _FakeArchiver(inserted=5)
+    handlers = _make_handlers(conversations=conversations, archiver=archiver)
+    msg, answer = _make_message(chat_id=777)
+
+    await handlers["new"](msg)
+
+    assert len(archiver.calls) == 1
+    call = archiver.calls[0]
+    assert call["user_id"] == 42
+    assert call["chat_id"] == 777
+    assert call["conversation_id"] == cid_before
+    assert call["history"] == [
+        {"role": "user", "content": "вопрос"},
+        {"role": "assistant", "content": "ответ"},
+    ]
+    # История очищена, conversation_id ротирован.
+    assert conversations.get_history(42) == []
+    assert conversations.current_conversation_id(42) != cid_before
+    assert "5" in answer.await_args.args[0]
+    assert "Архив" in answer.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_new_archive_failure_keeps_history() -> None:
+    conversations = ConversationStore(max_messages=10)
+    conversations.add_user_message(42, "вопрос")
+    cid_before = conversations.current_conversation_id(42)
+    archiver = _FakeArchiver(error=RuntimeError("embed недоступен"))
+    handlers = _make_handlers(conversations=conversations, archiver=archiver)
+    msg, answer = _make_message()
+
+    await handlers["new"](msg)
+
+    # История НЕ очищена, conversation_id НЕ ротирован.
+    assert conversations.get_history(42) == [
+        {"role": "user", "content": "вопрос"}
+    ]
+    assert conversations.current_conversation_id(42) == cid_before
+    text = answer.await_args.args[0]
+    assert "не удалось" in text
+    assert "embed" in text

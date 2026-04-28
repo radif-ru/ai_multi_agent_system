@@ -1,7 +1,6 @@
 """Handler'ы команд Telegram-адаптера.
 
-Покрытые команды: `/start`, `/help`, `/models`, `/model`, `/prompt`, `/reset`.
-Команда `/new` живёт в этом же модуле, но добавляется отдельной задачей 6.4.
+Покрытые команды: `/start`, `/help`, `/models`, `/model`, `/prompt`, `/new`, `/reset`.
 
 См. `_docs/commands.md` (контракт), `_docs/architecture.md` §3.12 (адаптер
 не знает про executor / tools напрямую — только про прослойки сервисов).
@@ -18,6 +17,7 @@ from aiogram.types import Message
 
 if TYPE_CHECKING:
     from app.config import Settings
+    from app.services.archiver import Archiver
     from app.services.conversation import ConversationStore
     from app.services.model_registry import UserSettingsRegistry
     from app.services.prompts import PromptLoader
@@ -51,6 +51,7 @@ def build_command_handlers(
     tools: Any,
     skills: Any,
     conversations: "ConversationStore",
+    archiver: "Archiver",
 ) -> dict[str, Any]:
     """Собрать словарь handler'ов команд.
 
@@ -133,6 +134,37 @@ def build_command_handlers(
         user_settings.set_prompt(user_id, arg)
         await message.answer("Системный промпт обновлён.")
 
+    async def cmd_new(message: Message) -> None:
+        user_id = _user_id(message)
+        chat_id = message.chat.id if message.chat is not None else user_id
+        history = conversations.get_history(user_id)
+        if not history:
+            conversations.rotate_conversation_id(user_id)
+            await message.answer("Сессия пустая, новая открыта.")
+            return
+        conversation_id = conversations.current_conversation_id(user_id)
+        try:
+            inserted = await archiver.archive(
+                history,
+                conversation_id=conversation_id,
+                user_id=user_id,
+                chat_id=chat_id,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception(
+                "/new archive failed user=%s conv=%s", user_id, conversation_id
+            )
+            await message.answer(
+                f"Архивирование не удалось: {exc}. "
+                "Сессия сохранена, попробуйте /new ещё раз позже."
+            )
+            return
+        conversations.clear(user_id)
+        conversations.rotate_conversation_id(user_id)
+        await message.answer(
+            f"Архивировано {inserted} чанков, новая сессия открыта."
+        )
+
     async def cmd_reset(message: Message) -> None:
         user_id = _user_id(message)
         conversations.clear(user_id)
@@ -149,6 +181,7 @@ def build_command_handlers(
         "models": cmd_models,
         "model": cmd_model,
         "prompt": cmd_prompt,
+        "new": cmd_new,
         "reset": cmd_reset,
     }
 
@@ -161,6 +194,7 @@ def build_commands_router(
     tools: Any,
     skills: Any,
     conversations: "ConversationStore",
+    archiver: "Archiver",
 ) -> Router:
     """Собрать aiogram-Router с handler'ами команд.
 
@@ -177,6 +211,7 @@ def build_commands_router(
         tools=tools,
         skills=skills,
         conversations=conversations,
+        archiver=archiver,
     )
     router = Router(name="commands")
     router.message.register(handlers["start"], Command("start"))
@@ -184,6 +219,7 @@ def build_commands_router(
     router.message.register(handlers["models"], Command("models"))
     router.message.register(handlers["model"], Command("model"))
     router.message.register(handlers["prompt"], Command("prompt"))
+    router.message.register(handlers["new"], Command("new"))
     router.message.register(handlers["reset"], Command("reset"))
     return router
 
