@@ -350,7 +350,7 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 ### Задача 5.1. Парсер JSON ответа модели (`AgentDecision`) + тесты
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** —
@@ -553,7 +553,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 3.7 | Tool `load_skill` + тесты                        | high      | XS    | Done   | 3.1, 4.1                                     |
 | 4.1 | `SkillRegistry` + тесты                          | high      | S     | Done   | 1.1                                          |
 | 4.2 | `PromptLoader` + тесты                           | high      | S     | Done   | 1.1                                          |
-| 5.1 | Парсер JSON ответа модели + тесты                | high      | S     | ToDo   | —                                            |
+| 5.1 | Парсер JSON ответа модели + тесты                | high      | S     | Progress | —                                          |
 | 5.2 | `Executor` (агентный цикл) + тесты               | high      | L     | ToDo   | 1.3, 3.1, 4.1, 4.2, 5.1                       |
 | 6.1 | `UserSettingsRegistry` + тесты                   | high      | XS    | ToDo   | 1.1                                          |
 | 6.2 | `core.handle_user_task` + smoke-тест             | high      | S     | ToDo   | 5.2                                          |
