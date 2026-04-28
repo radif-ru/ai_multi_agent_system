@@ -392,12 +392,18 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 ### Задача 6.1. `UserSettingsRegistry` + тесты
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** XS
 - **Зависит от:** Задача 1.1
 - **Связанные документы:** `_docs/architecture.md`; `_docs/commands.md` § `/model`, `/prompt`, `/reset`.
 - **Затрагиваемые файлы:** `app/services/model_registry.py`, `tests/services/test_model_registry.py`.
+
+#### Definition of Done
+
+- [x] `UserSettingsRegistry` реализован: `get/set_model`, `get/set/reset_prompt`, `reset`.
+- [x] Изоляция по `user_id`, default-модель для неизвестных пользователей, `reset` на несуществующего пользователя — noop, покрыты тестами.
+- [x] `pytest -q` зелёный.
 
 ---
 
@@ -555,7 +561,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 4.2 | `PromptLoader` + тесты                           | high      | S     | Done   | 1.1                                          |
 | 5.1 | Парсер JSON ответа модели + тесты                | high      | S     | Done   | —                                            |
 | 5.2 | `Executor` (агентный цикл) + тесты               | high      | L     | Done   | 1.3, 3.1, 4.1, 4.2, 5.1                       |
-| 6.1 | `UserSettingsRegistry` + тесты                   | high      | XS    | Progress | 1.1                                        |
+| 6.1 | `UserSettingsRegistry` + тесты                   | high      | XS    | Done   | 1.1                                          |
 | 6.2 | `core.handle_user_task` + smoke-тест             | high      | S     | ToDo   | 5.2                                          |
 | 6.3 | Handlers команд + тесты                          | high      | M     | ToDo   | 6.1                                          |
 | 6.4 | Handler `/new` + тесты                           | high      | S     | ToDo   | 2.4, 6.3                                     |
@@ -581,3 +587,4 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 - **2026-04-28** — закрыта задача 4.2 (`PromptLoader` + тесты): `app/services/prompts.py`, `tests/services/test_prompts.py` (7 тестов). Этап 4 завершён.
 - **2026-04-28** — закрыта задача 5.1 (`AgentDecision` + парсер + тесты): `app/agents/protocol.py`, `tests/agents/test_protocol.py` (15 тестов).
 - **2026-04-28** — закрыта задача 5.2 (`Executor` + тесты): `app/agents/executor.py`, `tests/agents/test_executor.py` (10 тестов). Этап 5 завершён.
+- **2026-04-28** — закрыта задача 6.1 (`UserSettingsRegistry` + тесты): `app/services/model_registry.py`, `tests/services/test_model_registry.py` (9 тестов).
