@@ -446,7 +446,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 ### Задача 6.4. Handler `/new` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 2.4, Задача 6.3
@@ -579,7 +579,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 6.1 | `UserSettingsRegistry` + тесты                   | high      | XS    | Done   | 1.1                                          |
 | 6.2 | `core.handle_user_task` + smoke-тест             | high      | S     | Done   | 5.2                                          |
 | 6.3 | Handlers команд + тесты                          | high      | M     | Done   | 6.1                                          |
-| 6.4 | Handler `/new` + тесты                           | high      | S     | ToDo   | 2.4, 6.3                                     |
+| 6.4 | Handler `/new` + тесты                           | high      | S     | Progress | 2.4, 6.3                                     |
 | 6.5 | Handler произвольного текста + тесты             | high      | M     | ToDo   | 6.2, 6.3, 2.2                                |
 | 6.6 | `LoggingMiddleware` + тесты                      | medium    | XS    | ToDo   | 1.2                                          |
 | 6.7 | Глобальный error handler + тесты                 | high      | XS    | ToDo   | 6.5                                          |
