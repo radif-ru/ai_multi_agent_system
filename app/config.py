@@ -69,6 +69,10 @@ class Settings(BaseSettings):
     # --- Temporary files ---
     tmp_files_dir: Path = Path("tmp")
 
+    # --- Whisper (speech-to-text) ---
+    whisper_model: str = "base"
+    whisper_language: str = "ru"
+
     @field_validator("ollama_available_models", mode="before")
     @classmethod
     def _parse_models_csv(cls, v):

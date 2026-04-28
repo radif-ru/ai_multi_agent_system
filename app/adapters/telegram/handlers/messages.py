@@ -27,6 +27,11 @@ from aiogram.types import Message
 from app.adapters.telegram.files import FileTooLargeError, download_telegram_file
 from app.core.orchestrator import handle_user_task
 from app.services.llm import LLMBadResponse, LLMTimeout, LLMUnavailable
+from app.services.transcribe import (
+    Transcriber,
+    TranscriberUnavailableError,
+    is_transcriber_available,
+)
 from app.utils.text import split_long_message
 
 if TYPE_CHECKING:
@@ -46,6 +51,9 @@ TELEGRAM_MAX_MESSAGE_LENGTH = 4096
 NON_TEXT_REPLY = "В MVP я понимаю только текст."
 TOO_LONG_INPUT_REPLY = "Слишком длинный запрос, сократите формулировку."
 FILE_TOO_LARGE_REPLY = "Файл слишком большой, отправьте файл меньшего размера."
+VOICE_TRANSCRIPTION_UNAVAILABLE_REPLY = (
+    "Распознавание речи недоступно, установите faster-whisper."
+)
 LLM_UNAVAILABLE_REPLY = "LLM сейчас недоступна, попробуйте позже."
 LLM_TIMEOUT_REPLY = "Модель слишком долго отвечает, попробуйте ещё раз."
 LLM_BAD_RESPONSE_REPLY = (
@@ -221,6 +229,116 @@ async def handle_document(
         logger.warning("Failed to delete tmp file %s", file_path)
 
 
+async def handle_voice(
+    message: Message,
+    *,
+    settings: "Settings",
+    user_settings: "UserSettingsRegistry",
+    conversations: "ConversationStore",
+    summarizer: "Summarizer",
+    executor: "Executor",
+    llm: "OllamaClient | None" = None,
+    semantic_memory: "SemanticMemory | None" = None,
+) -> None:
+    """Обработчик голосовых сообщений (Voice/Audio)."""
+    if message.from_user is None or message.voice is None:
+        return
+
+    user_id = message.from_user.id
+    chat_id = message.chat.id if message.chat is not None else user_id
+    voice = message.voice
+
+    # Проверяем доступность transcriber
+    if not is_transcriber_available():
+        logger.warning("Transcriber unavailable user=%s", user_id)
+        await message.answer(VOICE_TRANSCRIPTION_UNAVAILABLE_REPLY)
+        return
+
+    # Скачиваем файл
+    try:
+        file_path = await download_telegram_file(
+            message.bot,
+            voice.file_id,
+            max_size_mb=settings.telegram_max_file_mb,
+        )
+    except FileTooLargeError as exc:
+        logger.warning("Voice too large user=%s size=%d", user_id, exc.file_size_mb)
+        await message.answer(FILE_TOO_LARGE_REPLY)
+        return
+    except Exception as exc:
+        logger.error("Download failed user=%s: %s", user_id, exc)
+        await message.answer(GENERIC_ERROR_REPLY)
+        return
+
+    # Транскрибируем
+    try:
+        transcriber = Transcriber(
+            model=settings.whisper_model, language=settings.whisper_language
+        )
+        text = transcriber.transcribe(file_path)
+    except TranscriberUnavailableError:
+        logger.warning("Transcriber initialization failed user=%s", user_id)
+        await message.answer(VOICE_TRANSCRIPTION_UNAVAILABLE_REPLY)
+        return
+    except Exception as exc:
+        logger.error("Transcription failed user=%s: %s", user_id, exc)
+        await message.answer(GENERIC_ERROR_REPLY)
+        return
+    finally:
+        # Удаляем временный файл
+        try:
+            file_path.unlink()
+        except Exception:  # noqa: BLE001
+            logger.warning("Failed to delete tmp voice file %s", file_path)
+
+    # Если транскрипция пуста
+    if not text:
+        await message.answer("Не удалось распознать речь.")
+        return
+
+    # Передаём распознанный текст как обычное сообщение
+    conversations.add_user_message(user_id, text)
+    model = user_settings.get_model(user_id)
+
+    try:
+        reply = await handle_user_task(
+            text,
+            user_id=user_id,
+            chat_id=chat_id,
+            conversations=conversations,
+            executor=executor,
+            model=model,
+            settings=settings,
+            llm=llm,
+            semantic_memory=semantic_memory,
+        )
+    except LLMTimeout:
+        logger.warning("LLM timeout user=%s", user_id)
+        await message.answer(LLM_TIMEOUT_REPLY)
+        return
+    except LLMUnavailable:
+        logger.error("LLM unavailable user=%s", user_id)
+        await message.answer(LLM_UNAVAILABLE_REPLY)
+        return
+    except LLMBadResponse:
+        logger.warning("LLM bad response user=%s", user_id)
+        await message.answer(LLM_BAD_RESPONSE_REPLY)
+        return
+
+    conversations.add_assistant_message(user_id, reply)
+
+    history = conversations.get_history(user_id)
+    if len(history) >= settings.history_summary_threshold:
+        try:
+            summary = await summarizer.summarize(history[:-2], model=model)
+            conversations.replace_with_summary(user_id, summary, kept_tail=2)
+        except Exception:  # noqa: BLE001
+            logger.warning("in-session summary failed user=%s", user_id, exc_info=True)
+
+    for part in split_long_message(reply, TELEGRAM_MAX_MESSAGE_LENGTH):
+        await message.answer(part)
+
+
 def build_messages_router(
     *,
     settings: "Settings",
@@ -246,4 +364,5 @@ def build_messages_router(
     router = Router(name="messages")
     router.message.register(text_handler)
     router.message.register(handle_document, lambda m: m.document is not None)
+    router.message.register(handle_voice, lambda m: m.voice is not None)
     return router
