@@ -1,0 +1,190 @@
+# Память агента
+
+Документ описывает два слоя памяти и сценарий `/new`. Связанные документы: `architecture.md` §3.5–3.6, `requirements.md` §1.4, `commands.md` § `/new` и § `/reset`.
+
+## 1. Два слоя
+
+| Слой               | Где живёт                          | Что хранит                                      | Когда теряется                          |
+|--------------------|------------------------------------|-------------------------------------------------|------------------------------------------|
+| **Краткосрочная**  | RAM процесса (`ConversationStore`) | Текущая сессия: `[{role, content}, ...]` per-user | Рестарт процесса; `/reset`; `/new`     |
+| **Долгосрочная**   | `sqlite-vec` (`MEMORY_DB_PATH`)    | Саммари прошлых сессий, чанки + эмбеддинги      | Удаление `.db`-файла (вручную)          |
+
+Сырые сообщения **не пишутся** в долгосрочную память (CON-1) — только саммари. Это даёт минимальный приватный след: даже при компрометации `.db` нет переписки в открытом виде.
+
+## 2. Краткосрочная память (in-memory)
+
+Реализация — `app/services/conversation.py::ConversationStore`. Заимствована из `ai_tg_bot` (предыдущий проект автора), уточнённая под мульти-агентный сценарий: добавлено понятие **`conversation_id`** (UUID или короткий слаг), который ротируется на `/new`.
+
+### 2.1 Структура
+
+```python
+class ConversationStore:
+    # user_id -> list[{role: "user"|"assistant"|"system", content: str}]
+    _messages: dict[int, list[dict]]
+    # user_id -> текущий conversation_id (для метаданных архива)
+    _conversation_ids: dict[int, str]
+```
+
+### 2.2 API
+
+| Метод | Описание |
+|-------|----------|
+| `get_history(user_id) -> list[dict]` | Возвращает **копию** списка сообщений. Мутации снаружи не влияют. |
+| `add_user_message(user_id, text)` | Дописать сообщение пользователя; FIFO-обрезка по `HISTORY_MAX_MESSAGES`. |
+| `add_assistant_message(user_id, text)` | Аналогично для ассистента. |
+| `replace_with_summary(user_id, summary, kept_tail=2)` | Заменить всё, кроме последних `kept_tail` сообщений, одним `{"role": "system", "content": "Краткое резюме предыдущей части диалога: ..."}`. Используется при срабатывании in-session порога. |
+| `current_conversation_id(user_id) -> str` | Текущий идентификатор сессии. |
+| `rotate_conversation_id(user_id) -> str` | Сгенерировать новый id и сохранить. Возвращает старый. |
+| `clear(user_id)` | Очистить и сообщения, и `conversation_id`. |
+
+### 2.3 In-session суммаризация (порог)
+
+Срабатывает в обработчике сообщения после ответа LLM:
+
+```python
+if len(store.get_history(user_id)) >= settings.history_summary_threshold:
+    summary = await summarizer.summarize(history[:-2], model=...)
+    store.replace_with_summary(user_id, summary, kept_tail=2)
+```
+
+Падение суммаризации → `WARNING summarize failed ...`, история остаётся. См. `architecture.md` §4.
+
+## 3. Долгосрочная память (sqlite-vec)
+
+### 3.1 Почему `sqlite-vec`
+
+- **Один файл** `.db` на всё (метаданные + векторы) → проще бэкап / удаление / тесты.
+- **Без нативной сборки FAISS / без отдельного сервиса** (Chroma и т. п.) → минимум зависимостей, легко мокается в тестах.
+- **Pure C extension**, поднимается в обычный `sqlite3` модуль stdlib через `sqlite_vec.load(conn)` — не требует особых runtime-поддержек.
+- **Активно развивается** в 2025; преемник `sqlite-vss`, который рекомендован самим автором (asg017).
+
+### 3.2 Embedding-модель
+
+`nomic-embed-text` (768 dimensions) через Ollama. Поднимается так же, как LLM: `ollama pull nomic-embed-text`. Размерность настраивается через `EMBEDDING_DIMENSIONS` — должна совпадать с моделью, иначе `sqlite-vec` упадёт при `INSERT`.
+
+Альтернативы (для пользователя — через `.env`, без правки кода): `mxbai-embed-large` (1024d), `all-minilm` (384d). Достаточно поменять `EMBEDDING_MODEL` + `EMBEDDING_DIMENSIONS`. Старая БД **не совместима** с новой моделью (другая размерность) — придётся удалить `.db` или вынести в другой файл.
+
+### 3.3 Сценарий `/new` (архивирование)
+
+Реализация — `app/services/archiver.py::Archiver`.
+
+```
+история сессии        +- Summarizer.summarize ----------+
+[{role,content}, ...] |  (Ollama chat с системным       |  -> резюме (одна строка)
+                       +- _prompts/summarizer.md)        |
+                                                          |
+                       +- chunk(summary,                  |
+                       |   size=MEMORY_CHUNK_SIZE,        |  -> [chunk_1, chunk_2, ...]
+                       |   overlap=MEMORY_CHUNK_OVERLAP)  |
+                                                          |
+для каждого чанка:    +- OllamaClient.embed(chunk_i)     |  -> вектор[EMBEDDING_DIMENSIONS]
+                       |  (модель EMBEDDING_MODEL)         |
+                                                          |
+                       +- SemanticMemory.insert(           |
+                       |    chunk_i, vector_i,            |  -> запись в sqlite-vec
+                       |    metadata={                    |
+                       |      conversation_id, chat_id,   |
+                       |      user_id, chunk_index,       |
+                       |      created_at                  |
+                       |    })                            |
+                                                          v
+                       ConversationStore.clear(user_id) +
+                       ConversationStore.rotate_conversation_id(user_id)
+```
+
+После архивирования handler `/new` отправляет пользователю:
+
+```
+Архивировано N чанков, новая сессия открыта.
+```
+
+### 3.4 Поиск по архиву (tool `memory_search`)
+
+Доступен агенту в любой сессии. Контракт — в `tools.md` § `memory_search`. Кратко:
+
+```python
+async def run(args: dict, ctx: ToolContext) -> str:
+    query = args["query"]
+    top_k = args.get("top_k", settings.memory_search_top_k)
+    embedding = await ctx.llm.embed(query, model=settings.embedding_model)
+    rows = await ctx.semantic_memory.search(embedding, top_k=top_k, scope_user_id=ctx.user_id)
+    return _format_search_result(rows)
+```
+
+`scope_user_id` — фильтрует поиск по `user_id`, чтобы один пользователь не видел чужие саммари.
+
+### 3.5 Схема БД
+
+Файл — `MEMORY_DB_PATH` (default `data/memory.db`). Содержит обычную таблицу метаданных и `vec0`-виртуальную таблицу для KNN.
+
+```sql
+-- метаданные (обычная таблица)
+CREATE TABLE IF NOT EXISTS memory_chunks (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL,
+    chat_id         INTEGER NOT NULL,
+    conversation_id TEXT    NOT NULL,
+    chunk_index     INTEGER NOT NULL,
+    created_at      TEXT    NOT NULL,         -- ISO 8601
+    text            TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_memory_user ON memory_chunks(user_id);
+CREATE INDEX IF NOT EXISTS ix_memory_conv ON memory_chunks(conversation_id);
+
+-- векторы (sqlite-vec virtual table)
+CREATE VIRTUAL TABLE IF NOT EXISTS memory_vec USING vec0 (
+    embedding float[768]
+);
+```
+
+Связь: `memory_chunks.id == memory_vec.rowid` (используем общий rowid).
+
+`INSERT`:
+
+```sql
+INSERT INTO memory_chunks (user_id, chat_id, conversation_id, chunk_index, created_at, text)
+VALUES (?, ?, ?, ?, ?, ?);
+INSERT INTO memory_vec (rowid, embedding) VALUES (last_insert_rowid(), ?);
+```
+
+KNN-`SELECT`:
+
+```sql
+SELECT mc.id, mc.text, mc.conversation_id, mc.created_at, v.distance
+FROM memory_vec AS v
+JOIN memory_chunks AS mc ON mc.id = v.rowid
+WHERE v.embedding MATCH ?
+  AND mc.user_id = ?
+ORDER BY v.distance
+LIMIT ?;
+```
+
+## 4. Что НЕ хранится (по дизайну)
+
+- **Сырые сообщения диалога** — только саммари, и только при `/new` (CON-1).
+- **Системные промпты** — они в `_prompts/`, не в БД.
+- **Вызовы tools и observations** — они в логах, не в архивной памяти.
+- **Учётные записи Telegram / профили пользователей** — для MVP не нужны (`user_id` Telegram достаточно как ключ).
+
+## 5. Что **может** появиться в архиве в будущем (НЕ MVP)
+
+(см. `roadmap.md`)
+
+- **Per-skill memory** — отдельная пространственная коллекция чанков для каждого скилла.
+- **Per-task memory** — пишем в архив краткое резюме каждой выполненной задачи, чтобы Critic мог сравнивать.
+- **TTL и очистка**: автоматическое удаление чанков старше N дней.
+- **Поиск с metadata-фильтрами** (по дате, conversation_id и т. п.) через `WHERE` в SQL — `sqlite-vec` это поддерживает, но контракт tool `memory_search` пока не использует.
+
+## 6. Тестируемые свойства
+
+(Чек-лист для `tests/services/test_memory.py` и `tests/services/test_archiver.py` в Спринте 01.)
+
+- `SemanticMemory.init()` создаёт обе таблицы; повторный вызов идемпотентен.
+- `SemanticMemory.insert(...)` пишет одну строку в `memory_chunks` и одну запись в `memory_vec`; rowid'ы совпадают.
+- `SemanticMemory.search(embedding, top_k=K)` возвращает up-to-K строк, отсортированных по `distance`.
+- Поиск ограничен по `user_id` — чужие чанки не возвращаются.
+- `Archiver.archive(...)` корректно режет резюме на чанки нужного размера, считает `chunk_index` от 0.
+- Падение `Summarizer.summarize` → `Archiver` бросает понятную ошибку, **не** очищает `ConversationStore`.
+- Падение `OllamaClient.embed` на одном из чанков → транзакция откатывается, в `memory_chunks` нет «осиротевших» строк.
+
+Тесты используют `tmp_path` для `.db`-файла; `OllamaClient` мокается, `sqlite-vec` грузится по-настоящему (это часть проверки, что окружение работает).
