@@ -66,6 +66,9 @@ class Settings(BaseSettings):
     log_file: Path = Path("logs/agent.log")
     log_llm_context: bool = True
 
+    # --- Temporary files ---
+    tmp_files_dir: Path = Path("tmp")
+
     @field_validator("ollama_available_models", mode="before")
     @classmethod
     def _parse_models_csv(cls, v):
@@ -121,6 +124,12 @@ class Settings(BaseSettings):
         if v <= 0:
             raise ValueError("SUMMARIZER_CHUNK_MESSAGES must be > 0")
         return v
+
+    @model_validator(mode="after")
+    def _create_tmp_dir(self) -> "Settings":
+        """Создать директорию для временных файлов при старте."""
+        self.tmp_files_dir.mkdir(parents=True, exist_ok=True)
+        return self
 
     @model_validator(mode="after")
     def _cross_validate(self) -> "Settings":
