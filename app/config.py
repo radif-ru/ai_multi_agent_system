@@ -22,6 +22,7 @@ class Settings(BaseSettings):
 
     # --- Telegram ---
     telegram_bot_token: str
+    telegram_max_file_mb: int = 20
 
     # --- Ollama (LLM) ---
     ollama_base_url: str = "http://localhost:11434"
@@ -105,6 +106,13 @@ class Settings(BaseSettings):
     def _check_session_log_max(cls, v: int) -> int:
         if v <= 0:
             raise ValueError("SESSION_LOG_MAX_MESSAGES must be > 0")
+        return v
+
+    @field_validator("telegram_max_file_mb")
+    @classmethod
+    def _check_telegram_max_file(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("TELEGRAM_MAX_FILE_MB must be > 0")
         return v
 
     @field_validator("summarizer_chunk_messages")
