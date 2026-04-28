@@ -541,7 +541,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 ### Задача 7.1. Утилита `split_long_message` + тесты
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** medium
 - **Объём:** XS
 - **Зависит от:** —
@@ -612,7 +612,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 6.6 | `LoggingMiddleware` + тесты                      | medium    | XS    | Done   | 1.2                                          |
 | 6.7 | Глобальный error handler + тесты                 | high      | XS    | Done   | 6.5                                          |
 | 6.8 | `app/main.py` (сборка) + smoke-тест              | high      | M     | Done   | все задачи Этапов 1–6                         |
-| 7.1 | `split_long_message` + тесты                     | medium    | XS    | Progress | —                                          |
+| 7.1 | `split_long_message` + тесты                     | medium    | XS    | Done   | —                                            |
 | 7.2 | Обновление README + чек-лист приёмки             | high      | S     | ToDo   | 6.8                                          |
 
 ## 13. История изменений спринта
@@ -638,3 +638,4 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 - **2026-04-28** — закрыта задача 6.6 (`LoggingMiddleware` + тесты): `app/middlewares/logging_mw.py`, `tests/test_middleware_logging.py` (2 теста).
 - **2026-04-28** — закрыта задача 6.7 (глобальный error handler + тесты): `app/adapters/telegram/handlers/errors.py`, `tests/adapters/telegram/test_errors.py` (3 теста).
 - **2026-04-28** — закрыта задача 6.8 (`app/main.py` + smoke-тест): `app/main.py`, `app/__main__.py`, `tests/test_main.py` (3 теста). Этап 6 завершён.
+- **2026-04-28** — закрыта задача 7.1 (`split_long_message` + тесты): `app/utils/text.py`, `tests/test_utils_text.py` (5 тестов); `app/adapters/telegram/handlers/messages.py` переведён на утилиту.
