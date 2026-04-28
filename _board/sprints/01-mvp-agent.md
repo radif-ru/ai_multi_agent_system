@@ -541,7 +541,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 ### Задача 7.1. Утилита `split_long_message` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** medium
 - **Объём:** XS
 - **Зависит от:** —
@@ -612,7 +612,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 6.6 | `LoggingMiddleware` + тесты                      | medium    | XS    | Done   | 1.2                                          |
 | 6.7 | Глобальный error handler + тесты                 | high      | XS    | Done   | 6.5                                          |
 | 6.8 | `app/main.py` (сборка) + smoke-тест              | high      | M     | Done   | все задачи Этапов 1–6                         |
-| 7.1 | `split_long_message` + тесты                     | medium    | XS    | ToDo   | —                                            |
+| 7.1 | `split_long_message` + тесты                     | medium    | XS    | Progress | —                                          |
 | 7.2 | Обновление README + чек-лист приёмки             | high      | S     | ToDo   | 6.8                                          |
 
 ## 13. История изменений спринта
