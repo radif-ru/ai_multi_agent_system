@@ -1,4 +1,4 @@
-"""Handler произвольного текста: запуск агентного цикла.
+"""Handler произвольного текста и документов: запуск агентного цикла.
 
 См. `_docs/commands.md` § «Произвольный текст», `_docs/architecture.md` §4.
 
@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, Awaitable, Callable
 from aiogram import Router
 from aiogram.types import Message
 
+from app.adapters.telegram.files import FileTooLargeError, download_telegram_file
 from app.core.orchestrator import handle_user_task
 from app.services.llm import LLMBadResponse, LLMTimeout, LLMUnavailable
 from app.utils.text import split_long_message
@@ -44,6 +45,7 @@ TELEGRAM_MAX_MESSAGE_LENGTH = 4096
 
 NON_TEXT_REPLY = "В MVP я понимаю только текст."
 TOO_LONG_INPUT_REPLY = "Слишком длинный запрос, сократите формулировку."
+FILE_TOO_LARGE_REPLY = "Файл слишком большой, отправьте файл меньшего размера."
 LLM_UNAVAILABLE_REPLY = "LLM сейчас недоступна, попробуйте позже."
 LLM_TIMEOUT_REPLY = "Модель слишком долго отвечает, попробуйте ещё раз."
 LLM_BAD_RESPONSE_REPLY = (
@@ -132,6 +134,93 @@ def build_text_handler(
     return handle_text
 
 
+async def handle_document(
+    message: Message,
+    *,
+    settings: "Settings",
+    user_settings: "UserSettingsRegistry",
+    conversations: "ConversationStore",
+    summarizer: "Summarizer",
+    executor: "Executor",
+    llm: "OllamaClient | None" = None,
+    semantic_memory: "SemanticMemory | None" = None,
+) -> None:
+    """Обработчик документов (PDF, TXT, MD)."""
+    if message.from_user is None or message.document is None:
+        return
+
+    user_id = message.from_user.id
+    chat_id = message.chat.id if message.chat is not None else user_id
+    document = message.document
+    caption = document.caption or ""
+
+    # Скачиваем файл
+    try:
+        file_path = await download_telegram_file(
+            message.bot,
+            document.file_id,
+            max_size_mb=settings.telegram_max_file_mb,
+        )
+    except FileTooLargeError as exc:
+        logger.warning("File too large user=%s size=%d", user_id, exc.file_size_mb)
+        await message.answer(FILE_TOO_LARGE_REPLY)
+        return
+    except Exception as exc:
+        logger.error("Download failed user=%s: %s", user_id, exc)
+        await message.answer(GENERIC_ERROR_REPLY)
+        return
+
+    # Формируем обогащённый goal
+    goal = f"Пользователь прислал документ {file_path}. Caption: {caption}. Прочитай через read_document и ответь по сути."
+
+    conversations.add_user_message(user_id, goal)
+    model = user_settings.get_model(user_id)
+
+    try:
+        reply = await handle_user_task(
+            goal,
+            user_id=user_id,
+            chat_id=chat_id,
+            conversations=conversations,
+            executor=executor,
+            model=model,
+            settings=settings,
+            llm=llm,
+            semantic_memory=semantic_memory,
+        )
+    except LLMTimeout:
+        logger.warning("LLM timeout user=%s", user_id)
+        await message.answer(LLM_TIMEOUT_REPLY)
+        return
+    except LLMUnavailable:
+        logger.error("LLM unavailable user=%s", user_id)
+        await message.answer(LLM_UNAVAILABLE_REPLY)
+        return
+    except LLMBadResponse:
+        logger.warning("LLM bad response user=%s", user_id)
+        await message.answer(LLM_BAD_RESPONSE_REPLY)
+        return
+
+    conversations.add_assistant_message(user_id, reply)
+
+    history = conversations.get_history(user_id)
+    if len(history) >= settings.history_summary_threshold:
+        try:
+            summary = await summarizer.summarize(history[:-2], model=model)
+            conversations.replace_with_summary(user_id, summary, kept_tail=2)
+        except Exception:  # noqa: BLE001
+            logger.warning("in-session summary failed user=%s", user_id, exc_info=True)
+
+    for part in split_long_message(reply, TELEGRAM_MAX_MESSAGE_LENGTH):
+        await message.answer(part)
+
+    # Удаляем временный файл
+    try:
+        file_path.unlink()
+    except Exception:  # noqa: BLE001
+        logger.warning("Failed to delete tmp file %s", file_path)
+
+
 def build_messages_router(
     *,
     settings: "Settings",
@@ -142,9 +231,9 @@ def build_messages_router(
     llm: "OllamaClient | None" = None,
     semantic_memory: "SemanticMemory | None" = None,
 ) -> Router:
-    """Собрать aiogram-Router для произвольных текстовых сообщений."""
+    """Собрать aiogram-Router для произвольных текстовых сообщений и документов."""
 
-    handler = build_text_handler(
+    text_handler = build_text_handler(
         settings=settings,
         user_settings=user_settings,
         conversations=conversations,
@@ -153,6 +242,8 @@ def build_messages_router(
         llm=llm,
         semantic_memory=semantic_memory,
     )
+
     router = Router(name="messages")
-    router.message.register(handler)
+    router.message.register(text_handler)
+    router.message.register(handle_document, lambda m: m.document is not None)
     return router
