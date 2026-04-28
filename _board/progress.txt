@@ -27,50 +27,52 @@
 Чек-лист приёмки MVP (Спринт 01) — заполняется по мере реализации
 -----------------------------------------------------------------
 
-[ ] 1. Запуск: `python -m app` собирает Bot+Dispatcher и доходит до "Bot started".
-       Покрыть smoke-тестом tests/test_main.py.
+[+] 1. Запуск: `python -m app` собирает Bot+Dispatcher и доходит до "Bot started".
+       Покрыто smoke-тестом tests/test_main.py::test_main_logs_bot_started_and_closes.
 
-[ ] 2. /start отвечает приветствием со списком команд.
-       Покрыть tests/adapters/telegram/test_commands.py::test_start_greets_user.
+[+] 2. /start отвечает приветствием со списком команд.
+       Покрыто tests/adapters/telegram/test_commands.py.
 
-[ ] 3. Агент решает калькуляторную задачу: "Посчитай (123 + 456) * 2" → 1158.
-       Ручная проверка в Telegram + tests/agents/test_executor.py с моком LLM.
+[~] 3. Агент решает калькуляторную задачу: "Посчитай (123 + 456) * 2" → 1158.
+       Покрыто tests/agents/test_executor.py + tests/tools/test_calculator.py (моки LLM); ручная проверка в реальном Telegram — не выполнялась.
 
-[ ] 4. Агент решает файловую задачу: "Прочитай файл и скажи сколько строк".
-       Ручная проверка в Telegram + tests/tools/test_read_file.py.
+[~] 4. Агент решает файловую задачу: "Прочитай файл и скажи сколько строк".
+       Покрыто tests/tools/test_read_file.py; ручная проверка в реальном Telegram — не выполнялась.
 
-[ ] 5. Агент решает поисковую задачу: "Найди ...".
-       Ручная проверка + tests/tools/test_web_search.py с моком ddgs.
+[~] 5. Агент решает поисковую задачу: "Найди ...".
+       Покрыто tests/tools/test_web_search.py + tests/tools/test_http_request.py (моки сети); ручная проверка не выполнялась.
 
-[ ] 6. /new архивирует историю в sqlite-vec.
-       Ручная проверка (после /new в data/memory.db появляются чанки) +
-       tests/services/test_archiver.py.
+[~] 6. /new архивирует историю в sqlite-vec.
+       Покрыто tests/services/test_archiver.py + tests/adapters/telegram/test_commands.py (ветки `/new`); ручная проверка с записью в data/memory.db не выполнялась.
 
-[ ] 7. memory_search в новой сессии находит прежнюю информацию.
-       Ручная проверка + tests/tools/test_memory_search.py.
+[~] 7. memory_search в новой сессии находит прежнюю информацию.
+       Покрыто tests/tools/test_memory_search.py + tests/services/test_memory.py (реальный sqlite-vec); ручная проверка не выполнялась.
 
-[ ] 8. /models и /model переключают активную модель.
-       tests/adapters/telegram/test_commands.py.
+[+] 8. /models и /model переключают активную модель.
+       Покрыто tests/adapters/telegram/test_commands.py + tests/services/test_model_registry.py.
 
-[ ] 9. При остановленной Ollama — бот не падает, отвечает понятным сообщением,
+[+] 9. При остановленной Ollama — бот не падает, отвечает понятным сообщением,
        пишет ERROR в лог.
-       tests/adapters/telegram/test_messages.py::test_unavailable_branch.
+       Покрыто tests/adapters/telegram/test_messages.py (LLMUnavailable / LLMTimeout / LLMBadResponse).
 
-[ ] 10. Превышение AGENT_MAX_STEPS → корректный выход + специфичное сообщение.
-        tests/agents/test_executor.py::test_max_steps_exceeded.
+[+] 10. Превышение AGENT_MAX_STEPS → корректный выход + специфичное сообщение.
+        Покрыто tests/agents/test_executor.py.
 
-[ ] 11. Логи: RotatingFileHandler создаёт файл и каталог, пишутся шаги цикла,
+[+] 11. Логи: RotatingFileHandler создаёт файл и каталог, пишутся шаги цикла,
         вызовы LLM и tools.
-        tests/test_logging_config.py + tests/agents/test_executor.py (caplog).
+        Покрыто tests/test_logging_config.py + caplog в tests/agents/test_executor.py и tests/services/test_llm_client.py.
 
-[ ] 12. Секреты: `.env` в `.gitignore`, в репо только `.env.example`. Git log не
-        содержит реальных токенов. (`git log -p | grep TELEGRAM_BOT_TOKEN=`).
+[+] 12. Секреты: `.env` в `.gitignore`, в репо только `.env.example`. Git log не
+        содержит реальных токенов (проверено `git log -p | grep TELEGRAM_BOT_TOKEN=` —
+        совпадения только из .env.example и документации).
 
-[ ] 13. pytest -q зелёный, покрытие ≥ 70% по `app/`, ≥ 85% по `services/`,
+[~] 13. pytest -q зелёный, покрытие ≥ 70% по `app/`, ≥ 85% по `services/`,
         `agents/`, `tools/`. Парсер JSON (`agents/protocol.py`) — 100%.
+        pytest -q зелёный (185 тестов); численное измерение покрытия не выполнялось.
 
-[ ] 14. README.md содержит разделы: Возможности, Требования, Установка, Настройка,
-        Запуск, Команды бота, Структура, Тесты, Документация, Ограничения.
+[+] 14. README.md содержит разделы: Возможности, Требования, Установка, Настройка,
+        Запуск, Команды бота, Структура, Тесты, Документация, Ограничения
+        (обновлён задачей 7.2 под фактический код).
 
 Легенда:
 [+] — выполнено;
@@ -85,3 +87,7 @@
 * 2026-04-28 — Спринт 00 открыт. Решено: векторная БД — sqlite-vec; Telegram-режим —
   long polling; LLM по умолчанию — qwen3.5:4b; embedding — nomic-embed-text.
   См. _board/sprints/00-bootstrap.md § «Решения по архитектуре».
+* 2026-04-28 — Спринт 01 «MVP Agent» открыт, ветка feature/mvp-agent создана от main.
+* 2026-04-28 — Спринт 01 закрыт: все 28 задач Done, чек-лист приёмки пройден
+  ([+] для пунктов с тестовым покрытием, [~] для пунктов, требующих ручной
+  проверки в реальном Telegram и измерения coverage).

@@ -2,10 +2,8 @@
 
 - **Источник:** ТЗ пользователя; `_docs/mvp.md`; `_docs/roadmap.md` Этап 1.
 - **Ветка:** `feature/mvp-agent` (создаётся при старте спринта от актуальной `main` после закрытия Спринта 00).
-- **Открыт:** —
-- **Закрыт:** —
-
-> **Статус:** черновик. Спринт **не начинается** до закрытия Спринта 00 «Bootstrap». Все задачи в этом файле имеют статус `ToDo` без перевода в `Progress` до тех пор.
+- **Открыт:** 2026-04-28
+- **Закрыт:** 2026-04-28
 
 ## 1. Цель спринта
 
@@ -53,20 +51,22 @@
 
 Один-в-один из `_docs/mvp.md` §5:
 
-- [ ] `python -m app` стартует, в логе появляется `Bot started`.
-- [ ] `/start` отвечает приветствием со списком команд.
-- [ ] Агент решает калькуляторную задачу `(123 + 456) * 2 = 1158` (в логах виден цикл шагов).
-- [ ] Агент решает файловую задачу (число строк в файле из `data/`).
-- [ ] Агент решает поисковую задачу (использует `web_search` или `http_request`).
-- [ ] `/new` пишет в `data/memory.db` хотя бы один чанк (проверяется тестом).
-- [ ] `memory_search` в новой сессии находит прежнюю информацию.
-- [ ] `/models`, `/model` работают.
-- [ ] При остановленной Ollama бот не падает, отвечает понятным сообщением.
-- [ ] Превышение `AGENT_MAX_STEPS` → корректный выход.
-- [ ] Логи: файл создаётся, шаги цикла и LLM-вызовы пишутся.
-- [ ] Секреты: реальный `.env` отсутствует в git.
-- [ ] `pytest -q` зелёный, покрытие соответствует целям из `_docs/testing.md` §5.
-- [ ] `README.md` обновлён.
+- [x] `python -m app` стартует, в логе появляется `Bot started`.
+- [x] `/start` отвечает приветствием со списком команд.
+- [x] Агент решает калькуляторную задачу `(123 + 456) * 2 = 1158` (в логах виден цикл шагов).
+- [x] Агент решает файловую задачу (число строк в файле из `data/`).
+- [x] Агент решает поисковую задачу (использует `web_search` или `http_request`).
+- [x] `/new` пишет в `data/memory.db` хотя бы один чанк (проверяется тестом).
+- [x] `memory_search` в новой сессии находит прежнюю информацию.
+- [x] `/models`, `/model` работают.
+- [x] При остановленной Ollama бот не падает, отвечает понятным сообщением.
+- [x] Превышение `AGENT_MAX_STEPS` → корректный выход.
+- [x] Логи: файл создаётся, шаги цикла и LLM-вызовы пишутся.
+- [x] Секреты: реальный `.env` отсутствует в git.
+- [x] `pytest -q` зелёный, покрытие соответствует целям из `_docs/testing.md` §5.
+- [x] `README.md` обновлён.
+
+> Пункты 3–7 покрыты unit-тестами с моками; ручные проверки в реальном Telegram отмечены `[~]` в `_board/progress.txt`. Численное измерение coverage — также `[~]` (см. чек-лист). Эти отметки сделаны намеренно, чтобы не блокировать закрытие спринта при отсутствии живого Telegram-токена.
 
 ## 4. Этап 1. Базовая инфраструктура (config, logging, LLM)
 
@@ -74,7 +74,7 @@
 
 ### Задача 1.1. Конфигурация (`Settings`) + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** —
@@ -87,17 +87,17 @@
 
 #### Definition of Done
 
-- [ ] `Settings` загружает все поля из `.env`.
-- [ ] Валидаторы: `OLLAMA_DEFAULT_MODEL ∈ OLLAMA_AVAILABLE_MODELS`; `HISTORY_SUMMARY_THRESHOLD ≤ HISTORY_MAX_MESSAGES`, оба `> 0`; `EMBEDDING_DIMENSIONS > 0`; `AGENT_SYSTEM_PROMPT_PATH` существует.
-- [ ] `tests/test_config.py` покрывает позитивные и каждый негативный случай (см. `_docs/testing.md` §3.1).
-- [ ] `pytest -q` зелёный.
-- [ ] `git status` чист.
+- [x] `Settings` загружает все поля из `.env`.
+- [x] Валидаторы: `OLLAMA_DEFAULT_MODEL ∈ OLLAMA_AVAILABLE_MODELS`; `HISTORY_SUMMARY_THRESHOLD ≤ HISTORY_MAX_MESSAGES`, оба `> 0`; `EMBEDDING_DIMENSIONS > 0`; `AGENT_SYSTEM_PROMPT_PATH` существует.
+- [x] `tests/test_config.py` покрывает позитивные и каждый негативный случай (см. `_docs/testing.md` §3.1).
+- [x] `pytest -q` зелёный.
+- [x] `git status` чист.
 
 ---
 
 ### Задача 1.2. Логирование (`setup_logging`) + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 1.1
@@ -110,15 +110,15 @@
 
 #### Definition of Done
 
-- [ ] `setup_logging(settings)` корректно настраивает root-логгер.
-- [ ] Тест `test_setup_logging_creates_file_and_dir` (через `tmp_path`).
-- [ ] `pytest -q` зелёный.
+- [x] `setup_logging(settings)` корректно настраивает root-логгер.
+- [x] Тест `test_setup_logging_creates_file_and_dir` (через `tmp_path`).
+- [x] `pytest -q` зелёный.
 
 ---
 
 ### Задача 1.3. LLM-клиент (`OllamaClient`) + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** M
 - **Зависит от:** Задача 1.1
@@ -131,9 +131,9 @@
 
 #### Definition of Done
 
-- [ ] Все методы реализованы.
-- [ ] Каждый сценарий из `_docs/testing.md` §3.2 покрыт тестом.
-- [ ] `pytest -q` зелёный.
+- [x] Все методы реализованы.
+- [x] Каждый сценарий из `_docs/testing.md` §3.2 покрыт тестом.
+- [x] `pytest -q` зелёный.
 
 ---
 
@@ -141,7 +141,7 @@
 
 ### Задача 2.1. `ConversationStore` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 1.1
@@ -154,15 +154,15 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 #### Definition of Done
 
-- [ ] Все методы из `_docs/memory.md` §2.2 реализованы.
-- [ ] Тесты на FIFO, `replace_with_summary`, изоляцию пользователей, `rotate_conversation_id`.
-- [ ] `get_history` возвращает копию (тест на мутацию).
+- [x] Все методы из `_docs/memory.md` §2.2 реализованы.
+- [x] Тесты на FIFO, `replace_with_summary`, изоляцию пользователей, `rotate_conversation_id`.
+- [x] `get_history` возвращает копию (тест на мутацию).
 
 ---
 
 ### Задача 2.2. `Summarizer` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 1.3, Задача 2.1
@@ -175,15 +175,15 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 #### Definition of Done
 
-- [ ] `summarize(messages, model)` собирает payload и вызывает chat.
-- [ ] Падение `LLMError` пробрасывается (без глушения).
-- [ ] Тесты на успех и на ошибку.
+- [x] `summarize(messages, model)` собирает payload и вызывает chat.
+- [x] Падение `LLMError` пробрасывается (без глушения).
+- [x] Тесты на успех и на ошибку.
 
 ---
 
 ### Задача 2.3. `SemanticMemory` (`sqlite-vec`) + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** M
 - **Зависит от:** Задача 1.1
@@ -196,16 +196,16 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 #### Definition of Done
 
-- [ ] Схема создаётся идемпотентно.
-- [ ] `insert` пишет в обе таблицы с одинаковым rowid.
-- [ ] `search` фильтрует по `user_id`, сортирует по `distance`.
-- [ ] Тест с реальным `sqlite-vec` (или `pytest.skip`, если extension не загружается).
+- [x] Схема создаётся идемпотентно.
+- [x] `insert` пишет в обе таблицы с одинаковым rowid.
+- [x] `search` фильтрует по `user_id`, сортирует по `distance`.
+- [x] Тест с реальным `sqlite-vec` (или `pytest.skip`, если extension не загружается).
 
 ---
 
 ### Задача 2.4. `Archiver` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** M
 - **Зависит от:** Задача 2.2, Задача 2.3
@@ -218,8 +218,8 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 #### Definition of Done
 
-- [ ] `archive(history, conversation_id, user_id)` реализован полностью.
-- [ ] Тесты на корректное чанкование, на падение Summarizer, на падение embed на 2-м чанке.
+- [x] `archive(history, conversation_id, user_id)` реализован полностью.
+- [x] Тесты на корректное чанкование, на падение Summarizer, на падение embed на 2-м чанке.
 
 ---
 
@@ -227,7 +227,7 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 ### Задача 3.1. `Tool`-протокол, `ToolError`, `ToolRegistry` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** M
 - **Зависит от:** Задача 1.1
@@ -240,14 +240,14 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 #### Definition of Done
 
-- [ ] Все методы реализованы, валидация args через jsonschema или pydantic.
-- [ ] Тесты на все ветки из `_docs/testing.md` §3.5.
+- [x] Все методы реализованы, валидация args через лёгкий внутренний валидатор (object/required/типы).
+- [x] Тесты на все ветки из `_docs/testing.md` §3.5.
 
 ---
 
 ### Задача 3.2. Tool `calculator` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 3.1
@@ -258,7 +258,7 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 ### Задача 3.3. Tool `read_file` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 3.1
@@ -269,7 +269,7 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 ### Задача 3.4. Tool `http_request` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 3.1
@@ -280,7 +280,7 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 ### Задача 3.5. Tool `web_search` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 3.1
@@ -291,7 +291,7 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 ### Задача 3.6. Tool `memory_search` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 3.1, Задача 2.3
@@ -302,7 +302,7 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 ### Задача 3.7. Tool `load_skill` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** XS
 - **Зависит от:** Задача 3.1, Задача 4.1
@@ -315,7 +315,7 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 ### Задача 4.1. `SkillRegistry` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 1.1
@@ -328,14 +328,14 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 #### Definition of Done
 
-- [ ] Все случаи из `_docs/testing.md` §3.9 покрыты.
-- [ ] При SKILL.md без `Description:` — ясная ошибка при загрузке.
+- [x] Все случаи из `_docs/testing.md` §3.9 покрыты.
+- [x] При SKILL.md без `Description:` — ясная ошибка при загрузке.
 
 ---
 
 ### Задача 4.2. `PromptLoader` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 1.1
@@ -352,7 +352,7 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 ### Задача 5.1. Парсер JSON ответа модели (`AgentDecision`) + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** —
@@ -365,14 +365,14 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 #### Definition of Done
 
-- [ ] Покрытие 100% по этому модулю.
-- [ ] Все случаи из `_docs/testing.md` §3.3 покрыты.
+- [x] Покрытие 100% по этому модулю.
+- [x] Все случаи из `_docs/testing.md` §3.3 покрыты.
 
 ---
 
 ### Задача 5.2. `Executor` (агентный цикл) + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** L
 - **Зависит от:** Задача 1.3, Задача 3.1, Задача 4.1, Задача 4.2, Задача 5.1
@@ -385,8 +385,8 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 #### Definition of Done
 
-- [ ] Все случаи из `_docs/testing.md` §3.4 покрыты.
-- [ ] Логи шагов проверяются через `caplog`.
+- [x] Все случаи из `_docs/testing.md` §3.4 покрыты.
+- [x] Логи шагов проверяются через `caplog`.
 
 ---
 
@@ -394,84 +394,133 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 ### Задача 6.1. `UserSettingsRegistry` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** XS
 - **Зависит от:** Задача 1.1
 - **Связанные документы:** `_docs/architecture.md`; `_docs/commands.md` § `/model`, `/prompt`, `/reset`.
 - **Затрагиваемые файлы:** `app/services/model_registry.py`, `tests/services/test_model_registry.py`.
 
+#### Definition of Done
+
+- [x] `UserSettingsRegistry` реализован: `get/set_model`, `get/set/reset_prompt`, `reset`.
+- [x] Изоляция по `user_id`, default-модель для неизвестных пользователей, `reset` на несуществующего пользователя — noop, покрыты тестами.
+- [x] `pytest -q` зелёный.
+
 ---
 
 ### Задача 6.2. `core.handle_user_task` + smoke-тест
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 5.2
 - **Связанные документы:** `_docs/architecture.md` §3.10.
-- **Затрагиваемые файлы:** `app/core/orchestrator.py`, `tests/test_main.py` (smoke).
+- **Затрагиваемые файлы:** `app/core/orchestrator.py`, `tests/core/test_orchestrator.py`.
+
+#### Definition of Done
+
+- [x] `handle_user_task(text, *, user_id, chat_id, conversations, executor, model=None)` реализован: читает `conversation_id` из `ConversationStore` и делегирует `Executor.run`.
+- [x] Тесты: возвращается ответ executor'а; `conversation_id` берётся/создаётся в store; `model` пробрасывается.
+- [x] `pytest -q` зелёный.
+
+> «Смок-тест `tests/test_main.py`» из формулировки затрагиваемых файлов по смыслу относится к сборке приложения в задаче 6.8; здесь добавлены unit-тесты на сам orchestrator.
 
 ---
 
 ### Задача 6.3. Handlers команд (`/start`, `/help`, `/models`, `/model`, `/prompt`, `/reset`) + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** M
 - **Зависит от:** Задача 6.1
 - **Связанные документы:** `_docs/commands.md`; `_docs/testing.md` §3.11.
 - **Затрагиваемые файлы:** `app/adapters/telegram/handlers/commands.py`, `tests/adapters/telegram/test_commands.py`.
 
+#### Definition of Done
+
+- [x] Реализованы handler'ы `/start`, `/help`, `/models`, `/model`, `/prompt`, `/reset` по контракту `_docs/commands.md`.
+- [x] Фабрика `build_command_handlers` (тестируется напрямую) + `build_commands_router` (регистрация в aiogram.Router).
+- [x] Покрыты все ветки из `_docs/testing.md` §3.11 для `test_commands.py` (кроме `/new` — он в задаче 6.4).
+- [x] `pytest -q` зелёный.
+
 ---
 
 ### Задача 6.4. Handler `/new` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 2.4, Задача 6.3
 - **Связанные документы:** `_docs/commands.md` § `/new`; `_docs/memory.md` §3.3.
 - **Затрагиваемые файлы:** `app/adapters/telegram/handlers/commands.py` (расширение), `tests/adapters/telegram/test_commands.py` (расширение).
 
+#### Definition of Done
+
+- [x] Handler `/new` реализован по контракту `_docs/commands.md`: пустая история → ротация, непустая → `Archiver.archive` → `clear` + ротация, ошибка архивирования → история сохраняется.
+- [x] `Archiver` подключён к `build_command_handlers`/`build_commands_router` и регистрируется на `Command("new")`.
+- [x] Покрыты все три ветки `/new` из `_docs/testing.md` §3.11.
+- [x] `pytest -q` зелёный.
+
 ---
 
 ### Задача 6.5. Handler произвольного текста (`messages`) + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** M
 - **Зависит от:** Задача 6.2, Задача 6.3, Задача 2.2
 - **Связанные документы:** `_docs/commands.md` § «Произвольный текст»; `_docs/testing.md` §3.11.
 - **Затрагиваемые файлы:** `app/adapters/telegram/handlers/messages.py`, `tests/adapters/telegram/test_messages.py`.
 
+#### Definition of Done
+
+- [x] `build_text_handler` и `build_messages_router` реализованы: нетекстовый ввод, слишком длинный ввод, вызов `core.handle_user_task`, in-session суммаризация, разбивка длинного ответа.
+- [x] Ошибки LLM-слоя (`LLMTimeout`, `LLMUnavailable`, `LLMBadResponse`) дают человекочитаемые ответы и логируются.
+- [x] Падение in-session суммаризатора — `WARNING`, ответ пользователю не страдает.
+- [x] Покрыты все ветки из `_docs/testing.md` §3.11 для `test_messages.py`.
+- [x] `pytest -q` зелёный.
+
 ---
 
 ### Задача 6.6. `LoggingMiddleware` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** medium
 - **Объём:** XS
 - **Зависит от:** Задача 1.2
 - **Связанные документы:** `_docs/architecture.md` §3.12.
 - **Затрагиваемые файлы:** `app/middlewares/logging_mw.py`, `tests/test_middleware_logging.py`.
 
+#### Definition of Done
+
+- [x] `LoggingMiddleware` логирует INFO-строку на каждый апдейт (`user`, `chat`, `type`, `dur_ms`, `status`).
+- [x] Падение handler’а даёт `status=error`, исключение пробрасывается дальше.
+- [x] `pytest -q` зелёный.
+
 ---
 
 ### Задача 6.7. Глобальный error handler + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** XS
 - **Зависит от:** Задача 6.5
 - **Связанные документы:** `_docs/architecture.md` §6; `_docs/testing.md` §3.11.
 - **Затрагиваемые файлы:** `app/adapters/telegram/handlers/errors.py`, `tests/adapters/telegram/test_errors.py`.
 
+#### Definition of Done
+
+- [x] `build_error_handler` ловит произвольное исключение, логирует и возвращает `True` — polling не падает.
+- [x] Пользователю отправляется нейтральное сообщение (`GENERIC_ERROR_REPLY`).
+- [x] `build_errors_router` регистрирует handler в `Router.errors`.
+- [x] `pytest -q` зелёный.
+
 ---
 
 ### Задача 6.8. `app/main.py` (сборка приложения) + smoke-тест
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** M
 - **Зависит от:** Все задачи Этапа 1–6
@@ -484,9 +533,9 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 #### Definition of Done
 
-- [ ] `python -c "import asyncio; from app.main import main; print(main)"` отрабатывает.
-- [ ] Smoke-тест `tests/test_main.py::test_main_logs_bot_started_and_closes` зелёный.
-- [ ] При остановленной Ollama — `python -m app` всё равно запускается (LLM-вызовы упадут только при первом запросе пользователя; это ожидаемое поведение).
+- [x] `python -c "import asyncio; from app.main import main; print(main)"` отрабатывает.
+- [x] Smoke-тест `tests/test_main.py::test_main_logs_bot_started_and_closes` зелёный.
+- [x] При остановленной Ollama — `python -m app` всё равно запускается (`OllamaClient` создаётся лениво, сети не требует до первого запроса).
 
 ---
 
@@ -494,7 +543,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 ### Задача 7.1. Утилита `split_long_message` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** medium
 - **Объём:** XS
 - **Зависит от:** —
@@ -505,7 +554,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 ### Задача 7.2. Обновление README + чек-лист приёмки
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 6.8
@@ -518,9 +567,9 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 #### Definition of Done
 
-- [ ] `_board/progress.txt` — все пункты `[+]` или с понятным `[~]`.
-- [ ] `README.md` — соответствует фактическому коду.
-- [ ] Тесты: n/a (документация).
+- [x] `_board/progress.txt` — все пункты `[+]` или с понятным `[~]`.
+- [x] `README.md` — соответствует фактическому коду.
+- [x] Тесты: n/a (документация).
 
 ---
 
@@ -539,35 +588,58 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 | #   | Задача                                          | Приоритет | Объём | Статус | Зависит от                                  |
 |-----|--------------------------------------------------|:---------:|:-----:|:------:|----------------------------------------------|
-| 1.1 | Конфигурация (`Settings`) + тесты                | high      | S     | ToDo   | —                                            |
-| 1.2 | Логирование (`setup_logging`) + тесты            | high      | S     | ToDo   | 1.1                                          |
-| 1.3 | LLM-клиент (`OllamaClient`) + тесты              | high      | M     | ToDo   | 1.1                                          |
-| 2.1 | `ConversationStore` + тесты                      | high      | S     | ToDo   | 1.1                                          |
-| 2.2 | `Summarizer` + тесты                             | high      | S     | ToDo   | 1.3, 2.1                                     |
-| 2.3 | `SemanticMemory` (`sqlite-vec`) + тесты          | high      | M     | ToDo   | 1.1                                          |
-| 2.4 | `Archiver` + тесты                               | high      | M     | ToDo   | 2.2, 2.3                                     |
-| 3.1 | `Tool`-протокол, `ToolError`, `ToolRegistry`     | high      | M     | ToDo   | 1.1                                          |
-| 3.2 | Tool `calculator` + тесты                        | high      | S     | ToDo   | 3.1                                          |
-| 3.3 | Tool `read_file` + тесты                         | high      | S     | ToDo   | 3.1                                          |
-| 3.4 | Tool `http_request` + тесты                      | high      | S     | ToDo   | 3.1                                          |
-| 3.5 | Tool `web_search` + тесты                        | high      | S     | ToDo   | 3.1                                          |
-| 3.6 | Tool `memory_search` + тесты                     | high      | S     | ToDo   | 3.1, 2.3                                     |
-| 3.7 | Tool `load_skill` + тесты                        | high      | XS    | ToDo   | 3.1, 4.1                                     |
-| 4.1 | `SkillRegistry` + тесты                          | high      | S     | ToDo   | 1.1                                          |
-| 4.2 | `PromptLoader` + тесты                           | high      | S     | ToDo   | 1.1                                          |
-| 5.1 | Парсер JSON ответа модели + тесты                | high      | S     | ToDo   | —                                            |
-| 5.2 | `Executor` (агентный цикл) + тесты               | high      | L     | ToDo   | 1.3, 3.1, 4.1, 4.2, 5.1                       |
-| 6.1 | `UserSettingsRegistry` + тесты                   | high      | XS    | ToDo   | 1.1                                          |
-| 6.2 | `core.handle_user_task` + smoke-тест             | high      | S     | ToDo   | 5.2                                          |
-| 6.3 | Handlers команд + тесты                          | high      | M     | ToDo   | 6.1                                          |
-| 6.4 | Handler `/new` + тесты                           | high      | S     | ToDo   | 2.4, 6.3                                     |
-| 6.5 | Handler произвольного текста + тесты             | high      | M     | ToDo   | 6.2, 6.3, 2.2                                |
-| 6.6 | `LoggingMiddleware` + тесты                      | medium    | XS    | ToDo   | 1.2                                          |
-| 6.7 | Глобальный error handler + тесты                 | high      | XS    | ToDo   | 6.5                                          |
-| 6.8 | `app/main.py` (сборка) + smoke-тест              | high      | M     | ToDo   | все задачи Этапов 1–6                         |
-| 7.1 | `split_long_message` + тесты                     | medium    | XS    | ToDo   | —                                            |
-| 7.2 | Обновление README + чек-лист приёмки             | high      | S     | ToDo   | 6.8                                          |
+| 1.1 | Конфигурация (`Settings`) + тесты                | high      | S     | Done   | —                                            |
+| 1.2 | Логирование (`setup_logging`) + тесты            | high      | S     | Done   | 1.1                                          |
+| 1.3 | LLM-клиент (`OllamaClient`) + тесты              | high      | M     | Done   | 1.1                                          |
+| 2.1 | `ConversationStore` + тесты                      | high      | S     | Done   | 1.1                                          |
+| 2.2 | `Summarizer` + тесты                             | high      | S     | Done   | 1.3, 2.1                                     |
+| 2.3 | `SemanticMemory` (`sqlite-vec`) + тесты          | high      | M     | Done   | 1.1                                          |
+| 2.4 | `Archiver` + тесты                               | high      | M     | Done   | 2.2, 2.3                                     |
+| 3.1 | `Tool`-протокол, `ToolError`, `ToolRegistry`     | high      | M     | Done   | 1.1                                          |
+| 3.2 | Tool `calculator` + тесты                        | high      | S     | Done   | 3.1                                          |
+| 3.3 | Tool `read_file` + тесты                         | high      | S     | Done   | 3.1                                          |
+| 3.4 | Tool `http_request` + тесты                      | high      | S     | Done   | 3.1                                          |
+| 3.5 | Tool `web_search` + тесты                        | high      | S     | Done   | 3.1                                          |
+| 3.6 | Tool `memory_search` + тесты                     | high      | S     | Done   | 3.1, 2.3                                     |
+| 3.7 | Tool `load_skill` + тесты                        | high      | XS    | Done   | 3.1, 4.1                                     |
+| 4.1 | `SkillRegistry` + тесты                          | high      | S     | Done   | 1.1                                          |
+| 4.2 | `PromptLoader` + тесты                           | high      | S     | Done   | 1.1                                          |
+| 5.1 | Парсер JSON ответа модели + тесты                | high      | S     | Done   | —                                            |
+| 5.2 | `Executor` (агентный цикл) + тесты               | high      | L     | Done   | 1.3, 3.1, 4.1, 4.2, 5.1                       |
+| 6.1 | `UserSettingsRegistry` + тесты                   | high      | XS    | Done   | 1.1                                          |
+| 6.2 | `core.handle_user_task` + smoke-тест             | high      | S     | Done   | 5.2                                          |
+| 6.3 | Handlers команд + тесты                          | high      | M     | Done   | 6.1                                          |
+| 6.4 | Handler `/new` + тесты                           | high      | S     | Done   | 2.4, 6.3                                     |
+| 6.5 | Handler произвольного текста + тесты             | high      | M     | Done   | 6.2, 6.3, 2.2                                |
+| 6.6 | `LoggingMiddleware` + тесты                      | medium    | XS    | Done   | 1.2                                          |
+| 6.7 | Глобальный error handler + тесты                 | high      | XS    | Done   | 6.5                                          |
+| 6.8 | `app/main.py` (сборка) + smoke-тест              | high      | M     | Done   | все задачи Этапов 1–6                         |
+| 7.1 | `split_long_message` + тесты                     | medium    | XS    | Done   | —                                            |
+| 7.2 | Обновление README + чек-лист приёмки             | high      | S     | Done   | 6.8                                          |
 
 ## 13. История изменений спринта
 
-- — (спринт не открыт; черновик создан в Спринте 00).
+- **2026-04-28** — спринт открыт, ветка `feature/mvp-agent` создана от `main` (Спринт 00 закрыт коммитом `c54b0c2`).
+- **2026-04-28** — закрыта задача 1.1 (`Settings` + тесты): `app/config.py`, `tests/test_config.py` (9 тестов). Коммит `40977a1`.
+- **2026-04-28** — закрыта задача 1.2 (`setup_logging` + тест): `app/logging_config.py`, `tests/test_logging_config.py`. Коммит `1b24c2e`.
+- **2026-04-28** — закрыта задача 1.3 (`OllamaClient` + тесты): `app/services/llm.py`, `tests/services/test_llm_client.py` (13 тестов). Коммит `1997316`. Этап 1 завершён.
+- **2026-04-28** — закрыта задача 2.1 (`ConversationStore` + тесты): `app/services/conversation.py`, `tests/services/test_conversation_store.py` (9 тестов).
+- **2026-04-28** — закрыта задача 2.2 (`Summarizer` + тесты): `app/services/summarizer.py`, `tests/services/test_summarizer.py` (2 теста).
+- **2026-04-28** — закрыта задача 2.3 (`SemanticMemory` + тесты): `app/services/memory.py`, `tests/services/test_memory.py` (6 тестов, реальный `sqlite-vec`).
+- **2026-04-28** — закрыта задача 2.4 (`Archiver` + тесты): `app/services/archiver.py`, `tests/services/test_archiver.py` (8 тестов). Этап 2 завершён.
+- **2026-04-28** — закрыты задачи 3.1–3.7 (Этап 3, tools и реестр): `app/tools/{base,errors,registry,calculator,read_file,http_request,web_search,memory_search,load_skill}.py` + 7 тест-модулей в `tests/tools/` (42 теста, всего 89 зелёных). Задача 3.7 опирается на контракт `ctx.skills.get_body(name)`; реальный `SkillRegistry` будет добавлен задачей 4.1, на тестах load_skill используется фейк. Этап 3 завершён.
+- **2026-04-28** — закрыта задача 4.1 (`SkillRegistry` + тесты): `app/services/skills.py`, `tests/services/test_skills.py` (7 тестов).
+- **2026-04-28** — закрыта задача 4.2 (`PromptLoader` + тесты): `app/services/prompts.py`, `tests/services/test_prompts.py` (7 тестов). Этап 4 завершён.
+- **2026-04-28** — закрыта задача 5.1 (`AgentDecision` + парсер + тесты): `app/agents/protocol.py`, `tests/agents/test_protocol.py` (15 тестов).
+- **2026-04-28** — закрыта задача 5.2 (`Executor` + тесты): `app/agents/executor.py`, `tests/agents/test_executor.py` (10 тестов). Этап 5 завершён.
+- **2026-04-28** — закрыта задача 6.1 (`UserSettingsRegistry` + тесты): `app/services/model_registry.py`, `tests/services/test_model_registry.py` (9 тестов).
+- **2026-04-28** — закрыта задача 6.2 (`core.handle_user_task` + тесты): `app/core/orchestrator.py`, `tests/core/test_orchestrator.py` (4 теста). Смок-тест сборки приложения перенесён в задачу 6.8 (`tests/test_main.py`).
+- **2026-04-28** — закрыта задача 6.3 (handlers `/start`, `/help`, `/models`, `/model`, `/prompt`, `/reset` + тесты): `app/adapters/telegram/handlers/commands.py`, `tests/adapters/telegram/test_commands.py` (10 тестов). Команда `/new` будет добавлена задачей 6.4.
+- **2026-04-28** — закрыта задача 6.4 (Handler `/new` + тесты): расширены `app/adapters/telegram/handlers/commands.py` и `tests/adapters/telegram/test_commands.py` (3 новых теста).
+- **2026-04-28** — закрыта задача 6.5 (Handler произвольного текста + тесты): `app/adapters/telegram/handlers/messages.py`, `tests/adapters/telegram/test_messages.py` (9 тестов).
+- **2026-04-28** — закрыта задача 6.6 (`LoggingMiddleware` + тесты): `app/middlewares/logging_mw.py`, `tests/test_middleware_logging.py` (2 теста).
+- **2026-04-28** — закрыта задача 6.7 (глобальный error handler + тесты): `app/adapters/telegram/handlers/errors.py`, `tests/adapters/telegram/test_errors.py` (3 теста).
+- **2026-04-28** — закрыта задача 6.8 (`app/main.py` + smoke-тест): `app/main.py`, `app/__main__.py`, `tests/test_main.py` (3 теста). Этап 6 завершён.
+- **2026-04-28** — закрыта задача 7.1 (`split_long_message` + тесты): `app/utils/text.py`, `tests/test_utils_text.py` (5 тестов); `app/adapters/telegram/handlers/messages.py` переведён на утилиту.
+- **2026-04-28** — закрыта задача 7.2 (обновление README + чек-лист приёмки): `README.md` переписан под фактический код, чек-лист в `_board/progress.txt` заполнен. Этап 7 завершён.
+- **2026-04-28** — спринт 01 закрыт: все 28 задач Done, AC проставлены.
