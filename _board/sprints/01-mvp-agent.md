@@ -483,7 +483,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 ### Задача 6.6. `LoggingMiddleware` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** medium
 - **Объём:** XS
 - **Зависит от:** Задача 1.2
@@ -596,7 +596,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 6.3 | Handlers команд + тесты                          | high      | M     | Done   | 6.1                                          |
 | 6.4 | Handler `/new` + тесты                           | high      | S     | Done   | 2.4, 6.3                                     |
 | 6.5 | Handler произвольного текста + тесты             | high      | M     | Done   | 6.2, 6.3, 2.2                                |
-| 6.6 | `LoggingMiddleware` + тесты                      | medium    | XS    | ToDo   | 1.2                                          |
+| 6.6 | `LoggingMiddleware` + тесты                      | medium    | XS    | Progress | 1.2                                          |
 | 6.7 | Глобальный error handler + тесты                 | high      | XS    | ToDo   | 6.5                                          |
 | 6.8 | `app/main.py` (сборка) + smoke-тест              | high      | M     | ToDo   | все задачи Этапов 1–6                         |
 | 7.1 | `split_long_message` + тесты                     | medium    | XS    | ToDo   | —                                            |
