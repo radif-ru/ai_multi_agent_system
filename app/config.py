@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     # --- Memory (in-memory) ---
     history_max_messages: int = 20
     history_summary_threshold: int = 10
+    session_log_max_messages: int = 1000
     summarization_prompt: str = (
         "Кратко и точно резюмируй ключевые факты и решения из этого диалога "
         "в 2–4 предложениях. Ответ — только текст резюме, без вступлений."
@@ -96,6 +97,13 @@ class Settings(BaseSettings):
     def _check_history_threshold(cls, v: int) -> int:
         if v <= 0:
             raise ValueError("HISTORY_SUMMARY_THRESHOLD must be > 0")
+        return v
+
+    @field_validator("session_log_max_messages")
+    @classmethod
+    def _check_session_log_max(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("SESSION_LOG_MAX_MESSAGES must be > 0")
         return v
 
     @model_validator(mode="after")

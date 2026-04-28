@@ -87,3 +87,98 @@ def test_rotate_when_no_prior_id_returns_empty_string():
 def test_invalid_max_messages():
     with pytest.raises(ValueError):
         ConversationStore(max_messages=0)
+
+
+def test_invalid_session_log_max_messages():
+    with pytest.raises(ValueError):
+        ConversationStore(max_messages=10, session_log_max_messages=0)
+
+
+# ---- session_log (см. _docs/memory.md §2.5) ----------------------------
+
+
+def test_session_log_records_user_and_assistant():
+    s = ConversationStore(max_messages=10)
+    s.add_user_message(1, "привет, я Радиф")
+    s.add_assistant_message(1, "привет, Радиф")
+    log = s.get_session_log(1)
+    assert log == [
+        {"role": "user", "content": "привет, я Радиф"},
+        {"role": "assistant", "content": "привет, Радиф"},
+    ]
+
+
+def test_session_log_returns_independent_copy():
+    s = ConversationStore(max_messages=10)
+    s.add_user_message(1, "a")
+    log = s.get_session_log(1)
+    log.clear()
+    log.append({"role": "user", "content": "x"})
+    assert s.get_session_log(1) == [{"role": "user", "content": "a"}]
+
+
+def test_session_log_ignores_system_messages():
+    s = ConversationStore(max_messages=10)
+    s.add_user_message(1, "a")
+    s.add_system_message(1, "tech-hint")
+    s.add_assistant_message(1, "b")
+    log = s.get_session_log(1)
+    assert [m["role"] for m in log] == ["user", "assistant"]
+
+
+def test_session_log_survives_replace_with_summary():
+    """`replace_with_summary` урезает `_messages`, но НЕ полный лог сессии."""
+    s = ConversationStore(max_messages=10)
+    s.add_user_message(1, "привет, я Радиф")
+    s.add_assistant_message(1, "привет, Радиф")
+    for i in range(4):
+        s.add_user_message(1, f"u{i}")
+        s.add_assistant_message(1, f"a{i}")
+    s.replace_with_summary(1, "summary", kept_tail=2)
+    # rolling-буфер сжат
+    h = s.get_history(1)
+    assert h[0]["role"] == "system"
+    assert "summary" in h[0]["content"]
+    assert len(h) == 3
+    # полный лог сохранил всё
+    log = s.get_session_log(1)
+    assert log[0] == {"role": "user", "content": "привет, я Радиф"}
+    assert any("Радиф" in m["content"] for m in log)
+    assert len(log) == 10  # 1+1 + 4*2
+
+
+def test_clear_resets_session_log():
+    s = ConversationStore(max_messages=10)
+    s.add_user_message(1, "a")
+    s.add_assistant_message(1, "b")
+    s.clear(1)
+    assert s.get_session_log(1) == []
+
+
+def test_rotate_conversation_id_resets_session_log():
+    s = ConversationStore(max_messages=10)
+    s.add_user_message(1, "a")
+    s.add_assistant_message(1, "b")
+    s.rotate_conversation_id(1)
+    assert s.get_session_log(1) == []
+
+
+def test_session_log_users_are_isolated():
+    s = ConversationStore(max_messages=10)
+    s.add_user_message(1, "u1")
+    s.add_user_message(2, "u2")
+    s.clear(1)
+    assert s.get_session_log(1) == []
+    assert s.get_session_log(2) == [{"role": "user", "content": "u2"}]
+
+
+def test_session_log_overflow_drops_head_and_warns(caplog):
+    s = ConversationStore(max_messages=100, session_log_max_messages=3)
+    with caplog.at_level("WARNING", logger="app.services.conversation"):
+        s.add_user_message(1, "m0")
+        s.add_assistant_message(1, "m1")
+        s.add_user_message(1, "m2")
+        s.add_assistant_message(1, "m3")
+    log = s.get_session_log(1)
+    assert [m["content"] for m in log] == ["m1", "m2", "m3"]
+    assert any("session_log overflow" in rec.message for rec in caplog.records)

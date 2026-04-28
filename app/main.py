@@ -76,7 +76,10 @@ async def _build_components(settings: Settings) -> _Components:
     llm = OllamaClient(
         base_url=settings.ollama_base_url, timeout=settings.ollama_timeout
     )
-    conversations = ConversationStore(max_messages=settings.history_max_messages)
+    conversations = ConversationStore(
+        max_messages=settings.history_max_messages,
+        session_log_max_messages=settings.session_log_max_messages,
+    )
     summarizer = Summarizer(llm=llm, system_prompt=settings.summarization_prompt)
 
     semantic_memory: SemanticMemory | None = SemanticMemory(
