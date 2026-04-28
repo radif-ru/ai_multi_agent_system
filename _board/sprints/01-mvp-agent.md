@@ -72,7 +72,7 @@
 
 ### Задача 1.1. Конфигурация (`Settings`) + тесты
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** —
@@ -85,11 +85,11 @@
 
 #### Definition of Done
 
-- [ ] `Settings` загружает все поля из `.env`.
-- [ ] Валидаторы: `OLLAMA_DEFAULT_MODEL ∈ OLLAMA_AVAILABLE_MODELS`; `HISTORY_SUMMARY_THRESHOLD ≤ HISTORY_MAX_MESSAGES`, оба `> 0`; `EMBEDDING_DIMENSIONS > 0`; `AGENT_SYSTEM_PROMPT_PATH` существует.
-- [ ] `tests/test_config.py` покрывает позитивные и каждый негативный случай (см. `_docs/testing.md` §3.1).
-- [ ] `pytest -q` зелёный.
-- [ ] `git status` чист.
+- [x] `Settings` загружает все поля из `.env`.
+- [x] Валидаторы: `OLLAMA_DEFAULT_MODEL ∈ OLLAMA_AVAILABLE_MODELS`; `HISTORY_SUMMARY_THRESHOLD ≤ HISTORY_MAX_MESSAGES`, оба `> 0`; `EMBEDDING_DIMENSIONS > 0`; `AGENT_SYSTEM_PROMPT_PATH` существует.
+- [x] `tests/test_config.py` покрывает позитивные и каждый негативный случай (см. `_docs/testing.md` §3.1).
+- [x] `pytest -q` зелёный.
+- [x] `git status` чист.
 
 ---
 
@@ -537,7 +537,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 | #   | Задача                                          | Приоритет | Объём | Статус | Зависит от                                  |
 |-----|--------------------------------------------------|:---------:|:-----:|:------:|----------------------------------------------|
-| 1.1 | Конфигурация (`Settings`) + тесты                | high      | S     | Progress | —                                          |
+| 1.1 | Конфигурация (`Settings`) + тесты                | high      | S     | Done   | —                                            |
 | 1.2 | Логирование (`setup_logging`) + тесты            | high      | S     | ToDo   | 1.1                                          |
 | 1.3 | LLM-клиент (`OllamaClient`) + тесты              | high      | M     | ToDo   | 1.1                                          |
 | 2.1 | `ConversationStore` + тесты                      | high      | S     | ToDo   | 1.1                                          |
@@ -569,3 +569,4 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 ## 13. История изменений спринта
 
 - **2026-04-28** — спринт открыт, ветка `feature/mvp-agent` создана от `main` (Спринт 00 закрыт коммитом `c54b0c2`).
+- **2026-04-28** — закрыта задача 1.1 (`Settings` + тесты): `app/config.py`, `tests/test_config.py` (9 тестов). Коммит `40977a1`.
