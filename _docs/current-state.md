@@ -18,6 +18,16 @@
 
 > Пусто на момент закрытия Спринта 00. Записи появляются по мере обнаружения нюансов в Спринтах 01+.
 
+### 2.1 Потеря ранней истории при `/new` (исправляется в спринте 02, Этап 4)
+
+**Файл:** `app/services/conversation.py` + `app/adapters/telegram/handlers/messages.py:113-127` + `app/adapters/telegram/handlers/commands.py:140-152`. **Серьёзность:** высокая.
+
+После каждого ответа LLM при `len(history) >= HISTORY_SUMMARY_THRESHOLD` (default 10) handler `messages.py` вызывает `ConversationStore.replace_with_summary(user_id, summary, kept_tail=2)` — это **разрушает** in-session историю до `summary + последние 2 сообщения`. На длинных сессиях `cmd_new` затем передаёт в `Archiver` именно этот усечённый `get_history()`, и в долгосрочную память (`SemanticMemory`) из ранней части сессии попадает только то, что осталось в `summary`. Ранние конкретные факты (например, сказанное на 3-м ходу «Привет, я Радиф») в архив не уходят, и после `/new` ни `memory_search`, ни авто-подгрузка `SessionBootstrap` их не находят.
+
+Минимальное воспроизведение: бот в Telegram, длинный диалог ≥ `HISTORY_SUMMARY_THRESHOLD` сообщений, в начале фраза «меня зовут …», команда `/new`, новая сессия, вопрос «как меня зовут?» → бот не знает.
+
+**Рекомендация:** см. сприн 02 Этап 4 (`_board/sprints/02-memory-and-files.md`). Дизайн фиксирует: ввести параллельный append-only `_session_log` в `ConversationStore` (см. `memory.md` §2.5), `cmd_new` архивирует полный лог, in-session compaction остаётся только для `_messages`.
+
 Шаблон записи:
 
 ```markdown

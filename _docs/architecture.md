@@ -116,7 +116,7 @@ Telegram-адаптер принимает текст, оборачивает е
 
 ### 3.5 Краткосрочная память (`app/services/conversation.py`, `app/services/summarizer.py`)
 
-- **`ConversationStore`** — in-memory `user_id → list[{role, content}]` + `user_id → conversation_id`. API: `get_history`, `add_user_message`, `add_assistant_message`, `replace_with_summary(summary, kept_tail=2)`, `clear`, `current_conversation_id`, `rotate_conversation_id`. Жёсткий лимит `Settings.history_max_messages` (FIFO). `get_history` отдаёт **копию**.
+- **`ConversationStore`** — in-memory `user_id → list[{role, content}]` + `user_id → conversation_id`. API: `get_history`, `get_session_log`, `add_user_message`, `add_assistant_message`, `replace_with_summary(summary, kept_tail=2)`, `clear`, `current_conversation_id`, `rotate_conversation_id`. Жёсткий лимит `Settings.history_max_messages` (FIFO). `get_history` отдаёт **копию**. Внутри стора два буфера: rolling-`_messages` (с in-session compaction для LLM-контекста) и параллельный append-only `_session_log` (полный лог текущей сессии для `/new` → `Archiver`, страховка `Settings.session_log_max_messages`); `replace_with_summary` `_session_log` не трогает. См. `memory.md` §2.5.
 - **`Summarizer`** — обёртка над `OllamaClient.chat`, сжимает историю в краткое резюме (`Settings.summarization_prompt`). Используется в двух местах:
   1. **In-session** (когда `len(history) >= history_summary_threshold`) — заменяет старую часть истории резюме (`replace_with_summary`).
   2. **При архивировании** (`/new`) — суммирует всю сессию, дальше архиватор режет на чанки и пишет в `SemanticMemory`.

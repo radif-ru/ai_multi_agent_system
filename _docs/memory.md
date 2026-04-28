@@ -13,14 +13,17 @@
 
 ## 2. Краткосрочная память (in-memory)
 
-Реализация — `app/services/conversation.py::ConversationStore`. Заимствована из `ai_tg_bot` (предыдущий проект автора), уточнённая под мульти-агентный сценарий: добавлено понятие **`conversation_id`** (UUID или короткий слаг), который ротируется на `/new`.
+Реализация — `app/services/conversation.py::ConversationStore`. Заимствована из `ai_tg_bot` (предыдущий проект автора), уточнённая под мульти-агентный сценарий: добавлено понятие **`conversation_id`** (UUID или короткий слаг), который ротируется на `/new`. Помимо «rolling»-буфера `_messages` (который живёт под лимитом `HISTORY_MAX_MESSAGES` и периодически сжимается `replace_with_summary`), ведётся параллельный **полный лог сессии** `_session_log` — см. §2.5.
 
 ### 2.1 Структура
 
 ```python
 class ConversationStore:
     # user_id -> list[{role: "user"|"assistant"|"system", content: str}]
+    # rolling-буфер для LLM, сжимается replace_with_summary
     _messages: dict[int, list[dict]]
+    # user_id -> append-only полный лог текущей сессии (для /new)
+    _session_log: dict[int, list[dict]]
     # user_id -> текущий conversation_id (для метаданных архива)
     _conversation_ids: dict[int, str]
 ```
@@ -35,7 +38,8 @@ class ConversationStore:
 | `replace_with_summary(user_id, summary, kept_tail=2)` | Заменить всё, кроме последних `kept_tail` сообщений, одним `{"role": "system", "content": "Краткое резюме предыдущей части диалога: ..."}`. Используется при срабатывании in-session порога. |
 | `current_conversation_id(user_id) -> str` | Текущий идентификатор сессии. |
 | `rotate_conversation_id(user_id) -> str` | Сгенерировать новый id и сохранить. Возвращает старый. |
-| `clear(user_id)` | Очистить и сообщения, и `conversation_id`. |
+| `clear(user_id)` | Очистить всё: `_messages`, `_session_log` и `conversation_id`. |
+| `get_session_log(user_id) -> list[dict]` | Копия **полного** лога сессии (без in-session compaction). Используется `cmd_new` → `Archiver`. См. §2.5. |
 
 ### 2.3 In-session суммаризация (порог)
 
@@ -77,6 +81,22 @@ ConversationStore                       Executor.run
 
 Лимит длины истории защищён существующим `HISTORY_MAX_MESSAGES` (FIFO в `ConversationStore`) и `HISTORY_SUMMARY_THRESHOLD` (in-session суммаризация — см. §2.3).
 
+### 2.5 Полный лог сессии (`_session_log`)
+
+**Проблема**, которую решает этот буфер (обратная связь пользователя, спринт 02): in-session суммаризация (`replace_with_summary`, §2.3) разрушает `_messages` до `summary + last 2`. Если «/new» архивировал бы именно `_messages`, ранние реплики (например, «Привет, я Радиф») в долгосрочную память не попадают и `memory_search` их не находит после `/new`.
+
+**Решение**: параллельно с `_messages` ведётся append-only буфер `_session_log` — все `user`/`assistant` сообщения текущей сессии в исходном виде, без сжатия и без FIFO-усечения по `HISTORY_MAX_MESSAGES`.
+
+Инварианты:
+
+1. `add_user_message(user_id, text)` и `add_assistant_message(user_id, text)` дублируют запись: одновременно в `_messages` (как раньше) и в `_session_log`.
+2. `add_system_message` и `replace_with_summary` — **не трогают** `_session_log`. Это оптимизации контекста для LLM, они не относятся к исходному диалогу.
+3. `get_session_log(user_id)` возвращает независимую копию (внешние мутации не влияют на стор).
+4. `clear(user_id)` и `rotate_conversation_id(user_id)` **обнуляют** лог пользователя — новая сессия начинается с пустого лога.
+5. Верхняя страховка `Settings.session_log_max_messages` (env `SESSION_LOG_MAX_MESSAGES`, default 1000): при переполнении — отбрасывается голова лога и выдаётся `WARNING`. Это редкий сценарий (аномально длинная сессия без `/new`).
+
+**Инвариант высокого уровня**: in-session compaction оптимизирует только контекст для LLM (`_messages`); долгосрочная память при `/new` всегда видит сессию целиком (`_session_log`).
+
 ## 3. Долгосрочная память (sqlite-vec)
 
 ### 3.1 Почему `sqlite-vec`
@@ -95,6 +115,8 @@ ConversationStore                       Executor.run
 ### 3.3 Сценарий `/new` (архивирование)
 
 Реализация — `app/services/archiver.py::Archiver`.
+
+На вход `Archiver.archive(history, ...)` подаётся именно **полный лог сессии** (`ConversationStore.get_session_log(user_id)`, см. §2.5), а не in-session `get_history()` — иначе суммаризатор увидит уже усечённую `replace_with_summary` верхушку и ранние факты будут потеряны.
 
 ```
 история сессии        +- Summarizer.summarize ----------+
