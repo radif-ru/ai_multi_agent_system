@@ -552,7 +552,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 ### Задача 7.2. Обновление README + чек-лист приёмки
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 6.8
@@ -613,7 +613,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 6.7 | Глобальный error handler + тесты                 | high      | XS    | Done   | 6.5                                          |
 | 6.8 | `app/main.py` (сборка) + smoke-тест              | high      | M     | Done   | все задачи Этапов 1–6                         |
 | 7.1 | `split_long_message` + тесты                     | medium    | XS    | Done   | —                                            |
-| 7.2 | Обновление README + чек-лист приёмки             | high      | S     | ToDo   | 6.8                                          |
+| 7.2 | Обновление README + чек-лист приёмки             | high      | S     | Progress | 6.8                                        |
 
 ## 13. История изменений спринта
 
