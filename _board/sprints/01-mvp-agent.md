@@ -428,12 +428,19 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 ### Задача 6.3. Handlers команд (`/start`, `/help`, `/models`, `/model`, `/prompt`, `/reset`) + тесты
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** M
 - **Зависит от:** Задача 6.1
 - **Связанные документы:** `_docs/commands.md`; `_docs/testing.md` §3.11.
 - **Затрагиваемые файлы:** `app/adapters/telegram/handlers/commands.py`, `tests/adapters/telegram/test_commands.py`.
+
+#### Definition of Done
+
+- [x] Реализованы handler'ы `/start`, `/help`, `/models`, `/model`, `/prompt`, `/reset` по контракту `_docs/commands.md`.
+- [x] Фабрика `build_command_handlers` (тестируется напрямую) + `build_commands_router` (регистрация в aiogram.Router).
+- [x] Покрыты все ветки из `_docs/testing.md` §3.11 для `test_commands.py` (кроме `/new` — он в задаче 6.4).
+- [x] `pytest -q` зелёный.
 
 ---
 
@@ -571,7 +578,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 5.2 | `Executor` (агентный цикл) + тесты               | high      | L     | Done   | 1.3, 3.1, 4.1, 4.2, 5.1                       |
 | 6.1 | `UserSettingsRegistry` + тесты                   | high      | XS    | Done   | 1.1                                          |
 | 6.2 | `core.handle_user_task` + smoke-тест             | high      | S     | Done   | 5.2                                          |
-| 6.3 | Handlers команд + тесты                          | high      | M     | Progress | 6.1                                        |
+| 6.3 | Handlers команд + тесты                          | high      | M     | Done   | 6.1                                          |
 | 6.4 | Handler `/new` + тесты                           | high      | S     | ToDo   | 2.4, 6.3                                     |
 | 6.5 | Handler произвольного текста + тесты             | high      | M     | ToDo   | 6.2, 6.3, 2.2                                |
 | 6.6 | `LoggingMiddleware` + тесты                      | medium    | XS    | ToDo   | 1.2                                          |
@@ -597,3 +604,4 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 - **2026-04-28** — закрыта задача 5.2 (`Executor` + тесты): `app/agents/executor.py`, `tests/agents/test_executor.py` (10 тестов). Этап 5 завершён.
 - **2026-04-28** — закрыта задача 6.1 (`UserSettingsRegistry` + тесты): `app/services/model_registry.py`, `tests/services/test_model_registry.py` (9 тестов).
 - **2026-04-28** — закрыта задача 6.2 (`core.handle_user_task` + тесты): `app/core/orchestrator.py`, `tests/core/test_orchestrator.py` (4 теста). Смок-тест сборки приложения перенесён в задачу 6.8 (`tests/test_main.py`).
+- **2026-04-28** — закрыта задача 6.3 (handlers `/start`, `/help`, `/models`, `/model`, `/prompt`, `/reset` + тесты): `app/adapters/telegram/handlers/commands.py`, `tests/adapters/telegram/test_commands.py` (10 тестов). Команда `/new` будет добавлена задачей 6.4.
