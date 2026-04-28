@@ -203,7 +203,7 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 ### Задача 2.4. `Archiver` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** high
 - **Объём:** M
 - **Зависит от:** Задача 2.2, Задача 2.3
@@ -543,7 +543,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 2.1 | `ConversationStore` + тесты                      | high      | S     | Done   | 1.1                                          |
 | 2.2 | `Summarizer` + тесты                             | high      | S     | Done   | 1.3, 2.1                                     |
 | 2.3 | `SemanticMemory` (`sqlite-vec`) + тесты          | high      | M     | Done   | 1.1                                          |
-| 2.4 | `Archiver` + тесты                               | high      | M     | ToDo   | 2.2, 2.3                                     |
+| 2.4 | `Archiver` + тесты                               | high      | M     | Progress | 2.2, 2.3                                   |
 | 3.1 | `Tool`-протокол, `ToolError`, `ToolRegistry`     | high      | M     | ToDo   | 1.1                                          |
 | 3.2 | Tool `calculator` + тесты                        | high      | S     | ToDo   | 3.1                                          |
 | 3.3 | Tool `read_file` + тесты                         | high      | S     | ToDo   | 3.1                                          |
