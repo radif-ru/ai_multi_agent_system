@@ -483,12 +483,18 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 ### Задача 6.6. `LoggingMiddleware` + тесты
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** medium
 - **Объём:** XS
 - **Зависит от:** Задача 1.2
 - **Связанные документы:** `_docs/architecture.md` §3.12.
 - **Затрагиваемые файлы:** `app/middlewares/logging_mw.py`, `tests/test_middleware_logging.py`.
+
+#### Definition of Done
+
+- [x] `LoggingMiddleware` логирует INFO-строку на каждый апдейт (`user`, `chat`, `type`, `dur_ms`, `status`).
+- [x] Падение handler’а даёт `status=error`, исключение пробрасывается дальше.
+- [x] `pytest -q` зелёный.
 
 ---
 
@@ -596,7 +602,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 6.3 | Handlers команд + тесты                          | high      | M     | Done   | 6.1                                          |
 | 6.4 | Handler `/new` + тесты                           | high      | S     | Done   | 2.4, 6.3                                     |
 | 6.5 | Handler произвольного текста + тесты             | high      | M     | Done   | 6.2, 6.3, 2.2                                |
-| 6.6 | `LoggingMiddleware` + тесты                      | medium    | XS    | Progress | 1.2                                          |
+| 6.6 | `LoggingMiddleware` + тесты                      | medium    | XS    | Done   | 1.2                                          |
 | 6.7 | Глобальный error handler + тесты                 | high      | XS    | ToDo   | 6.5                                          |
 | 6.8 | `app/main.py` (сборка) + smoke-тест              | high      | M     | ToDo   | все задачи Этапов 1–6                         |
 | 7.1 | `split_long_message` + тесты                     | medium    | XS    | ToDo   | —                                            |
@@ -622,3 +628,4 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 - **2026-04-28** — закрыта задача 6.3 (handlers `/start`, `/help`, `/models`, `/model`, `/prompt`, `/reset` + тесты): `app/adapters/telegram/handlers/commands.py`, `tests/adapters/telegram/test_commands.py` (10 тестов). Команда `/new` будет добавлена задачей 6.4.
 - **2026-04-28** — закрыта задача 6.4 (Handler `/new` + тесты): расширены `app/adapters/telegram/handlers/commands.py` и `tests/adapters/telegram/test_commands.py` (3 новых теста).
 - **2026-04-28** — закрыта задача 6.5 (Handler произвольного текста + тесты): `app/adapters/telegram/handlers/messages.py`, `tests/adapters/telegram/test_messages.py` (9 тестов).
+- **2026-04-28** — закрыта задача 6.6 (`LoggingMiddleware` + тесты): `app/middlewares/logging_mw.py`, `tests/test_middleware_logging.py` (2 теста).
