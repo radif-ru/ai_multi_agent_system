@@ -409,12 +409,20 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 ### Задача 6.2. `core.handle_user_task` + smoke-тест
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 5.2
 - **Связанные документы:** `_docs/architecture.md` §3.10.
-- **Затрагиваемые файлы:** `app/core/orchestrator.py`, `tests/test_main.py` (smoke).
+- **Затрагиваемые файлы:** `app/core/orchestrator.py`, `tests/core/test_orchestrator.py`.
+
+#### Definition of Done
+
+- [x] `handle_user_task(text, *, user_id, chat_id, conversations, executor, model=None)` реализован: читает `conversation_id` из `ConversationStore` и делегирует `Executor.run`.
+- [x] Тесты: возвращается ответ executor'а; `conversation_id` берётся/создаётся в store; `model` пробрасывается.
+- [x] `pytest -q` зелёный.
+
+> «Смок-тест `tests/test_main.py`» из формулировки затрагиваемых файлов по смыслу относится к сборке приложения в задаче 6.8; здесь добавлены unit-тесты на сам orchestrator.
 
 ---
 
@@ -562,7 +570,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 5.1 | Парсер JSON ответа модели + тесты                | high      | S     | Done   | —                                            |
 | 5.2 | `Executor` (агентный цикл) + тесты               | high      | L     | Done   | 1.3, 3.1, 4.1, 4.2, 5.1                       |
 | 6.1 | `UserSettingsRegistry` + тесты                   | high      | XS    | Done   | 1.1                                          |
-| 6.2 | `core.handle_user_task` + smoke-тест             | high      | S     | Progress | 5.2                                        |
+| 6.2 | `core.handle_user_task` + smoke-тест             | high      | S     | Done   | 5.2                                          |
 | 6.3 | Handlers команд + тесты                          | high      | M     | ToDo   | 6.1                                          |
 | 6.4 | Handler `/new` + тесты                           | high      | S     | ToDo   | 2.4, 6.3                                     |
 | 6.5 | Handler произвольного текста + тесты             | high      | M     | ToDo   | 6.2, 6.3, 2.2                                |
@@ -588,3 +596,4 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 - **2026-04-28** — закрыта задача 5.1 (`AgentDecision` + парсер + тесты): `app/agents/protocol.py`, `tests/agents/test_protocol.py` (15 тестов).
 - **2026-04-28** — закрыта задача 5.2 (`Executor` + тесты): `app/agents/executor.py`, `tests/agents/test_executor.py` (10 тестов). Этап 5 завершён.
 - **2026-04-28** — закрыта задача 6.1 (`UserSettingsRegistry` + тесты): `app/services/model_registry.py`, `tests/services/test_model_registry.py` (9 тестов).
+- **2026-04-28** — закрыта задача 6.2 (`core.handle_user_task` + тесты): `app/core/orchestrator.py`, `tests/core/test_orchestrator.py` (4 теста). Смок-тест сборки приложения перенесён в задачу 6.8 (`tests/test_main.py`).
