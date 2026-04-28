@@ -446,12 +446,19 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 ### Задача 6.4. Handler `/new` + тесты
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 2.4, Задача 6.3
 - **Связанные документы:** `_docs/commands.md` § `/new`; `_docs/memory.md` §3.3.
 - **Затрагиваемые файлы:** `app/adapters/telegram/handlers/commands.py` (расширение), `tests/adapters/telegram/test_commands.py` (расширение).
+
+#### Definition of Done
+
+- [x] Handler `/new` реализован по контракту `_docs/commands.md`: пустая история → ротация, непустая → `Archiver.archive` → `clear` + ротация, ошибка архивирования → история сохраняется.
+- [x] `Archiver` подключён к `build_command_handlers`/`build_commands_router` и регистрируется на `Command("new")`.
+- [x] Покрыты все три ветки `/new` из `_docs/testing.md` §3.11.
+- [x] `pytest -q` зелёный.
 
 ---
 
@@ -579,7 +586,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 6.1 | `UserSettingsRegistry` + тесты                   | high      | XS    | Done   | 1.1                                          |
 | 6.2 | `core.handle_user_task` + smoke-тест             | high      | S     | Done   | 5.2                                          |
 | 6.3 | Handlers команд + тесты                          | high      | M     | Done   | 6.1                                          |
-| 6.4 | Handler `/new` + тесты                           | high      | S     | Progress | 2.4, 6.3                                     |
+| 6.4 | Handler `/new` + тесты                           | high      | S     | Done   | 2.4, 6.3                                     |
 | 6.5 | Handler произвольного текста + тесты             | high      | M     | ToDo   | 6.2, 6.3, 2.2                                |
 | 6.6 | `LoggingMiddleware` + тесты                      | medium    | XS    | ToDo   | 1.2                                          |
 | 6.7 | Глобальный error handler + тесты                 | high      | XS    | ToDo   | 6.5                                          |
@@ -605,3 +612,4 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 - **2026-04-28** — закрыта задача 6.1 (`UserSettingsRegistry` + тесты): `app/services/model_registry.py`, `tests/services/test_model_registry.py` (9 тестов).
 - **2026-04-28** — закрыта задача 6.2 (`core.handle_user_task` + тесты): `app/core/orchestrator.py`, `tests/core/test_orchestrator.py` (4 теста). Смок-тест сборки приложения перенесён в задачу 6.8 (`tests/test_main.py`).
 - **2026-04-28** — закрыта задача 6.3 (handlers `/start`, `/help`, `/models`, `/model`, `/prompt`, `/reset` + тесты): `app/adapters/telegram/handlers/commands.py`, `tests/adapters/telegram/test_commands.py` (10 тестов). Команда `/new` будет добавлена задачей 6.4.
+- **2026-04-28** — закрыта задача 6.4 (Handler `/new` + тесты): расширены `app/adapters/telegram/handlers/commands.py` и `tests/adapters/telegram/test_commands.py` (3 новых теста).
