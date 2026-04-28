@@ -1,0 +1,82 @@
+Прогресс проекта ai_multi_agent_system
+=======================================
+
+Файл — ad-hoc заметки про текущее состояние работ. Не процесс (он в process.md), не план
+(он в plan.md и в файлах спринтов), не спецификация (она в _docs/). Сюда — то, что не
+ложится в формальные документы, но полезно держать перед глазами.
+
+Состояние на момент закрытия Спринта 00 (Bootstrap)
+---------------------------------------------------
+
+[+] Документация _docs/ создана (17 файлов): README, mvp, requirements, architecture,
+    agent-loop, memory, tools, skills, prompts, stack, instructions, project-structure,
+    commands, testing, roadmap, current-state, legacy, links.
+[+] Доска _board/ создана: README, plan, process, progress.txt (этот файл),
+    sprints/00-bootstrap.md, sprints/01-mvp-agent.md.
+[+] Скелет каталогов: app/ с пустыми __init__.py, tests/ с conftest.py,
+    _skills/ с README + одним примером, _prompts/ с README + agent_system.md +
+    summarizer.md, data/ создаётся при первом запуске.
+[+] Корневые файлы: README.md, CLAUDE.md (был с самого начала), .gitignore,
+    .env.example, requirements.txt, pyproject.toml.
+
+Чек-лист приёмки MVP (Спринт 01) — заполняется по мере реализации
+-----------------------------------------------------------------
+
+[ ] 1. Запуск: `python -m app` собирает Bot+Dispatcher и доходит до "Bot started".
+       Покрыть smoke-тестом tests/test_main.py.
+
+[ ] 2. /start отвечает приветствием со списком команд.
+       Покрыть tests/adapters/telegram/test_commands.py::test_start_greets_user.
+
+[ ] 3. Агент решает калькуляторную задачу: "Посчитай (123 + 456) * 2" → 1158.
+       Ручная проверка в Telegram + tests/agents/test_executor.py с моком LLM.
+
+[ ] 4. Агент решает файловую задачу: "Прочитай файл и скажи сколько строк".
+       Ручная проверка в Telegram + tests/tools/test_read_file.py.
+
+[ ] 5. Агент решает поисковую задачу: "Найди ...".
+       Ручная проверка + tests/tools/test_web_search.py с моком ddgs.
+
+[ ] 6. /new архивирует историю в sqlite-vec.
+       Ручная проверка (после /new в data/memory.db появляются чанки) +
+       tests/services/test_archiver.py.
+
+[ ] 7. memory_search в новой сессии находит прежнюю информацию.
+       Ручная проверка + tests/tools/test_memory_search.py.
+
+[ ] 8. /models и /model переключают активную модель.
+       tests/adapters/telegram/test_commands.py.
+
+[ ] 9. При остановленной Ollama — бот не падает, отвечает понятным сообщением,
+       пишет ERROR в лог.
+       tests/adapters/telegram/test_messages.py::test_unavailable_branch.
+
+[ ] 10. Превышение AGENT_MAX_STEPS → корректный выход + специфичное сообщение.
+        tests/agents/test_executor.py::test_max_steps_exceeded.
+
+[ ] 11. Логи: RotatingFileHandler создаёт файл и каталог, пишутся шаги цикла,
+        вызовы LLM и tools.
+        tests/test_logging_config.py + tests/agents/test_executor.py (caplog).
+
+[ ] 12. Секреты: `.env` в `.gitignore`, в репо только `.env.example`. Git log не
+        содержит реальных токенов. (`git log -p | grep TELEGRAM_BOT_TOKEN=`).
+
+[ ] 13. pytest -q зелёный, покрытие ≥ 70% по `app/`, ≥ 85% по `services/`,
+        `agents/`, `tools/`. Парсер JSON (`agents/protocol.py`) — 100%.
+
+[ ] 14. README.md содержит разделы: Возможности, Требования, Установка, Настройка,
+        Запуск, Команды бота, Структура, Тесты, Документация, Ограничения.
+
+Легенда:
+[+] — выполнено;
+[~] — частично (например, покрыто моком, нужна ручная проверка в реальном Telegram);
+[ ] — не начато.
+
+Заметки сессии
+--------------
+
+(Сюда — короткие записи по ходу работы; крупные нюансы → _docs/current-state.md §2.)
+
+* 2026-04-28 — Спринт 00 открыт. Решено: векторная БД — sqlite-vec; Telegram-режим —
+  long polling; LLM по умолчанию — qwen3.5:4b; embedding — nomic-embed-text.
+  См. _board/sprints/00-bootstrap.md § «Решения по архитектуре».
