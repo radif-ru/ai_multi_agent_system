@@ -500,12 +500,19 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 ### Задача 6.7. Глобальный error handler + тесты
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** XS
 - **Зависит от:** Задача 6.5
 - **Связанные документы:** `_docs/architecture.md` §6; `_docs/testing.md` §3.11.
 - **Затрагиваемые файлы:** `app/adapters/telegram/handlers/errors.py`, `tests/adapters/telegram/test_errors.py`.
+
+#### Definition of Done
+
+- [x] `build_error_handler` ловит произвольное исключение, логирует и возвращает `True` — polling не падает.
+- [x] Пользователю отправляется нейтральное сообщение (`GENERIC_ERROR_REPLY`).
+- [x] `build_errors_router` регистрирует handler в `Router.errors`.
+- [x] `pytest -q` зелёный.
 
 ---
 
@@ -603,7 +610,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 6.4 | Handler `/new` + тесты                           | high      | S     | Done   | 2.4, 6.3                                     |
 | 6.5 | Handler произвольного текста + тесты             | high      | M     | Done   | 6.2, 6.3, 2.2                                |
 | 6.6 | `LoggingMiddleware` + тесты                      | medium    | XS    | Done   | 1.2                                          |
-| 6.7 | Глобальный error handler + тесты                 | high      | XS    | Progress | 6.5                                          |
+| 6.7 | Глобальный error handler + тесты                 | high      | XS    | Done   | 6.5                                          |
 | 6.8 | `app/main.py` (сборка) + smoke-тест              | high      | M     | ToDo   | все задачи Этапов 1–6                         |
 | 7.1 | `split_long_message` + тесты                     | medium    | XS    | ToDo   | —                                            |
 | 7.2 | Обновление README + чек-лист приёмки             | high      | S     | ToDo   | 6.8                                          |
@@ -629,3 +636,4 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 - **2026-04-28** — закрыта задача 6.4 (Handler `/new` + тесты): расширены `app/adapters/telegram/handlers/commands.py` и `tests/adapters/telegram/test_commands.py` (3 новых теста).
 - **2026-04-28** — закрыта задача 6.5 (Handler произвольного текста + тесты): `app/adapters/telegram/handlers/messages.py`, `tests/adapters/telegram/test_messages.py` (9 тестов).
 - **2026-04-28** — закрыта задача 6.6 (`LoggingMiddleware` + тесты): `app/middlewares/logging_mw.py`, `tests/test_middleware_logging.py` (2 теста).
+- **2026-04-28** — закрыта задача 6.7 (глобальный error handler + тесты): `app/adapters/telegram/handlers/errors.py`, `tests/adapters/telegram/test_errors.py` (3 теста).
