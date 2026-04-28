@@ -518,7 +518,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 ### Задача 6.8. `app/main.py` (сборка приложения) + smoke-тест
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** M
 - **Зависит от:** Все задачи Этапа 1–6
@@ -531,9 +531,9 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 #### Definition of Done
 
-- [ ] `python -c "import asyncio; from app.main import main; print(main)"` отрабатывает.
-- [ ] Smoke-тест `tests/test_main.py::test_main_logs_bot_started_and_closes` зелёный.
-- [ ] При остановленной Ollama — `python -m app` всё равно запускается (LLM-вызовы упадут только при первом запросе пользователя; это ожидаемое поведение).
+- [x] `python -c "import asyncio; from app.main import main; print(main)"` отрабатывает.
+- [x] Smoke-тест `tests/test_main.py::test_main_logs_bot_started_and_closes` зелёный.
+- [x] При остановленной Ollama — `python -m app` всё равно запускается (`OllamaClient` создаётся лениво, сети не требует до первого запроса).
 
 ---
 
@@ -611,7 +611,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 6.5 | Handler произвольного текста + тесты             | high      | M     | Done   | 6.2, 6.3, 2.2                                |
 | 6.6 | `LoggingMiddleware` + тесты                      | medium    | XS    | Done   | 1.2                                          |
 | 6.7 | Глобальный error handler + тесты                 | high      | XS    | Done   | 6.5                                          |
-| 6.8 | `app/main.py` (сборка) + smoke-тест              | high      | M     | Progress | все задачи Этапов 1–6                         |
+| 6.8 | `app/main.py` (сборка) + smoke-тест              | high      | M     | Done   | все задачи Этапов 1–6                         |
 | 7.1 | `split_long_message` + тесты                     | medium    | XS    | ToDo   | —                                            |
 | 7.2 | Обновление README + чек-лист приёмки             | high      | S     | ToDo   | 6.8                                          |
 
@@ -637,3 +637,4 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 - **2026-04-28** — закрыта задача 6.5 (Handler произвольного текста + тесты): `app/adapters/telegram/handlers/messages.py`, `tests/adapters/telegram/test_messages.py` (9 тестов).
 - **2026-04-28** — закрыта задача 6.6 (`LoggingMiddleware` + тесты): `app/middlewares/logging_mw.py`, `tests/test_middleware_logging.py` (2 теста).
 - **2026-04-28** — закрыта задача 6.7 (глобальный error handler + тесты): `app/adapters/telegram/handlers/errors.py`, `tests/adapters/telegram/test_errors.py` (3 теста).
+- **2026-04-28** — закрыта задача 6.8 (`app/main.py` + smoke-тест): `app/main.py`, `app/__main__.py`, `tests/test_main.py` (3 теста). Этап 6 завершён.
