@@ -139,7 +139,7 @@
 
 ### Задача 2.1. `ConversationStore` + тесты
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 1.1
@@ -152,9 +152,9 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 #### Definition of Done
 
-- [ ] Все методы из `_docs/memory.md` §2.2 реализованы.
-- [ ] Тесты на FIFO, `replace_with_summary`, изоляцию пользователей, `rotate_conversation_id`.
-- [ ] `get_history` возвращает копию (тест на мутацию).
+- [x] Все методы из `_docs/memory.md` §2.2 реализованы.
+- [x] Тесты на FIFO, `replace_with_summary`, изоляцию пользователей, `rotate_conversation_id`.
+- [x] `get_history` возвращает копию (тест на мутацию).
 
 ---
 
@@ -540,7 +540,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 1.1 | Конфигурация (`Settings`) + тесты                | high      | S     | Done   | —                                            |
 | 1.2 | Логирование (`setup_logging`) + тесты            | high      | S     | Done   | 1.1                                          |
 | 1.3 | LLM-клиент (`OllamaClient`) + тесты              | high      | M     | Done   | 1.1                                          |
-| 2.1 | `ConversationStore` + тесты                      | high      | S     | Progress | 1.1                                        |
+| 2.1 | `ConversationStore` + тесты                      | high      | S     | Done   | 1.1                                          |
 | 2.2 | `Summarizer` + тесты                             | high      | S     | ToDo   | 1.3, 2.1                                     |
 | 2.3 | `SemanticMemory` (`sqlite-vec`) + тесты          | high      | M     | ToDo   | 1.1                                          |
 | 2.4 | `Archiver` + тесты                               | high      | M     | ToDo   | 2.2, 2.3                                     |
@@ -572,3 +572,4 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 - **2026-04-28** — закрыта задача 1.1 (`Settings` + тесты): `app/config.py`, `tests/test_config.py` (9 тестов). Коммит `40977a1`.
 - **2026-04-28** — закрыта задача 1.2 (`setup_logging` + тест): `app/logging_config.py`, `tests/test_logging_config.py`. Коммит `1b24c2e`.
 - **2026-04-28** — закрыта задача 1.3 (`OllamaClient` + тесты): `app/services/llm.py`, `tests/services/test_llm_client.py` (13 тестов). Коммит `1997316`. Этап 1 завершён.
+- **2026-04-28** — закрыта задача 2.1 (`ConversationStore` + тесты): `app/services/conversation.py`, `tests/services/test_conversation_store.py` (9 тестов).
