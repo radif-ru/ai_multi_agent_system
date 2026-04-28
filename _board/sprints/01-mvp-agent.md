@@ -203,7 +203,7 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 ### Задача 2.4. `Archiver` + тесты
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** M
 - **Зависит от:** Задача 2.2, Задача 2.3
@@ -216,8 +216,8 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 #### Definition of Done
 
-- [ ] `archive(history, conversation_id, user_id)` реализован полностью.
-- [ ] Тесты на корректное чанкование, на падение Summarizer, на падение embed на 2-м чанке.
+- [x] `archive(history, conversation_id, user_id)` реализован полностью.
+- [x] Тесты на корректное чанкование, на падение Summarizer, на падение embed на 2-м чанке.
 
 ---
 
@@ -543,7 +543,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 2.1 | `ConversationStore` + тесты                      | high      | S     | Done   | 1.1                                          |
 | 2.2 | `Summarizer` + тесты                             | high      | S     | Done   | 1.3, 2.1                                     |
 | 2.3 | `SemanticMemory` (`sqlite-vec`) + тесты          | high      | M     | Done   | 1.1                                          |
-| 2.4 | `Archiver` + тесты                               | high      | M     | Progress | 2.2, 2.3                                   |
+| 2.4 | `Archiver` + тесты                               | high      | M     | Done   | 2.2, 2.3                                     |
 | 3.1 | `Tool`-протокол, `ToolError`, `ToolRegistry`     | high      | M     | ToDo   | 1.1                                          |
 | 3.2 | Tool `calculator` + тесты                        | high      | S     | ToDo   | 3.1                                          |
 | 3.3 | Tool `read_file` + тесты                         | high      | S     | ToDo   | 3.1                                          |
@@ -575,3 +575,4 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 - **2026-04-28** — закрыта задача 2.1 (`ConversationStore` + тесты): `app/services/conversation.py`, `tests/services/test_conversation_store.py` (9 тестов).
 - **2026-04-28** — закрыта задача 2.2 (`Summarizer` + тесты): `app/services/summarizer.py`, `tests/services/test_summarizer.py` (2 теста).
 - **2026-04-28** — закрыта задача 2.3 (`SemanticMemory` + тесты): `app/services/memory.py`, `tests/services/test_memory.py` (6 тестов, реальный `sqlite-vec`).
+- **2026-04-28** — закрыта задача 2.4 (`Archiver` + тесты): `app/services/archiver.py`, `tests/services/test_archiver.py` (8 тестов). Этап 2 завершён.
