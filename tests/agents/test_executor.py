@@ -230,6 +230,70 @@ async def test_system_prompt_built_with_tools_and_skills():
     assert "example" in system_msg["content"]
 
 
+async def test_executor_uses_history():
+    """`history` склеивается между system и goal в порядке поступления."""
+    llm = FakeLLM([json.dumps({"final_answer": "ок"})])
+    executor = make_executor(llm=llm)
+
+    history = [
+        {"role": "user", "content": "Привет, я Радиф"},
+        {"role": "assistant", "content": "Привет, Радиф"},
+        {"role": "user", "content": "Как меня зовут?"},
+    ]
+
+    await executor.run(
+        goal="Как меня зовут?",
+        user_id=1,
+        chat_id=1,
+        conversation_id="c",
+        history=history,
+    )
+
+    msgs = llm.calls[0]
+    assert msgs[0]["role"] == "system"
+    # Последний user-message в `history` совпадает с `goal` → дубликата нет.
+    assert msgs[1:] == history
+
+
+async def test_executor_appends_goal_when_history_does_not_end_with_it():
+    """Если `history` не заканчивается goal-сообщением — `goal` дописывается."""
+    llm = FakeLLM([json.dumps({"final_answer": "ок"})])
+    executor = make_executor(llm=llm)
+
+    history = [
+        {"role": "user", "content": "Привет"},
+        {"role": "assistant", "content": "Привет!"},
+    ]
+
+    await executor.run(
+        goal="Как дела?",
+        user_id=1,
+        chat_id=1,
+        conversation_id="c",
+        history=history,
+    )
+
+    msgs = llm.calls[0]
+    assert msgs[0]["role"] == "system"
+    assert msgs[1:-1] == history
+    assert msgs[-1] == {"role": "user", "content": "Как дела?"}
+
+
+async def test_executor_history_none_back_compat():
+    """`history=None` (или отсутствует) → поведение Спринта 01."""
+    llm = FakeLLM([json.dumps({"final_answer": "ок"})])
+    executor = make_executor(llm=llm)
+
+    await executor.run(
+        goal="спроси", user_id=1, chat_id=1, conversation_id="c"
+    )
+
+    msgs = llm.calls[0]
+    assert len(msgs) == 2
+    assert msgs[0]["role"] == "system"
+    assert msgs[1] == {"role": "user", "content": "спроси"}
+
+
 async def test_tool_context_passed_with_user_and_conversation():
     llm = FakeLLM([
         json.dumps({"thought": "t", "action": "calculator", "args": {"expression": "1"}}),
