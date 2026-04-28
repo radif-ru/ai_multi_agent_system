@@ -139,7 +139,7 @@
 
 ### Задача 2.1. `ConversationStore` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 1.1
@@ -540,7 +540,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 1.1 | Конфигурация (`Settings`) + тесты                | high      | S     | Done   | —                                            |
 | 1.2 | Логирование (`setup_logging`) + тесты            | high      | S     | Done   | 1.1                                          |
 | 1.3 | LLM-клиент (`OllamaClient`) + тесты              | high      | M     | Done   | 1.1                                          |
-| 2.1 | `ConversationStore` + тесты                      | high      | S     | ToDo   | 1.1                                          |
+| 2.1 | `ConversationStore` + тесты                      | high      | S     | Progress | 1.1                                        |
 | 2.2 | `Summarizer` + тесты                             | high      | S     | ToDo   | 1.3, 2.1                                     |
 | 2.3 | `SemanticMemory` (`sqlite-vec`) + тесты          | high      | M     | ToDo   | 1.1                                          |
 | 2.4 | `Archiver` + тесты                               | high      | M     | ToDo   | 2.2, 2.3                                     |
