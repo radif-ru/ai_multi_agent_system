@@ -49,6 +49,34 @@ if len(store.get_history(user_id)) >= settings.history_summary_threshold:
 
 Падение суммаризации → `WARNING summarize failed ...`, история остаётся. См. `architecture.md` §4.
 
+### 2.4 Подгрузка истории в LLM
+
+Без подгрузки истории каждый ход выглядит как новая сессия — модель не помнит предыдущих сообщений (см. отчёт пользователя из обратной связи спринта 02). Поэтому `Executor.run` принимает `history` явным параметром и склеивает финальный список сообщений как:
+
+```
+[system_prompt] + history + [user: goal]?
+```
+
+Порядок и инвариант:
+
+1. Адаптер (Telegram-handler `messages.py`) вызывает `ConversationStore.add_user_message(user_id, text)` **до** `core.handle_user_task` — то есть текущий запрос уже лежит последним элементом в `history`.
+2. `core.handle_user_task` достаёт `history = conversations.get_history(user_id)` и передаёт его в `Executor.run` целиком.
+3. `Executor.run` собирает `messages = [system] + history`. Если последний элемент `history` уже совпадает с `{"role": "user", "content": goal}` — дубликат не добавляется; иначе (например, тестовый сценарий без адаптера) `goal` дописывается отдельным `user`-сообщением.
+4. Внутрицикловые `assistant`/`Observation`-пары копятся в локальном списке `messages` Executor'а и **не** пишутся в `ConversationStore`. В долгую краткосрочную историю попадает только финальный ответ ассистента — его дописывает адаптер после возврата `Executor.run` (`add_assistant_message`).
+
+```
+ConversationStore                       Executor.run
+[user: «Привет, я Радиф»]    ─────►    messages = [system,
+[assistant: «Привет, Радиф»]                       user: «Привет, я Радиф»,
+[user: «Как меня зовут?»]                          assistant: «Привет, Радиф»,
+                                                   user: «Как меня зовут?»]
+       ▲
+       │
+       └── add_assistant_message(«Тебя зовут Радиф») ◄── финальный ответ Executor.run
+```
+
+Лимит длины истории защищён существующим `HISTORY_MAX_MESSAGES` (FIFO в `ConversationStore`) и `HISTORY_SUMMARY_THRESHOLD` (in-session суммаризация — см. §2.3).
+
 ## 3. Долгосрочная память (sqlite-vec)
 
 ### 3.1 Почему `sqlite-vec`

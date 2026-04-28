@@ -148,11 +148,12 @@ Telegram-адаптер принимает текст, оборачивает е
 
 ### 3.10 Core (`app/core/orchestrator.py`)
 
-В MVP — тонкая прослойка-функция `async def handle_user_task(text: str, *, user_id: int, chat_id: int) -> str`, которая:
+В MVP — тонкая прослойка-функция `async def handle_user_task(text: str, *, user_id: int, chat_id: int, conversations, executor, model=None) -> str`, которая:
 
 1. Берёт текущий `conversation_id` из `ConversationStore`.
-2. Запускает `Executor.run(goal=text, user_id=..., conversation_id=...)`.
-3. Возвращает финальный текст.
+2. Достаёт `history = conversations.get_history(user_id)` (адаптер уже дописал текущий user-message в `ConversationStore` до вызова core, см. `memory.md` §2.4).
+3. Запускает `Executor.run(goal=text, user_id=..., conversation_id=..., history=history)`.
+4. Возвращает финальный текст.
 
 В архитектурном смысле это **единственная точка входа от любого адаптера** (Telegram сейчас, web/MAX в будущем). Адаптер не знает про Executor напрямую.
 
@@ -162,16 +163,24 @@ Telegram-адаптер принимает текст, оборачивает е
 
 ```python
 class Executor:
-    async def run(self, *, goal: str, user_id: int, conversation_id: str) -> str:
-        history = self._build_initial_messages(goal, user_id)
+    async def run(
+        self,
+        *,
+        goal: str,
+        user_id: int,
+        conversation_id: str,
+        history: list[dict[str, str]] | None = None,
+    ) -> str:
+        # См. `memory.md` §2.4 о склейке истории.
+        messages = self._build_initial_messages(goal, history)
         for step in range(self.settings.agent_max_steps):
-            response_text = await self.llm.chat(history, model=...)
+            response_text = await self.llm.chat(messages, model=...)
             parsed = parse_agent_response(response_text)  # JSON or LLMBadResponse
             if parsed.is_final:
                 return parsed.final_answer
             observation = await self.tools.execute(parsed.action, parsed.args, ctx=...)
-            history.append({"role": "assistant", "content": response_text})
-            history.append({"role": "tool", "content": observation})
+            messages.append({"role": "assistant", "content": response_text})
+            messages.append({"role": "tool", "content": observation})
         return self._max_steps_message()
 ```
 
