@@ -152,8 +152,9 @@ Telegram-адаптер принимает текст, оборачивает е
 
 1. Берёт текущий `conversation_id` из `ConversationStore`.
 2. Достаёт `history = conversations.get_history(user_id)` (адаптер уже дописал текущий user-message в `ConversationStore` до вызова core, см. `memory.md` §2.4).
-3. Запускает `Executor.run(goal=text, user_id=..., conversation_id=..., history=history)`.
-4. Возвращает финальный текст.
+3. Если это первый ход новой сессии (`len(history) == 1`) и `SESSION_BOOTSTRAP_ENABLED=true` — делает авто-подгрузку архива через `SemanticMemory.search` и дописывает найденные чанки `system`-сообщением в начало `history` (см. `memory.md` §3.6). Падение embed/search — `WARNING`, ход продолжается.
+4. Запускает `Executor.run(goal=text, user_id=..., conversation_id=..., history=history)`.
+5. Возвращает финальный текст.
 
 В архитектурном смысле это **единственная точка входа от любого адаптера** (Telegram сейчас, web/MAX в будущем). Адаптер не знает про Executor напрямую.
 

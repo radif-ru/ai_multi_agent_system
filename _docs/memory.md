@@ -187,6 +187,37 @@ ORDER BY v.distance
 LIMIT ?;
 ```
 
+### 3.6 Авто-подгрузка архива в новую сессию
+
+Без подгрузки архива пользователь после `/new` получает «амнезию»: модель про прошлые сессии не знает, пока сама не догадается вызвать `memory_search`. На практике она этого почти не делает (`qwen3.5:4b`, короткие запросы). Чтобы это починить, `core.handle_user_task` при первом сообщении новой сессии (`len(history) == 1`) автоматически тянет релевантный контекст из `SemanticMemory` и подмешивает его как `system`-сообщение.
+
+Алгоритм:
+
+1. `core.handle_user_task` обнаруживает, что после `add_user_message` история содержит ровно один элемент (новая или сброшенная сессия).
+2. Если `Settings.session_bootstrap_enabled` и `SemanticMemory` доступна — вызывает `OllamaClient.embed(text, model=embedding_model)`.
+3. `SemanticMemory.search(embedding, top_k=Settings.session_bootstrap_top_k, scope_user_id=user_id)` возвращает релевантные чанки.
+4. Если найденных чанков нет — авто-подгрузка пропускается (пустой архив, новый пользователь).
+5. Иначе чанки склеиваются в один `system`-message формата:
+   ```
+   Контекст из прошлых сессий пользователя (используй только если он
+   действительно относится к текущему запросу):
+
+   - <chunk_1>
+   - <chunk_2>
+   - ...
+   ```
+   и **подмешивается в начало `history`** (т. е. до `user`-сообщения с `goal`).
+6. `Executor.run` строит `messages = [main_system, bootstrap_system, user: goal]`. Никакой записи в `ConversationStore` авто-подгрузка не делает — это «одноразовая» подмесь только для текущего LLM-вызова.
+
+Падение `OllamaClient.embed` или `SemanticMemory.search` → `WARNING session_bootstrap failed ...`, основной ход не страдает: сессия стартует без авто-контекста (как в Спринте 01). То же поведение при `Settings.session_bootstrap_enabled = false` или `SemanticMemory is None`.
+
+Параметры (`_docs/stack.md` §9):
+
+- `SESSION_BOOTSTRAP_ENABLED` (bool, default `true`) — выключатель.
+- `SESSION_BOOTSTRAP_TOP_K` (int, default `3`) — сколько чанков подмешивать.
+
+Точка реализации — `app/services/session_bootstrap.py` (отдельный модуль), вызывается из `core.handle_user_task`. Tool `memory_search` остаётся доступен агенту: авто-подгрузка не отменяет ручной поиск, а покрывает типовой кейс «первый ход после `/new`».
+
 ## 4. Что НЕ хранится (по дизайну)
 
 - **Сырые сообщения диалога** — только саммари, и только при `/new` (CON-1).
