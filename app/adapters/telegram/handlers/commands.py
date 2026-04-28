@@ -137,7 +137,10 @@ def build_command_handlers(
     async def cmd_new(message: Message) -> None:
         user_id = _user_id(message)
         chat_id = message.chat.id if message.chat is not None else user_id
-        history = conversations.get_history(user_id)
+        # Архивируем ПОЛНЫЙ лог сессии (см. _docs/memory.md §2.5):
+        # in-session `replace_with_summary` мог разрушить get_history(),
+        # но `_session_log` хранит исходный диалог целиком.
+        history = conversations.get_session_log(user_id)
         if not history:
             conversations.rotate_conversation_id(user_id)
             await message.answer("Сессия пустая, новая открыта.")

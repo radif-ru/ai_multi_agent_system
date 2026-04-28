@@ -77,9 +77,9 @@
 
 - **Вход:** нет параметров.
 - **Эффект:**
-  1. Если `ConversationStore.get_history(user_id)` пуста → ничего не архивируем, просто `rotate_conversation_id(user_id)`. Ответ: «Сессия пустая, новая открыта.»
-  2. Иначе вызвать `Archiver.archive(...)`:
-     1. Суммировать историю через `Summarizer`.
+  1. Если `ConversationStore.get_session_log(user_id)` пуст → ничего не архивируем, просто `rotate_conversation_id(user_id)`. Ответ: «Сессия пустая, новая открыта.»
+  2. Иначе вызвать `Archiver.archive(history=...)`, где `history` — это **полный лог сессии** (`get_session_log`), а не in-session `get_history` (см. `_docs/memory.md` §2.5; `replace_with_summary` мог сжать `get_history` до summary + tail, и ранние факты были бы потеряны):
+     1. Суммировать полный лог через `Summarizer`.
      2. Разрезать саммари на чанки (`MEMORY_CHUNK_SIZE` / `MEMORY_CHUNK_OVERLAP`).
      3. Для каждого чанка получить embedding через `OllamaClient.embed(...)`.
      4. Записать чанки + векторы + метаданные (`user_id`, `chat_id`, `conversation_id`, `chunk_index`, `created_at`) в `SemanticMemory`.
