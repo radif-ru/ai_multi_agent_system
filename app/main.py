@@ -76,8 +76,15 @@ async def _build_components(settings: Settings) -> _Components:
     llm = OllamaClient(
         base_url=settings.ollama_base_url, timeout=settings.ollama_timeout
     )
-    conversations = ConversationStore(max_messages=settings.history_max_messages)
-    summarizer = Summarizer(llm=llm, system_prompt=settings.summarization_prompt)
+    conversations = ConversationStore(
+        max_messages=settings.history_max_messages,
+        session_log_max_messages=settings.session_log_max_messages,
+    )
+    summarizer = Summarizer(
+        llm=llm,
+        system_prompt=settings.summarization_prompt,
+        chunk_messages=settings.summarizer_chunk_messages,
+    )
 
     semantic_memory: SemanticMemory | None = SemanticMemory(
         db_path=settings.memory_db_path, dimensions=settings.embedding_dimensions
@@ -157,6 +164,8 @@ def _wire_telegram(c: _Components) -> tuple[Bot, Dispatcher]:
             conversations=c.conversations,
             summarizer=c.summarizer,
             executor=c.executor,
+            llm=c.llm,
+            semantic_memory=c.semantic_memory,
         )
     )
     dispatcher.include_router(build_errors_router())

@@ -32,6 +32,8 @@ if TYPE_CHECKING:
     from app.agents.executor import Executor
     from app.config import Settings
     from app.services.conversation import ConversationStore
+    from app.services.llm import OllamaClient
+    from app.services.memory import SemanticMemory
     from app.services.model_registry import UserSettingsRegistry
     from app.services.summarizer import Summarizer
 
@@ -57,6 +59,8 @@ def build_text_handler(
     conversations: "ConversationStore",
     summarizer: "Summarizer",
     executor: "Executor",
+    llm: "OllamaClient | None" = None,
+    semantic_memory: "SemanticMemory | None" = None,
 ) -> Callable[[Message], Awaitable[None]]:
     """Собрать async-handler для текстовых сообщений (без `/`-команд)."""
 
@@ -87,6 +91,9 @@ def build_text_handler(
                 conversations=conversations,
                 executor=executor,
                 model=model,
+                settings=settings,
+                llm=llm,
+                semantic_memory=semantic_memory,
             )
         except LLMTimeout:
             logger.warning("LLM timeout user=%s", user_id)
@@ -132,6 +139,8 @@ def build_messages_router(
     conversations: "ConversationStore",
     summarizer: "Summarizer",
     executor: "Executor",
+    llm: "OllamaClient | None" = None,
+    semantic_memory: "SemanticMemory | None" = None,
 ) -> Router:
     """Собрать aiogram-Router для произвольных текстовых сообщений."""
 
@@ -141,6 +150,8 @@ def build_messages_router(
         conversations=conversations,
         summarizer=summarizer,
         executor=executor,
+        llm=llm,
+        semantic_memory=semantic_memory,
     )
     router = Router(name="messages")
     router.message.register(handler)

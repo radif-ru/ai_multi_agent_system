@@ -336,6 +336,42 @@ async def test_new_archives_clears_and_rotates() -> None:
 
 
 @pytest.mark.asyncio
+async def test_new_archives_full_session_log_after_in_session_compaction() -> None:
+    """После `replace_with_summary` get_history урезан, но архивируется полный лог.
+
+    Регрессия на корневой баг спринта 02 (Этап 4): cmd_new теперь читает
+    `get_session_log`, а не `get_history`. См. `_docs/memory.md` §2.5.
+    """
+    conversations = ConversationStore(max_messages=10)
+    conversations.add_user_message(42, "привет, я Радиф")
+    conversations.add_assistant_message(42, "привет, Радиф")
+    for i in range(4):
+        conversations.add_user_message(42, f"u{i}")
+        conversations.add_assistant_message(42, f"a{i}")
+    conversations.replace_with_summary(42, "сжатое резюме", kept_tail=2)
+    # rolling-буфер действительно усечён
+    rolling = conversations.get_history(42)
+    assert rolling[0]["role"] == "system"
+    assert not any("Радиф" in m["content"] for m in rolling)
+
+    archiver = _FakeArchiver(inserted=3)
+    handlers = _make_handlers(conversations=conversations, archiver=archiver)
+    msg, _ = _make_message()
+
+    await handlers["new"](msg)
+
+    assert len(archiver.calls) == 1
+    sent = archiver.calls[0]["history"]
+    # В архиватор уходит ПОЛНЫЙ лог, включая раннюю реплику с именем
+    assert sent[0] == {"role": "user", "content": "привет, я Радиф"}
+    assert any("Радиф" in m["content"] for m in sent)
+    assert len(sent) == 10  # 1+1 + 4*2
+    # После архивации история и полный лог обнулены
+    assert conversations.get_history(42) == []
+    assert conversations.get_session_log(42) == []
+
+
+@pytest.mark.asyncio
 async def test_new_archive_failure_keeps_history() -> None:
     conversations = ConversationStore(max_messages=10)
     conversations.add_user_message(42, "вопрос")

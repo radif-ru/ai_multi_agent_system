@@ -58,8 +58,14 @@ class Executor:
         chat_id: int,
         conversation_id: str,
         model: str | None = None,
+        history: list[dict[str, str]] | None = None,
     ) -> str:
-        """Выполнить агентный цикл, вернуть финальный ответ для пользователя."""
+        """Выполнить агентный цикл, вернуть финальный ответ для пользователя.
+
+        Склейка `messages` — см. `_docs/memory.md` §2.4 и `_docs/agent-loop.md`
+        §4. Если последний элемент `history` уже совпадает с текущим
+        `user`-сообщением (`goal`), дубликат не добавляется.
+        """
 
         chat_model = model or self._settings.ollama_default_model
         ctx = _ToolContext(
@@ -72,10 +78,14 @@ class Executor:
             skills=self._skills,
         )
 
+        history_msgs = list(history or [])
         messages: list[dict[str, str]] = [
             {"role": "system", "content": self._build_system_prompt()},
-            {"role": "user", "content": goal},
+            *history_msgs,
         ]
+        goal_msg = {"role": "user", "content": goal}
+        if not history_msgs or history_msgs[-1] != goal_msg:
+            messages.append(goal_msg)
 
         max_steps = self._settings.agent_max_steps
         max_chars = self._settings.agent_max_output_chars

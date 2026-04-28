@@ -21,6 +21,26 @@ from app.services.llm import LLMBadResponse
 DecisionKind = Literal["action", "final"]
 
 
+def _strip_code_fence(text: str) -> str:
+    """Снять markdown-fence обёртку, если она есть.
+
+    Обрабатывает варианты:
+    - ```json\n{...}\n```
+    - ```\n{...}\n```
+    - с обрамляющими пробелами
+
+    Возвращает исходный текст, если fence не найден.
+    """
+    stripped = text.strip()
+    if stripped.startswith("```json"):
+        stripped = stripped[7:].strip()
+    elif stripped.startswith("```"):
+        stripped = stripped[3:].strip()
+    if stripped.endswith("```"):
+        stripped = stripped[:-3].strip()
+    return stripped
+
+
 @dataclass(frozen=True)
 class AgentDecision:
     """Распарсенное решение агента на одном шаге цикла."""
@@ -36,8 +56,10 @@ def parse_agent_response(text: str) -> AgentDecision:
     """Распарсить JSON-ответ модели в `AgentDecision`.
 
     Все ошибки формата нормализуются в `LLMBadResponse`.
+    Толерантен к markdown-fence обёртке (```json ... ```).
     """
 
+    text = _strip_code_fence(text)
     try:
         payload = json.loads(text)
     except json.JSONDecodeError as exc:

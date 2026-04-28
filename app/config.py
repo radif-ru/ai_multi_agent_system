@@ -42,16 +42,20 @@ class Settings(BaseSettings):
     # --- Memory (in-memory) ---
     history_max_messages: int = 20
     history_summary_threshold: int = 10
+    session_log_max_messages: int = 1000
     summarization_prompt: str = (
         "Кратко и точно резюмируй ключевые факты и решения из этого диалога "
         "в 2–4 предложениях. Ответ — только текст резюме, без вступлений."
     )
+    summarizer_chunk_messages: int = 30
 
     # --- Memory (long-term) ---
     memory_db_path: Path = Path("data/memory.db")
     memory_chunk_size: int = 1500
     memory_chunk_overlap: int = 150
     memory_search_top_k: int = 5
+    session_bootstrap_enabled: bool = True
+    session_bootstrap_top_k: int = 3
 
     # --- Prompts ---
     agent_system_prompt_path: Path = Path("_prompts/agent_system.md")
@@ -75,6 +79,13 @@ class Settings(BaseSettings):
             raise ValueError("EMBEDDING_DIMENSIONS must be > 0")
         return v
 
+    @field_validator("session_bootstrap_top_k")
+    @classmethod
+    def _check_bootstrap_top_k(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("SESSION_BOOTSTRAP_TOP_K must be > 0")
+        return v
+
     @field_validator("history_max_messages")
     @classmethod
     def _check_history_max(cls, v: int) -> int:
@@ -87,6 +98,20 @@ class Settings(BaseSettings):
     def _check_history_threshold(cls, v: int) -> int:
         if v <= 0:
             raise ValueError("HISTORY_SUMMARY_THRESHOLD must be > 0")
+        return v
+
+    @field_validator("session_log_max_messages")
+    @classmethod
+    def _check_session_log_max(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("SESSION_LOG_MAX_MESSAGES must be > 0")
+        return v
+
+    @field_validator("summarizer_chunk_messages")
+    @classmethod
+    def _check_summarizer_chunk(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("SUMMARIZER_CHUNK_MESSAGES must be > 0")
         return v
 
     @model_validator(mode="after")

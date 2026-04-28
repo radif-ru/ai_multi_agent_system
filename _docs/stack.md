@@ -78,6 +78,8 @@
 | `MEMORY_CHUNK_SIZE`         | Размер чанка саммари при `/new`, символы.                        | `1500`                    |
 | `MEMORY_CHUNK_OVERLAP`      | Перекрытие соседних чанков, символы.                             | `150`                     |
 | `MEMORY_SEARCH_TOP_K`       | Сколько чанков возвращать tool'ом `memory_search`.               | `5`                       |
+| `SESSION_BOOTSTRAP_ENABLED` | Авто-подгрузка архива в первый ход новой сессии (см. `_docs/memory.md` §3.6). | `true`         |
+| `SESSION_BOOTSTRAP_TOP_K`   | Сколько чанков подмешивать при авто-подгрузке.                   | `3`                       |
 | `AGENT_SYSTEM_PROMPT_PATH`  | Путь к markdown-файлу системного промпта агента.                 | `_prompts/agent_system.md`|
 | `LOG_LEVEL`                 | Уровень логов (`DEBUG\|INFO\|WARNING\|ERROR`).                   | `INFO`                    |
 | `LOG_FILE`                  | Путь к файлу логов.                                              | `logs/agent.log`          |

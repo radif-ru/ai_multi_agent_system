@@ -112,3 +112,59 @@ def test_final_answer_not_string_raises():
     text = json.dumps({"final_answer": 123})
     with pytest.raises(LLMBadResponse):
         parse_agent_response(text)
+
+
+def test_parse_with_json_fence():
+    """Парсер снимает ```json ... ``` обёртку."""
+    text = """```json
+{
+  "thought": "посчитать",
+  "action": "calculator",
+  "args": {"expression": "1+2"}
+}
+```"""
+    d = parse_agent_response(text)
+    assert d == AgentDecision(
+        kind="action",
+        thought="посчитать",
+        action="calculator",
+        args={"expression": "1+2"},
+    )
+
+
+def test_parse_with_plain_fence():
+    """Парсер снимает ``` ... ``` обёртку без указания языка."""
+    text = """```
+{
+  "final_answer": "ответ"
+}
+```"""
+    d = parse_agent_response(text)
+    assert d == AgentDecision(kind="final", final_answer="ответ")
+
+
+def test_parse_with_fence_and_whitespace():
+    """Парсер снимает fence с обрамляющими пробелами."""
+    text = """
+  ```json
+  {"final_answer": "ответ"}
+  ```
+  """
+    d = parse_agent_response(text)
+    assert d == AgentDecision(kind="final", final_answer="ответ")
+
+
+def test_parse_bare_json_back_compat():
+    """Голый JSON без fence парсится как раньше (бэк-компат)."""
+    text = json.dumps({"final_answer": "ответ"})
+    d = parse_agent_response(text)
+    assert d == AgentDecision(kind="final", final_answer="ответ")
+
+
+def test_parse_invalid_json_inside_fence_raises():
+    """Невалидный JSON внутри fence → LLMBadResponse."""
+    text = """```json
+{not valid json}
+```"""
+    with pytest.raises(LLMBadResponse, match="invalid JSON"):
+        parse_agent_response(text)
