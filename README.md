@@ -1,0 +1,135 @@
+# ai_multi_agent_system
+
+Telegram-бот, работающий как **AI-агент** на локальной LLM. Принимает задачу от пользователя, **выполняет цикл `thought → action → observation`** до получения финального ответа: думает, выбирает инструмент, наблюдает результат, повторяет. Ответ модели — строго в JSON-формате (`{"thought", "action", "args"}` либо `{"final_answer"}`).
+
+Заложен под **мульти-агентную систему**: уже сейчас в архитектуре выделены роли Planner / Executor / Critic, но в первом MVP реализован только Executor (один агентный цикл). Будущие спринты добавят остальные роли и новые адаптеры (web-версия, мессенджер MAX) поверх той же доменной модели.
+
+Построен на [`aiogram 3`](https://docs.aiogram.dev/) (long polling) + [`ollama`](https://ollama.com) (LLM + embeddings) + [`sqlite-vec`](https://github.com/asg017/sqlite-vec) (долгосрочная семантическая память) + `pydantic-settings` + `pytest`.
+
+## Возможности (по итогам спринта 01)
+
+> Спринт 00 (этот) — только документация и скелет каталогов; код агента появится в спринте 01. Список ниже — **планируемое** содержимое MVP, согласованное в `_board/sprints/01-mvp-agent.md`.
+
+- **Агентный цикл** `thought → action → observation` со строгим JSON-форматом, ограничением шагов и защитой от бесконечного цикла.
+- **Локальная LLM** через Ollama (`qwen3.5:4b` по умолчанию).
+- **Tools (инструменты)**: калькулятор, чтение файла, HTTP-запрос, веб-поиск через DuckDuckGo (`ddgs`).
+- **Telegram-интерфейс** через aiogram 3 (long polling), команды `/start`, `/help`, `/new`, `/reset`, `/models`, `/model`, `/prompt`.
+- **Краткосрочная память** диалога per-user (in-memory, FIFO + LLM-суммаризация при достижении порога).
+- **Долгосрочная семантическая память** на `sqlite-vec`: при `/new` текущая сессия суммируется, режется на чанки, сохраняется с эмбеддингом в `.db`. Семантический поиск по саммари — отдельным инструментом `memory_search` (см. `_docs/memory.md` и `_docs/tools.md`).
+- **Skills** (`_skills/`): markdown-файлы с инструкциями и описанием в первой строке. Описания инжектятся в системный промпт; агент динамически загружает полное содержимое скилла через инструмент `load_skill`.
+- **Prompts** (`_prompts/`): системный промпт агента и промпт суммаризации в виде markdown-файлов (правятся без перекомпиляции).
+- **Unit-тесты** через моки: `pytest`, без реального Telegram/Ollama/сети.
+
+## Требования
+
+- **Python** 3.11+ (рекомендуется 3.12).
+- **Ollama** (`https://ollama.com`) с предзагруженными моделями `qwen3.5:4b` и `nomic-embed-text`.
+- **Telegram bot token** от [@BotFather](https://t.me/BotFather).
+- ОС: Linux / WSL2 / macOS. Windows нативно — не приоритет.
+
+## Установка
+
+```bash
+git clone <repo-url>
+cd ai_multi_agent_system
+
+python -m venv .venv
+source .venv/bin/activate
+
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+## Настройка
+
+1. Скопировать шаблон конфигурации и отредактировать секреты:
+
+   ```bash
+   cp .env.example .env
+   # вписать TELEGRAM_BOT_TOKEN, при необходимости поменять модели/пути
+   ```
+
+2. Загрузить модели в Ollama:
+
+   ```bash
+   ollama pull qwen3.5:4b
+   ollama pull nomic-embed-text
+   ollama list   # убедиться, что обе модели доступны
+   ```
+
+3. Полный список переменных окружения — в `_docs/stack.md` §9 и в самом `.env.example` (поля прокомментированы).
+
+## Запуск
+
+```bash
+ollama serve &              # если Ollama ещё не запущена
+source .venv/bin/activate
+python -m app
+```
+
+## Команды бота (план MVP)
+
+| Команда            | Параметры       | Что делает                                                               |
+|--------------------|-----------------|--------------------------------------------------------------------------|
+| `/start`           | —               | Приветствие, краткая инструкция, список команд.                          |
+| `/help`            | —               | Подробная справка.                                                       |
+| `/new`             | —               | Архивирует текущую сессию (саммари → чанки → `sqlite-vec`), открывает новую. |
+| `/reset`           | —               | Очищает текущую in-memory историю и per-user настройки. Архив **не трогает**. |
+| `/models`          | —               | Список `OLLAMA_AVAILABLE_MODELS` с пометкой активной.                    |
+| `/model <name>`    | имя модели      | Переключить активную LLM для пользователя.                               |
+| `/prompt [<text>]` | текст \| пусто  | Задать системный промпт; без аргумента — сброс к default из `_prompts/`. |
+| *произвольный текст* | —             | Запустить агентный цикл с этой задачей; вернуть финальный ответ.         |
+
+Подробное поведение каждой команды — в `_docs/commands.md`.
+
+## Структура проекта (целевая)
+
+```
+ai_multi_agent_system/
+├── _docs/        # проектная документация (см. _docs/README.md)
+├── _board/       # доска задач: спринты + процесс
+├── _skills/      # markdown-скиллы (SKILL.md в каждой подпапке)
+├── _prompts/     # системные промпты в markdown
+├── app/          # код приложения (агент, tools, adapters)
+├── tests/        # unit-тесты, зеркалят app/
+├── data/         # runtime-данные: SQLite с sqlite-vec (в .gitignore)
+└── logs/         # файлы логов (в .gitignore)
+```
+
+Полное дерево с пояснениями — `_docs/project-structure.md`.
+
+## Тесты
+
+```bash
+pytest -q
+```
+
+Покрытие (если установлен `pytest-cov`):
+
+```bash
+pytest --cov=app --cov-report=term-missing
+```
+
+Тесты не делают сетевых вызовов — `aiogram.Bot`, `Message`, `ollama.AsyncClient`, `sqlite-vec` мокаются (см. `_docs/testing.md`).
+
+## Документация
+
+- 📘 [`_docs/README.md`](./_docs/README.md) — индекс проектной документации.
+- 🏗️ [`_docs/architecture.md`](./_docs/architecture.md) — компоненты, агентный цикл, RAG, расширяемость.
+- 🔁 [`_docs/agent-loop.md`](./_docs/agent-loop.md) — формат JSON ответа, шаги цикла, лимиты.
+- 🧠 [`_docs/memory.md`](./_docs/memory.md) — краткосрочная и долгосрочная память.
+- 🧰 [`_docs/tools.md`](./_docs/tools.md) — реестр инструментов и контракт нового tool.
+- 🪄 [`_docs/skills.md`](./_docs/skills.md) — формат `_skills/<name>/SKILL.md`.
+- 💬 [`_docs/commands.md`](./_docs/commands.md) — команды бота.
+- 🛠️ [`_docs/instructions.md`](./_docs/instructions.md) — правила разработки (включая обязательные тесты перед коммитом).
+- 📋 [`_board/README.md`](./_board/README.md) — процесс спринтов и задач.
+- 📌 [`_docs/current-state.md`](./_docs/current-state.md) — фактическое состояние кода (читать перед правками).
+- 🗺️ [`_docs/roadmap.md`](./_docs/roadmap.md) — этапы развития, в т.ч. multi-agent (Planner/Critic) и web/MAX-адаптеры.
+
+## Ограничения и принципы
+
+- Только **локальная LLM** через Ollama, никаких облачных API.
+- Только **long polling**, без webhook (см. `_docs/architecture.md` §2).
+- **In-memory** история текущей сессии, **долгосрочная** память — только саммари (не сырые сообщения), для приватности.
+- Игнорируются нетекстовые сообщения (фото, аудио, стикеры) — в MVP. Файловые инструменты появятся в более поздних спринтах.
+- Документация и сообщения коммитов ведутся **на русском**, технические идентификаторы — латиницей.
