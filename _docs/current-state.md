@@ -6,7 +6,7 @@
 
 ## 1. Что работает
 
-> На момент закрытия Спринта 00 (Bootstrap) код приложения **отсутствует** — есть только документация и скелет каталогов. Этот раздел заполняется по мере реализации задач Спринта 01 (MVP Agent).
+> На момент закрытия Спринта 02 (Память и файловые входы) реализованы все задачи Этапов 1–5: агентный цикл, память, файловые входы (Document, Voice, Photo), авто-подгрузка архива, полное архивирование сессии.
 
 Шаблон записи (для будущих спринтов):
 
@@ -14,19 +14,43 @@
 - **<Подсистема>** — `app/<path>.py` (что именно умеет, ссылки на основные методы / классы).
 ```
 
+### 1.1 Агентный цикл
+
+- **Executor** — `app/agents/executor.py` реализует цикл `thought → action → observation → final_answer` с лимитом шагов и обработкой ошибок LLM.
+- **Protocol** — `app/agents/protocol.py` парсит JSON-ответы модели (с толерантностью к markdown-fence).
+
+### 1.2 Память
+
+- **ConversationStore** — `app/services/conversation.py` хранит in-memory историю и полный лог сессии (`_session_log`). Поддерживает in-session compaction для LLM-контекста и сохраняет полный лог для `/new`.
+- **SemanticMemory** — `app/services/memory.py` — долгосрочная память на `sqlite-vec` для поиска по семантическому сходству.
+- **Archiver** — `app/services/archiver.py` — оркестратор архивации сессии при `/new` (суммаризация → чанки → embedding → запись в `sqlite-vec`).
+- **Summarizer** — `app/services/summarizer.py` — суммаризация истории (in-session и при архивировании), поддерживает map-reduce для длинных логов.
+
+### 1.3 Файлы
+
+- **download_telegram_file** — `app/adapters/telegram/files.py` — async-утилита для скачивания файлов из Telegram с проверкой размера (`TELEGRAM_MAX_FILE_MB`, default 20).
+- **Handler Document** — `app/adapters/telegram/handlers/messages.py` — обрабатывает `Document` сообщения (PDF/TXT/MD). Скачивает файл, формирует обогащённый goal, передаёт в агентный цикл.
+- **Handler Voice** — `app/adapters/telegram/handlers/messages.py` — обрабатывает `Voice`/`Audio` сообщения. Скачивает файл, транскрибирует через `Transcriber` (faster-whisper), передаёт распознанный текст в агентный цикл.
+- **Handler Photo** — `app/adapters/telegram/handlers/messages.py` — обрабатывает `Photo` сообщения. Скачивает файл, описывает через `Vision` (Ollama vision API), передаёт описание в агентный цикл.
+- **Transcriber** — `app/services/transcribe.py` — обёртка над `faster-whisper` для транскрипции речи. Опциональная зависимость.
+- **Vision** — `app/services/vision.py` — обёртка над `OllamaClient.chat` с поддержкой параметра `images` для описания изображений.
+- **ReadDocumentTool** — `app/tools/read_document.py` — tool для чтения документов из временной директории (PDF/TXT/MD). Защита от path traversal, усечение вывода.
+
+### 1.4 Telegram-адаптер
+
+- **Commands** — `app/adapters/telegram/handlers/commands.py` — команды `/start`, `/help`, `/models`, `/model`, `/prompt`, `/new`, `/reset`.
+- **Messages** — `app/adapters/telegram/handlers/messages.py` — обработчик текста и файлов, вызов `core.handle_user_task`.
+- **Errors** — `app/adapters/telegram/handlers/errors.py` — глобальный error handler.
+
 ## 2. Известные проблемы и легаси
 
 > Пусто на момент закрытия Спринта 00. Записи появляются по мере обнаружения нюансов в Спринтах 01+.
 
 ### 2.1 Потеря ранней истории при `/new` (исправлено в спринте 02, Этап 4)
 
-**Файл:** `app/services/conversation.py` + `app/adapters/telegram/handlers/messages.py:113-127` + `app/adapters/telegram/handlers/commands.py:140-152`. **Серьёзность:** высокая.
+**Статус:** ✅ Исправлено.
 
-После каждого ответа LLM при `len(history) >= HISTORY_SUMMARY_THRESHOLD` (default 10) handler `messages.py` вызывает `ConversationStore.replace_with_summary(user_id, summary, kept_tail=2)` — это **разрушает** in-session историю до `summary + последние 2 сообщения`. На длинных сессиях `cmd_new` затем передаёт в `Archiver` именно этот усечённый `get_history()`, и в долгосрочную память (`SemanticMemory`) из ранней части сессии попадает только то, что осталось в `summary`. Ранние конкретные факты (например, сказанное на 3-м ходу «Привет, я Радиф») в архив не уходят, и после `/new` ни `memory_search`, ни авто-подгрузка `SessionBootstrap` их не находят.
-
-Минимальное воспроизведение: бот в Telegram, длинный диалог ≥ `HISTORY_SUMMARY_THRESHOLD` сообщений, в начале фраза «меня зовут …», команда `/new`, новая сессия, вопрос «как меня зовут?» → бот не знает.
-
-**Рекомендация:** см. сприн 02 Этап 4 (`_board/sprints/02-memory-and-files.md`). Дизайн фиксирует: ввести параллельный append-only `_session_log` в `ConversationStore` (см. `memory.md` §2.5), `cmd_new` архивирует полный лог, in-session compaction остаётся только для `_messages`.
+**Решение:** введён параллельный append-only `_session_log` в `ConversationStore`, `cmd_new` архивирует полный лог через `get_session_log()`, in-session compaction остаётся только для `_messages` (LLM-контекст). См. спринт 02 Этап 4 (`_board/sprints/02-memory-and-files.md`).
 
 Шаблон записи:
 

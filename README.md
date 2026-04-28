@@ -8,14 +8,16 @@ Telegram-бот, работающий как **AI-агент** на локаль
 
 ## Возможности
 
-Реализовано в спринте 01 (MVP Agent), состояние кода фиксируется в `_board/sprints/01-mvp-agent.md`.
+Реализовано в спринтах 01 (MVP Agent) и 02 (Память и файловые входы), состояние кода фиксируется в `_board/sprints/01-mvp-agent.md` и `_board/sprints/02-memory-and-files.md`.
 
 - **Агентный цикл** `thought → action → observation` со строгим JSON-форматом, лимитом `AGENT_MAX_STEPS` и лимитом размера output’а — [`app/agents/executor.py`](./app/agents/executor.py), [`app/agents/protocol.py`](./app/agents/protocol.py).
 - **Локальная LLM** через Ollama (`qwen3.5:4b` по умолчанию), клиент с `chat` и `embed` — [`app/services/llm.py`](./app/services/llm.py).
-- **Tools (инструменты)**: `calculator`, `read_file`, `http_request`, `web_search` (DuckDuckGo `ddgs`), `memory_search`, `load_skill` — [`app/tools/`](./app/tools).
-- **Telegram-интерфейс** на aiogram 3 (long polling), команды `/start`, `/help`, `/new`, `/reset`, `/models`, `/model`, `/prompt` + обработчик произвольного текста — [`app/adapters/telegram/handlers/`](./app/adapters/telegram/handlers).
-- **Краткосрочная память** per-user (in-memory FIFO + in-session суммаризация) — [`app/services/conversation.py`](./app/services/conversation.py), [`app/services/summarizer.py`](./app/services/summarizer.py).
+- **Tools (инструменты)**: `calculator`, `read_file`, `http_request`, `web_search` (DuckDuckGo `ddgs`), `memory_search`, `load_skill`, `read_document` — [`app/tools/`](./app/tools).
+- **Telegram-интерфейс** на aiogram 3 (long polling), команды `/start`, `/help`, `/new`, `/reset`, `/models`, `/model`, `/prompt` + обработчик произвольного текста и файлов — [`app/adapters/telegram/handlers/`](./app/adapters/telegram/handlers).
+- **Файловые входы**: документы (PDF/TXT/MD), голосовые сообщения (Voice/Audio), фотографии (Photo) — [`app/adapters/telegram/files.py`](./app/adapters/telegram/files.py), [`app/services/transcribe.py`](./app/services/transcribe.py), [`app/services/vision.py`](./app/services/vision.py).
+- **Краткосрочная память** per-user (in-memory FIFO + in-session суммаризация + полный лог сессии) — [`app/services/conversation.py`](./app/services/conversation.py), [`app/services/summarizer.py`](./app/services/summarizer.py).
 - **Долгосрочная семантическая память** на `sqlite-vec`: `/new` суммирует сессию, режет на чанки, пишет с embedding'ом в `data/memory.db`; поиск через `memory_search` — [`app/services/memory.py`](./app/services/memory.py), [`app/services/archiver.py`](./app/services/archiver.py).
+- **Авто-подгрузка архива** при старте новой сессии через `SemanticMemory.search` — [`app/core/orchestrator.py`](./app/core/orchestrator.py).
 - **Skills** из [`_skills/`](./_skills): markdown с `Description:` в первой строке; описания инжектятся в системный промпт, полное тело — через tool `load_skill` — [`app/services/skills.py`](./app/services/skills.py).
 - **Prompts** (`_prompts/`): системный промпт агента и промпт суммаризации в markdown — [`app/services/prompts.py`](./app/services/prompts.py).
 - **Настройки на пользователя** (выбранная модель, промпт) — [`app/services/model_registry.py`](./app/services/model_registry.py).
@@ -134,14 +136,12 @@ pytest --cov=app --cov-report=term-missing
 - Только **локальная LLM** через Ollama, никаких облачных API.
 - Только **long polling**, без webhook (см. `_docs/architecture.md` §2).
 - **In-memory** история текущей сессии, **долгосрочная** память — только саммари (не сырые сообщения), для приватности.
-- Игнорируются нетекстовые сообщения (фото, аудио, стикеры) — в MVP. Файловые инструменты появятся в Спринте 02 (см. ниже).
+- Поддерживаются файловые входы: документы (PDF/TXT/MD), голосовые сообщения (Voice/Audio), фотографии (Photo) — через `faster-whisper` (опционально) и Ollama vision API (опционально).
 - Документация и сообщения коммитов ведутся **на русском**, технические идентификаторы — латиницей.
 
-## Известные дыры MVP (закрываются Спринтом 02)
+## Известные дыры MVP (закрыты Спринтом 02)
 
-После Спринта 01 (`_board/sprints/01-mvp-agent.md`) остались два видимых пользователю дефекта:
+После Спринта 01 (`_board/sprints/01-mvp-agent.md`) остались два видимых пользователю дефекта. Оба закрыты Спринтом 02 «Память и файловые входы»:
 
-1. **Каждое сообщение начинается «с чистого листа».** `ConversationStore` накапливает историю и `SemanticMemory` хранит саммари прошлых сессий, но `Executor.run` собирает сообщения для LLM из `[system, user_goal]` без истории (`app/agents/executor.py:75-78`). Долгосрочная память доступна только через tool `memory_search`, который модель должна вызвать сама. Эффект — бот не помнит даже только что сказанное имя пользователя.
-2. **Бот не принимает файлы.** Telegram-handler ловит произвольное сообщение, но при `message.text is None` отвечает «В MVP я понимаю только текст»; обработчиков `Photo`, `Voice`, `Document` нет.
-
-Оба пункта закрываются Спринтом 02 «Память и файловые входы» — план в `_board/sprints/02-memory-and-files.md` (3 этапа, 12 задач): склейка `ConversationStore` с `Executor`, авто-подгрузка релевантных чанков из `data/memory.db` при старте новой сессии (`SESSION_BOOTSTRAP_*`), tool `read_document` (PDF/TXT/MD), `Transcriber` на `faster-whisper` для голосовых, vision-обёртка над `OllamaClient.chat` с `images=[]`, лимит `TELEGRAM_MAX_FILE_MB`. Подробности слоёв памяти — в `_docs/memory.md`, агентный цикл — в `_docs/agent-loop.md`.
+1. ~~**Каждое сообщение начинается «с чистого листа».**~~ ✅ Исправлено в Этапе 1 Спринта 02: `Executor.run` теперь принимает `history` и собирает контекст из `[system, history, user_goal]`. Авто-подгрузка архива при старте новой сессии (`SESSION_BOOTSTRAP_ENABLED`).
+2. ~~**Бот не принимает файлы.**~~ ✅ Исправлено в Этапе 3 Спринта 02: реализованы handler'ы для Document (PDF/TXT/MD), Voice (faster-whisper), Photo (Ollama vision API).
