@@ -160,7 +160,7 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 ### Задача 2.2. `Summarizer` + тесты
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 1.3, Задача 2.1
@@ -173,9 +173,9 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 #### Definition of Done
 
-- [ ] `summarize(messages, model)` собирает payload и вызывает chat.
-- [ ] Падение `LLMError` пробрасывается (без глушения).
-- [ ] Тесты на успех и на ошибку.
+- [x] `summarize(messages, model)` собирает payload и вызывает chat.
+- [x] Падение `LLMError` пробрасывается (без глушения).
+- [x] Тесты на успех и на ошибку.
 
 ---
 
@@ -541,7 +541,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 1.2 | Логирование (`setup_logging`) + тесты            | high      | S     | Done   | 1.1                                          |
 | 1.3 | LLM-клиент (`OllamaClient`) + тесты              | high      | M     | Done   | 1.1                                          |
 | 2.1 | `ConversationStore` + тесты                      | high      | S     | Done   | 1.1                                          |
-| 2.2 | `Summarizer` + тесты                             | high      | S     | Progress | 1.3, 2.1                                   |
+| 2.2 | `Summarizer` + тесты                             | high      | S     | Done   | 1.3, 2.1                                     |
 | 2.3 | `SemanticMemory` (`sqlite-vec`) + тесты          | high      | M     | ToDo   | 1.1                                          |
 | 2.4 | `Archiver` + тесты                               | high      | M     | ToDo   | 2.2, 2.3                                     |
 | 3.1 | `Tool`-протокол, `ToolError`, `ToolRegistry`     | high      | M     | ToDo   | 1.1                                          |
@@ -573,3 +573,4 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 - **2026-04-28** — закрыта задача 1.2 (`setup_logging` + тест): `app/logging_config.py`, `tests/test_logging_config.py`. Коммит `1b24c2e`.
 - **2026-04-28** — закрыта задача 1.3 (`OllamaClient` + тесты): `app/services/llm.py`, `tests/services/test_llm_client.py` (13 тестов). Коммит `1997316`. Этап 1 завершён.
 - **2026-04-28** — закрыта задача 2.1 (`ConversationStore` + тесты): `app/services/conversation.py`, `tests/services/test_conversation_store.py` (9 тестов).
+- **2026-04-28** — закрыта задача 2.2 (`Summarizer` + тесты): `app/services/summarizer.py`, `tests/services/test_summarizer.py` (2 теста).
