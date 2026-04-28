@@ -73,6 +73,9 @@ class Settings(BaseSettings):
     whisper_model: str = "base"
     whisper_language: str = "ru"
 
+    # --- Vision (image description) ---
+    vision_model: str | None = None
+
     @field_validator("ollama_available_models", mode="before")
     @classmethod
     def _parse_models_csv(cls, v):

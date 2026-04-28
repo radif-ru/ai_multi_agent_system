@@ -32,6 +32,7 @@ from app.services.transcribe import (
     TranscriberUnavailableError,
     is_transcriber_available,
 )
+from app.services.vision import Vision
 from app.utils.text import split_long_message
 
 if TYPE_CHECKING:
@@ -54,6 +55,7 @@ FILE_TOO_LARGE_REPLY = "Файл слишком большой, отправьт
 VOICE_TRANSCRIPTION_UNAVAILABLE_REPLY = (
     "Распознавание речи недоступно, установите faster-whisper."
 )
+VISION_UNAVAILABLE_REPLY = "Vision-модель не подключена, отправь текстом, что на картинке."
 LLM_UNAVAILABLE_REPLY = "LLM сейчас недоступна, попробуйте позже."
 LLM_TIMEOUT_REPLY = "Модель слишком долго отвечает, попробуйте ещё раз."
 LLM_BAD_RESPONSE_REPLY = (
@@ -339,6 +341,116 @@ async def handle_voice(
         await message.answer(part)
 
 
+async def handle_photo(
+    message: Message,
+    *,
+    settings: "Settings",
+    user_settings: "UserSettingsRegistry",
+    conversations: "ConversationStore",
+    summarizer: "Summarizer",
+    executor: "Executor",
+    llm: "OllamaClient | None" = None,
+    semantic_memory: "SemanticMemory | None" = None,
+) -> None:
+    """Обработчик фотографий (vision)."""
+    if message.from_user is None or message.photo is None:
+        return
+
+    user_id = message.from_user.id
+    chat_id = message.chat.id if message.chat is not None else user_id
+    photo = message.photo[-1]  # Берём последнее (самое большое) фото
+    caption = message.caption or ""
+
+    # Проверяем доступность vision-модели
+    if not settings.vision_model:
+        logger.warning("Vision model not configured user=%s", user_id)
+        await message.answer(VISION_UNAVAILABLE_REPLY)
+        return
+
+    if llm is None:
+        logger.warning("LLM not available for vision user=%s", user_id)
+        await message.answer(LLM_UNAVAILABLE_REPLY)
+        return
+
+    # Скачиваем файл
+    try:
+        file_path = await download_telegram_file(
+            message.bot,
+            photo.file_id,
+            max_size_mb=settings.telegram_max_file_mb,
+        )
+    except FileTooLargeError as exc:
+        logger.warning("Photo too large user=%s size=%d", user_id, exc.file_size_mb)
+        await message.answer(FILE_TOO_LARGE_REPLY)
+        return
+    except Exception as exc:
+        logger.error("Download failed user=%s: %s", user_id, exc)
+        await message.answer(GENERIC_ERROR_REPLY)
+        return
+
+    # Описываем изображение
+    try:
+        vision = Vision(ollama=llm, model=settings.vision_model)
+        description = vision.describe(file_path, caption=caption)
+    except Exception as exc:
+        logger.error("Vision description failed user=%s: %s", user_id, exc)
+        await message.answer(GENERIC_ERROR_REPLY)
+        return
+    finally:
+        # Удаляем временный файл
+        try:
+            file_path.unlink()
+        except Exception:  # noqa: BLE001
+            logger.warning("Failed to delete tmp photo file %s", file_path)
+
+    # Если описание пусто
+    if not description:
+        await message.answer("Не удалось описать изображение.")
+        return
+
+    # Передаём описание как обычное сообщение
+    conversations.add_user_message(user_id, description)
+    model = user_settings.get_model(user_id)
+
+    try:
+        reply = await handle_user_task(
+            description,
+            user_id=user_id,
+            chat_id=chat_id,
+            conversations=conversations,
+            executor=executor,
+            model=model,
+            settings=settings,
+            llm=llm,
+            semantic_memory=semantic_memory,
+        )
+    except LLMTimeout:
+        logger.warning("LLM timeout user=%s", user_id)
+        await message.answer(LLM_TIMEOUT_REPLY)
+        return
+    except LLMUnavailable:
+        logger.error("LLM unavailable user=%s", user_id)
+        await message.answer(LLM_UNAVAILABLE_REPLY)
+        return
+    except LLMBadResponse:
+        logger.warning("LLM bad response user=%s", user_id)
+        await message.answer(LLM_BAD_RESPONSE_REPLY)
+        return
+
+    conversations.add_assistant_message(user_id, reply)
+
+    history = conversations.get_history(user_id)
+    if len(history) >= settings.history_summary_threshold:
+        try:
+            summary = await summarizer.summarize(history[:-2], model=model)
+            conversations.replace_with_summary(user_id, summary, kept_tail=2)
+        except Exception:  # noqa: BLE001
+            logger.warning("in-session summary failed user=%s", user_id, exc_info=True)
+
+    for part in split_long_message(reply, TELEGRAM_MAX_MESSAGE_LENGTH):
+        await message.answer(part)
+
+
 def build_messages_router(
     *,
     settings: "Settings",
@@ -365,4 +477,5 @@ def build_messages_router(
     router.message.register(text_handler)
     router.message.register(handle_document, lambda m: m.document is not None)
     router.message.register(handle_voice, lambda m: m.voice is not None)
+    router.message.register(handle_photo, lambda m: m.photo is not None)
     return router
