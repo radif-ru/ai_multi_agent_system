@@ -500,7 +500,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 ### Задача 6.7. Глобальный error handler + тесты
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** high
 - **Объём:** XS
 - **Зависит от:** Задача 6.5
@@ -603,7 +603,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 6.4 | Handler `/new` + тесты                           | high      | S     | Done   | 2.4, 6.3                                     |
 | 6.5 | Handler произвольного текста + тесты             | high      | M     | Done   | 6.2, 6.3, 2.2                                |
 | 6.6 | `LoggingMiddleware` + тесты                      | medium    | XS    | Done   | 1.2                                          |
-| 6.7 | Глобальный error handler + тесты                 | high      | XS    | ToDo   | 6.5                                          |
+| 6.7 | Глобальный error handler + тесты                 | high      | XS    | Progress | 6.5                                          |
 | 6.8 | `app/main.py` (сборка) + smoke-тест              | high      | M     | ToDo   | все задачи Этапов 1–6                         |
 | 7.1 | `split_long_message` + тесты                     | medium    | XS    | ToDo   | —                                            |
 | 7.2 | Обновление README + чек-лист приёмки             | high      | S     | ToDo   | 6.8                                          |
