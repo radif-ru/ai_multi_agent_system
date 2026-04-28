@@ -313,7 +313,7 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 ### Задача 4.1. `SkillRegistry` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 1.1
@@ -551,7 +551,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 3.5 | Tool `web_search` + тесты                        | high      | S     | Done   | 3.1                                          |
 | 3.6 | Tool `memory_search` + тесты                     | high      | S     | Done   | 3.1, 2.3                                     |
 | 3.7 | Tool `load_skill` + тесты                        | high      | XS    | Done   | 3.1, 4.1                                     |
-| 4.1 | `SkillRegistry` + тесты                          | high      | S     | ToDo   | 1.1                                          |
+| 4.1 | `SkillRegistry` + тесты                          | high      | S     | Progress | 1.1                                        |
 | 4.2 | `PromptLoader` + тесты                           | high      | S     | ToDo   | 1.1                                          |
 | 5.1 | Парсер JSON ответа модели + тесты                | high      | S     | ToDo   | —                                            |
 | 5.2 | `Executor` (агентный цикл) + тесты               | high      | L     | ToDo   | 1.3, 3.1, 4.1, 4.2, 5.1                       |
