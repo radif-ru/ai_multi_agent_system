@@ -6,19 +6,22 @@ Telegram-бот, работающий как **AI-агент** на локаль
 
 Построен на [`aiogram 3`](https://docs.aiogram.dev/) (long polling) + [`ollama`](https://ollama.com) (LLM + embeddings) + [`sqlite-vec`](https://github.com/asg017/sqlite-vec) (долгосрочная семантическая память) + `pydantic-settings` + `pytest`.
 
-## Возможности (по итогам спринта 01)
+## Возможности
 
-> Спринт 00 (этот) — только документация и скелет каталогов; код агента появится в спринте 01. Список ниже — **планируемое** содержимое MVP, согласованное в `_board/sprints/01-mvp-agent.md`.
+Реализовано в спринте 01 (MVP Agent), состояние кода фиксируется в `_board/sprints/01-mvp-agent.md`.
 
-- **Агентный цикл** `thought → action → observation` со строгим JSON-форматом, ограничением шагов и защитой от бесконечного цикла.
-- **Локальная LLM** через Ollama (`qwen3.5:4b` по умолчанию).
-- **Tools (инструменты)**: калькулятор, чтение файла, HTTP-запрос, веб-поиск через DuckDuckGo (`ddgs`).
-- **Telegram-интерфейс** через aiogram 3 (long polling), команды `/start`, `/help`, `/new`, `/reset`, `/models`, `/model`, `/prompt`.
-- **Краткосрочная память** диалога per-user (in-memory, FIFO + LLM-суммаризация при достижении порога).
-- **Долгосрочная семантическая память** на `sqlite-vec`: при `/new` текущая сессия суммируется, режется на чанки, сохраняется с эмбеддингом в `.db`. Семантический поиск по саммари — отдельным инструментом `memory_search` (см. `_docs/memory.md` и `_docs/tools.md`).
-- **Skills** (`_skills/`): markdown-файлы с инструкциями и описанием в первой строке. Описания инжектятся в системный промпт; агент динамически загружает полное содержимое скилла через инструмент `load_skill`.
-- **Prompts** (`_prompts/`): системный промпт агента и промпт суммаризации в виде markdown-файлов (правятся без перекомпиляции).
-- **Unit-тесты** через моки: `pytest`, без реального Telegram/Ollama/сети.
+- **Агентный цикл** `thought → action → observation` со строгим JSON-форматом, лимитом `AGENT_MAX_STEPS` и лимитом размера output’а — [`app/agents/executor.py`](./app/agents/executor.py), [`app/agents/protocol.py`](./app/agents/protocol.py).
+- **Локальная LLM** через Ollama (`qwen3.5:4b` по умолчанию), клиент с `chat` и `embed` — [`app/services/llm.py`](./app/services/llm.py).
+- **Tools (инструменты)**: `calculator`, `read_file`, `http_request`, `web_search` (DuckDuckGo `ddgs`), `memory_search`, `load_skill` — [`app/tools/`](./app/tools).
+- **Telegram-интерфейс** на aiogram 3 (long polling), команды `/start`, `/help`, `/new`, `/reset`, `/models`, `/model`, `/prompt` + обработчик произвольного текста — [`app/adapters/telegram/handlers/`](./app/adapters/telegram/handlers).
+- **Краткосрочная память** per-user (in-memory FIFO + in-session суммаризация) — [`app/services/conversation.py`](./app/services/conversation.py), [`app/services/summarizer.py`](./app/services/summarizer.py).
+- **Долгосрочная семантическая память** на `sqlite-vec`: `/new` суммирует сессию, режет на чанки, пишет с embedding'ом в `data/memory.db`; поиск через `memory_search` — [`app/services/memory.py`](./app/services/memory.py), [`app/services/archiver.py`](./app/services/archiver.py).
+- **Skills** из [`_skills/`](./_skills): markdown с `Description:` в первой строке; описания инжектятся в системный промпт, полное тело — через tool `load_skill` — [`app/services/skills.py`](./app/services/skills.py).
+- **Prompts** (`_prompts/`): системный промпт агента и промпт суммаризации в markdown — [`app/services/prompts.py`](./app/services/prompts.py).
+- **Настройки на пользователя** (выбранная модель, промпт) — [`app/services/model_registry.py`](./app/services/model_registry.py).
+- **Логирование** через `RotatingFileHandler` + middleware на каждый update — [`app/logging_config.py`](./app/logging_config.py), [`app/middlewares/logging_mw.py`](./app/middlewares/logging_mw.py).
+- **Сборка приложения** (DI, polling, graceful shutdown) — [`app/main.py`](./app/main.py), точка входа [`app/__main__.py`](./app/__main__.py).
+- **Unit-тесты** через моки ([`tests/`](./tests)): без реального Telegram / Ollama / сети; `sqlite-vec` — на `tmp_path`.
 
 ## Требования
 
@@ -67,7 +70,7 @@ source .venv/bin/activate
 python -m app
 ```
 
-## Команды бота (план MVP)
+## Команды бота
 
 | Команда            | Параметры       | Что делает                                                               |
 |--------------------|-----------------|--------------------------------------------------------------------------|
