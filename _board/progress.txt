@@ -5,12 +5,13 @@
 (он в plan.md и в файлах спринтов), не спецификация (она в _docs/). Сюда — то, что не
 ложится в формальные документы, но полезно держать перед глазами.
 
-Состояние на момент закрытия Спринта 00 (Bootstrap)
----------------------------------------------------
+Состояние на момент закрытия Спринта 00 (Bootstrap), 2026-04-28
+---------------------------------------------------------------
 
-[+] Документация _docs/ создана (17 файлов): README, mvp, requirements, architecture,
-    agent-loop, memory, tools, skills, prompts, stack, instructions, project-structure,
-    commands, testing, roadmap, current-state, legacy, links.
+[+] Документация _docs/ создана (17 содержательных + индекс): README, mvp,
+    requirements, architecture, agent-loop, memory, tools, skills, prompts,
+    stack, instructions, project-structure, commands, testing, roadmap,
+    current-state, legacy, links.
 [+] Доска _board/ создана: README, plan, process, progress.txt (этот файл),
     sprints/00-bootstrap.md, sprints/01-mvp-agent.md.
 [+] Скелет каталогов: app/ с пустыми __init__.py, tests/ с conftest.py,
@@ -18,6 +19,10 @@
     summarizer.md, data/ создаётся при первом запуске.
 [+] Корневые файлы: README.md, CLAUDE.md (был с самого начала), .gitignore,
     .env.example, requirements.txt, pyproject.toml.
+[+] Окружение: Python 3.12.3, .venv/ создан, зависимости установлены,
+    Ollama 0.21.2 с qwen3.5:4b и nomic-embed-text. pytest -q отрабатывает
+    без ошибок (тестов нет, exit code 0).
+[+] Спринт 00 закрыт 2026-04-28 коммитом chore(plan): закрыть спринт 00.
 
 Чек-лист приёмки MVP (Спринт 01) — заполняется по мере реализации
 -----------------------------------------------------------------
