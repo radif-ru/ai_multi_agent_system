@@ -26,6 +26,7 @@ from aiogram.types import Message
 
 from app.core.orchestrator import handle_user_task
 from app.services.llm import LLMBadResponse, LLMTimeout, LLMUnavailable
+from app.utils.text import split_long_message
 
 if TYPE_CHECKING:
     from app.agents.executor import Executor
@@ -118,7 +119,7 @@ def build_text_handler(
                     exc_info=True,
                 )
 
-        for part in _split_for_telegram(reply, TELEGRAM_MAX_MESSAGE_LENGTH):
+        for part in split_long_message(reply, TELEGRAM_MAX_MESSAGE_LENGTH):
             await message.answer(part)
 
     return handle_text
@@ -144,16 +145,3 @@ def build_messages_router(
     router = Router(name="messages")
     router.message.register(handler)
     return router
-
-
-def _split_for_telegram(text: str, limit: int) -> list[str]:
-    """Разбить длинный ответ на части, не превышающие Telegram-лимит."""
-    if len(text) <= limit:
-        return [text]
-    parts: list[str] = []
-    i = 0
-    n = len(text)
-    while i < n:
-        parts.append(text[i : i + limit])
-        i += limit
-    return parts
