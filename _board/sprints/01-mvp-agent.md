@@ -350,7 +350,7 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 ### Задача 5.1. Парсер JSON ответа модели (`AgentDecision`) + тесты
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** —
@@ -363,8 +363,8 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 #### Definition of Done
 
-- [ ] Покрытие 100% по этому модулю.
-- [ ] Все случаи из `_docs/testing.md` §3.3 покрыты.
+- [x] Покрытие 100% по этому модулю.
+- [x] Все случаи из `_docs/testing.md` §3.3 покрыты.
 
 ---
 
@@ -553,7 +553,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 3.7 | Tool `load_skill` + тесты                        | high      | XS    | Done   | 3.1, 4.1                                     |
 | 4.1 | `SkillRegistry` + тесты                          | high      | S     | Done   | 1.1                                          |
 | 4.2 | `PromptLoader` + тесты                           | high      | S     | Done   | 1.1                                          |
-| 5.1 | Парсер JSON ответа модели + тесты                | high      | S     | Progress | —                                          |
+| 5.1 | Парсер JSON ответа модели + тесты                | high      | S     | Done   | —                                            |
 | 5.2 | `Executor` (агентный цикл) + тесты               | high      | L     | ToDo   | 1.3, 3.1, 4.1, 4.2, 5.1                       |
 | 6.1 | `UserSettingsRegistry` + тесты                   | high      | XS    | ToDo   | 1.1                                          |
 | 6.2 | `core.handle_user_task` + smoke-тест             | high      | S     | ToDo   | 5.2                                          |
@@ -579,3 +579,4 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 - **2026-04-28** — закрыты задачи 3.1–3.7 (Этап 3, tools и реестр): `app/tools/{base,errors,registry,calculator,read_file,http_request,web_search,memory_search,load_skill}.py` + 7 тест-модулей в `tests/tools/` (42 теста, всего 89 зелёных). Задача 3.7 опирается на контракт `ctx.skills.get_body(name)`; реальный `SkillRegistry` будет добавлен задачей 4.1, на тестах load_skill используется фейк. Этап 3 завершён.
 - **2026-04-28** — закрыта задача 4.1 (`SkillRegistry` + тесты): `app/services/skills.py`, `tests/services/test_skills.py` (7 тестов).
 - **2026-04-28** — закрыта задача 4.2 (`PromptLoader` + тесты): `app/services/prompts.py`, `tests/services/test_prompts.py` (7 тестов). Этап 4 завершён.
+- **2026-04-28** — закрыта задача 5.1 (`AgentDecision` + парсер + тесты): `app/agents/protocol.py`, `tests/agents/test_protocol.py` (15 тестов).
