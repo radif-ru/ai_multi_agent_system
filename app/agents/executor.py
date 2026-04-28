@@ -182,7 +182,7 @@ class Executor:
             max_steps,
             user_id,
             conversation_id,
-            "loop did not converge",
+            "цикл не сошёлся",
         )
 
 

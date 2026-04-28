@@ -97,7 +97,7 @@ class Archiver:
                 try:
                     await self._memory.delete(rowid)
                 except Exception:  # noqa: BLE001
-                    logger.exception("rollback delete failed for rowid=%s", rowid)
+                    logger.exception("откат: не удалось удалить chunk rowid=%s", rowid)
             raise
         logger.info(
             "archive ok user_id=%s conv=%s chunks=%d",
