@@ -85,3 +85,4 @@
 * 2026-04-28 — Спринт 00 открыт. Решено: векторная БД — sqlite-vec; Telegram-режим —
   long polling; LLM по умолчанию — qwen3.5:4b; embedding — nomic-embed-text.
   См. _board/sprints/00-bootstrap.md § «Решения по архитектуре».
+* 2026-04-28 — Спринт 01 «MVP Agent» открыт, ветка feature/mvp-agent создана от main.
