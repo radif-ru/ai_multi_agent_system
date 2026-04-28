@@ -464,7 +464,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 ### Задача 6.5. Handler произвольного текста (`messages`) + тесты
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** high
 - **Объём:** M
 - **Зависит от:** Задача 6.2, Задача 6.3, Задача 2.2
@@ -587,7 +587,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 6.2 | `core.handle_user_task` + smoke-тест             | high      | S     | Done   | 5.2                                          |
 | 6.3 | Handlers команд + тесты                          | high      | M     | Done   | 6.1                                          |
 | 6.4 | Handler `/new` + тесты                           | high      | S     | Done   | 2.4, 6.3                                     |
-| 6.5 | Handler произвольного текста + тесты             | high      | M     | ToDo   | 6.2, 6.3, 2.2                                |
+| 6.5 | Handler произвольного текста + тесты             | high      | M     | Progress | 6.2, 6.3, 2.2                                |
 | 6.6 | `LoggingMiddleware` + тесты                      | medium    | XS    | ToDo   | 1.2                                          |
 | 6.7 | Глобальный error handler + тесты                 | high      | XS    | ToDo   | 6.5                                          |
 | 6.8 | `app/main.py` (сборка) + smoke-тест              | high      | M     | ToDo   | все задачи Этапов 1–6                         |
