@@ -168,13 +168,14 @@
 
 | ID | Название | Файл | Ветка | Статус | Открыт | Закрыт |
 |:--:|----------|------|-------|:------:|:------:|:------:|
-| 01 | MVP Agent | [`sprints/01-mvp-agent.md`](./sprints/01-mvp-agent.md) | `feature/mvp-agent` | Active | 2026-04-28 | — |
+| — | — | — | — | — | — | — |
 
 ### Закрытые
 
 | ID | Название | Файл | Ветка | Статус | Открыт | Закрыт |
 |:--:|----------|------|-------|:------:|:------:|:------:|
 | 00 | Bootstrap | [`sprints/00-bootstrap.md`](./sprints/00-bootstrap.md) | `main` (инфраструктурный, без feature-ветки) | Closed | 2026-04-28 | 2026-04-28 |
+| 01 | MVP Agent | [`sprints/01-mvp-agent.md`](./sprints/01-mvp-agent.md) | `feature/mvp-agent` | Closed | 2026-04-28 | 2026-04-28 |
 
 ---
 
@@ -183,7 +184,7 @@
 | Спринт            | Статус | Задач (ToDo / Progress / Done) | Файл                              |
 |-------------------|:------:|:------------------------------:|-----------------------------------|
 | 00. Bootstrap     | Closed | 0 / 0 / 5                      | `sprints/00-bootstrap.md`         |
-| 01. MVP Agent     | Active | 0 / 1 / 27                     | `sprints/01-mvp-agent.md`         |
+| 01. MVP Agent     | Closed | 0 / 0 / 28                     | `sprints/01-mvp-agent.md`         |
 
 > Таблицу обновлять одновременно с переходами статусов в файлах спринтов.
 
@@ -195,4 +196,4 @@
 | 02 | UX: Streaming steps   | (создаётся при старте)                                      | `_docs/roadmap.md` Этап 2              |
 | 03 | Multi-agent (Planner+Critic) | (создаётся при старте)                              | `_docs/roadmap.md` Этап 4              |
 
-> Спринт 01 переведён в `Active` 2026-04-28.
+> Спринт 01 открыт и закрыт 2026-04-28.
