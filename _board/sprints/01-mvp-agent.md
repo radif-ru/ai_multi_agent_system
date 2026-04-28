@@ -428,7 +428,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 
 ### Задача 6.3. Handlers команд (`/start`, `/help`, `/models`, `/model`, `/prompt`, `/reset`) + тесты
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** high
 - **Объём:** M
 - **Зависит от:** Задача 6.1
@@ -571,7 +571,7 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 5.2 | `Executor` (агентный цикл) + тесты               | high      | L     | Done   | 1.3, 3.1, 4.1, 4.2, 5.1                       |
 | 6.1 | `UserSettingsRegistry` + тесты                   | high      | XS    | Done   | 1.1                                          |
 | 6.2 | `core.handle_user_task` + smoke-тест             | high      | S     | Done   | 5.2                                          |
-| 6.3 | Handlers команд + тесты                          | high      | M     | ToDo   | 6.1                                          |
+| 6.3 | Handlers команд + тесты                          | high      | M     | Progress | 6.1                                        |
 | 6.4 | Handler `/new` + тесты                           | high      | S     | ToDo   | 2.4, 6.3                                     |
 | 6.5 | Handler произвольного текста + тесты             | high      | M     | ToDo   | 6.2, 6.3, 2.2                                |
 | 6.6 | `LoggingMiddleware` + тесты                      | medium    | XS    | ToDo   | 1.2                                          |
