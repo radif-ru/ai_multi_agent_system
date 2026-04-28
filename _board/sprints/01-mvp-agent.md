@@ -225,7 +225,7 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 ### Задача 3.1. `Tool`-протокол, `ToolError`, `ToolRegistry` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** M
 - **Зависит от:** Задача 1.1
@@ -238,14 +238,14 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 #### Definition of Done
 
-- [ ] Все методы реализованы, валидация args через jsonschema или pydantic.
-- [ ] Тесты на все ветки из `_docs/testing.md` §3.5.
+- [x] Все методы реализованы, валидация args через лёгкий внутренний валидатор (object/required/типы).
+- [x] Тесты на все ветки из `_docs/testing.md` §3.5.
 
 ---
 
 ### Задача 3.2. Tool `calculator` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 3.1
@@ -256,7 +256,7 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 ### Задача 3.3. Tool `read_file` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 3.1
@@ -267,7 +267,7 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 ### Задача 3.4. Tool `http_request` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 3.1
@@ -278,7 +278,7 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 ### Задача 3.5. Tool `web_search` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 3.1
@@ -289,7 +289,7 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 ### Задача 3.6. Tool `memory_search` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 3.1, Задача 2.3
@@ -300,7 +300,7 @@ In-memory история per-user, FIFO-обрезка, `conversation_id`, `repl
 
 ### Задача 3.7. Tool `load_skill` + тесты
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** XS
 - **Зависит от:** Задача 3.1, Задача 4.1
@@ -544,13 +544,13 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 | 2.2 | `Summarizer` + тесты                             | high      | S     | Done   | 1.3, 2.1                                     |
 | 2.3 | `SemanticMemory` (`sqlite-vec`) + тесты          | high      | M     | Done   | 1.1                                          |
 | 2.4 | `Archiver` + тесты                               | high      | M     | Done   | 2.2, 2.3                                     |
-| 3.1 | `Tool`-протокол, `ToolError`, `ToolRegistry`     | high      | M     | ToDo   | 1.1                                          |
-| 3.2 | Tool `calculator` + тесты                        | high      | S     | ToDo   | 3.1                                          |
-| 3.3 | Tool `read_file` + тесты                         | high      | S     | ToDo   | 3.1                                          |
-| 3.4 | Tool `http_request` + тесты                      | high      | S     | ToDo   | 3.1                                          |
-| 3.5 | Tool `web_search` + тесты                        | high      | S     | ToDo   | 3.1                                          |
-| 3.6 | Tool `memory_search` + тесты                     | high      | S     | ToDo   | 3.1, 2.3                                     |
-| 3.7 | Tool `load_skill` + тесты                        | high      | XS    | ToDo   | 3.1, 4.1                                     |
+| 3.1 | `Tool`-протокол, `ToolError`, `ToolRegistry`     | high      | M     | Done   | 1.1                                          |
+| 3.2 | Tool `calculator` + тесты                        | high      | S     | Done   | 3.1                                          |
+| 3.3 | Tool `read_file` + тесты                         | high      | S     | Done   | 3.1                                          |
+| 3.4 | Tool `http_request` + тесты                      | high      | S     | Done   | 3.1                                          |
+| 3.5 | Tool `web_search` + тесты                        | high      | S     | Done   | 3.1                                          |
+| 3.6 | Tool `memory_search` + тесты                     | high      | S     | Done   | 3.1, 2.3                                     |
+| 3.7 | Tool `load_skill` + тесты                        | high      | XS    | Done   | 3.1, 4.1                                     |
 | 4.1 | `SkillRegistry` + тесты                          | high      | S     | ToDo   | 1.1                                          |
 | 4.2 | `PromptLoader` + тесты                           | high      | S     | ToDo   | 1.1                                          |
 | 5.1 | Парсер JSON ответа модели + тесты                | high      | S     | ToDo   | —                                            |
@@ -576,3 +576,4 @@ Dataclass `AgentDecision(kind, thought, action, args, final_answer)`. Функц
 - **2026-04-28** — закрыта задача 2.2 (`Summarizer` + тесты): `app/services/summarizer.py`, `tests/services/test_summarizer.py` (2 теста).
 - **2026-04-28** — закрыта задача 2.3 (`SemanticMemory` + тесты): `app/services/memory.py`, `tests/services/test_memory.py` (6 тестов, реальный `sqlite-vec`).
 - **2026-04-28** — закрыта задача 2.4 (`Archiver` + тесты): `app/services/archiver.py`, `tests/services/test_archiver.py` (8 тестов). Этап 2 завершён.
+- **2026-04-28** — закрыты задачи 3.1–3.7 (Этап 3, tools и реестр): `app/tools/{base,errors,registry,calculator,read_file,http_request,web_search,memory_search,load_skill}.py` + 7 тест-модулей в `tests/tools/` (42 теста, всего 89 зелёных). Задача 3.7 опирается на контракт `ctx.skills.get_body(name)`; реальный `SkillRegistry` будет добавлен задачей 4.1, на тестах load_skill используется фейк. Этап 3 завершён.
