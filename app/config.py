@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     memory_chunk_size: int = 1500
     memory_chunk_overlap: int = 150
     memory_search_top_k: int = 5
+    session_bootstrap_enabled: bool = True
+    session_bootstrap_top_k: int = 3
 
     # --- Prompts ---
     agent_system_prompt_path: Path = Path("_prompts/agent_system.md")
@@ -73,6 +75,13 @@ class Settings(BaseSettings):
     def _check_embedding_dim(cls, v: int) -> int:
         if v <= 0:
             raise ValueError("EMBEDDING_DIMENSIONS must be > 0")
+        return v
+
+    @field_validator("session_bootstrap_top_k")
+    @classmethod
+    def _check_bootstrap_top_k(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("SESSION_BOOTSTRAP_TOP_K must be > 0")
         return v
 
     @field_validator("history_max_messages")

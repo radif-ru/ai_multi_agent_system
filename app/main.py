@@ -157,6 +157,8 @@ def _wire_telegram(c: _Components) -> tuple[Bot, Dispatcher]:
             conversations=c.conversations,
             summarizer=c.summarizer,
             executor=c.executor,
+            llm=c.llm,
+            semantic_memory=c.semantic_memory,
         )
     )
     dispatcher.include_router(build_errors_router())
