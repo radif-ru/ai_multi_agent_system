@@ -112,6 +112,7 @@ async def test_handle_photo_success(
     mock_executor,
     mock_llm,
     mock_semantic_memory,
+    mocker,
 ) -> None:
     """Успешная обработка фото (без реальной vision - только проверка потока)."""
     from app.adapters.telegram.handlers import messages
@@ -119,14 +120,10 @@ async def test_handle_photo_success(
     # Настраиваем vision-модель
     mock_settings.vision_model = "llava:7b"
 
-    # Мокаем Vision на уровне модуля
-    from app.services import vision
-    original_vision = vision.Vision
-
+    # Мокаем Vision в том месте, откуда его импортирует handler
     mock_vision_instance = MagicMock()
-    mock_vision_instance.describe.return_value = "На фото кот"
-
-    vision.Vision = MagicMock(return_value=mock_vision_instance)
+    mock_vision_instance.describe = AsyncMock(return_value="На фото кот")
+    mocker.patch("app.adapters.telegram.handlers.messages.Vision", return_value=mock_vision_instance)
 
     # Мокаем download_telegram_file
     original_download = messages.download_telegram_file
@@ -175,4 +172,3 @@ async def test_handle_photo_success(
         mock_conversations.add_assistant_message.assert_called_once()
     finally:
         messages.download_telegram_file = original_download
-        vision.Vision = original_vision
