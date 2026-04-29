@@ -168,7 +168,6 @@
 
 | ID | Название | Файл | Ветка | Статус | Открыт | Закрыт |
 |:--:|----------|------|-------|:------:|:------:|:------:|
-| 02 | Память и файловые входы | [`sprints/02-memory-and-files.md`](./sprints/02-memory-and-files.md) | `feature/02-memory-and-files` | Active | 2026-04-29 | — |
 
 ### Закрытые
 
@@ -176,6 +175,7 @@
 |:--:|----------|------|-------|:------:|:------:|:------:|
 | 00 | Bootstrap | [`sprints/00-bootstrap.md`](./sprints/00-bootstrap.md) | `main` (инфраструктурный, без feature-ветки) | Closed | 2026-04-28 | 2026-04-28 |
 | 01 | MVP Agent | [`sprints/01-mvp-agent.md`](./sprints/01-mvp-agent.md) | `feature/mvp-agent` | Closed | 2026-04-28 | 2026-04-28 |
+| 02 | Память и файловые входы | [`sprints/02-memory-and-files.md`](./sprints/02-memory-and-files.md) | `feature/02-memory-and-files` | Closed | 2026-04-29 | 2026-04-29 |
 
 ---
 
@@ -185,7 +185,7 @@
 |-------------------|:------:|:------------------------------:|-----------------------------------|
 | 00. Bootstrap     | Closed | 0 / 0 / 5                      | `sprints/00-bootstrap.md`         |
 | 01. MVP Agent     | Closed | 0 / 0 / 28                     | `sprints/01-mvp-agent.md`         |
-| 02. Память и файловые входы | Active | 0 / 0 / 18   | `sprints/02-memory-and-files.md`  |
+| 02. Память и файловые входы | Closed | 0 / 0 / 19   | `sprints/02-memory-and-files.md`  |
 
 > Таблицу обновлять одновременно с переходами статусов в файлах спринтов.
 
