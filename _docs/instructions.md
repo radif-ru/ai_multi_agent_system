@@ -28,6 +28,7 @@
   - `test(tools): покрыть calculator случаем деления на ноль`
   - `docs(architecture): уточнить поток /new в §5`
   - `chore(plan): start task 01.2.3`
+- **Ритуал коммитов на каждую задачу из спринта.** Каждая задача из файла спринта (`_board/sprints/<NN>-*.md`) проходит цикл `start → feat/test/... → complete` тремя отдельными коммитами. Подробно — в `CLAUDE.md` §4 и `_board/process.md`.
 - `.gitignore` обязательно содержит: `.env`, `venv/`, `.venv/`, `__pycache__/`, `*.pyc`, `logs/`, `data/`, `*.db`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `.idea/`, `.vscode/`. См. `project-structure.md` § «Что должно попасть в `.gitignore`».
 - **Секреты никогда не коммитить.** Если токен / БД с приватными данными случайно попали — ротировать в @BotFather, удалить из истории (`git filter-repo`), удалить `.db`-файл.
 
