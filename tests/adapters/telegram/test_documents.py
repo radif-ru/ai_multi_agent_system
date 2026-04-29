@@ -20,6 +20,7 @@ def mock_settings():
     settings = MagicMock()
     settings.telegram_max_file_mb = 20
     settings.history_summary_threshold = 10
+    settings.tmp_files_dir = Path("tmp")
     return settings
 
 
@@ -84,7 +85,7 @@ async def test_handle_document_success(
 
     original_download = messages.download_telegram_file
 
-    async def mock_download(bot, file_id, *, max_size_mb):
+    async def mock_download(bot, file_id, *, max_size_mb, tmp_dir, mime_type=None):
         return test_file
 
     messages.download_telegram_file = mock_download
@@ -97,7 +98,8 @@ async def test_handle_document_success(
         message = MagicMock()
         message.from_user = MagicMock(id=123)
         message.chat = MagicMock(id=456)
-        message.document = MagicMock(file_id="file123", caption="Test doc")
+        message.document = MagicMock(file_id="file123")
+        message.caption = "Test doc"
         message.bot = MagicMock()
         message.answer = AsyncMock()
 
@@ -147,7 +149,7 @@ async def test_handle_document_too_large(
 
     original_download = messages.download_telegram_file
 
-    async def mock_download(bot, file_id, *, max_size_mb):
+    async def mock_download(bot, file_id, *, max_size_mb, tmp_dir, mime_type=None):
         raise FileTooLargeError(file_size_mb=25, max_size_mb=20)
 
     messages.download_telegram_file = mock_download

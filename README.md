@@ -11,7 +11,7 @@ Telegram-бот, работающий как **AI-агент** на локаль
 Реализовано в спринтах 01 (MVP Agent) и 02 (Память и файловые входы), состояние кода фиксируется в `_board/sprints/01-mvp-agent.md` и `_board/sprints/02-memory-and-files.md`.
 
 - **Агентный цикл** `thought → action → observation` со строгим JSON-форматом, лимитом `AGENT_MAX_STEPS` и лимитом размера output’а — [`app/agents/executor.py`](./app/agents/executor.py), [`app/agents/protocol.py`](./app/agents/protocol.py).
-- **Локальная LLM** через Ollama (`qwen3.5:4b` по умолчанию), клиент с `chat` и `embed` — [`app/services/llm.py`](./app/services/llm.py).
+- **Локальная LLM** через Ollama (`qwen3.5:4b` по умолчанию для чата, `nomic-embed-text` для эмбеддингов, `llava:7b` для описания изображений), клиент с `chat` и `embed` — [`app/services/llm.py`](./app/services/llm.py).
 - **Tools (инструменты)**: `calculator`, `read_file`, `http_request`, `web_search` (DuckDuckGo `ddgs`), `memory_search`, `load_skill`, `read_document` — [`app/tools/`](./app/tools).
 - **Telegram-интерфейс** на aiogram 3 (long polling), команды `/start`, `/help`, `/new`, `/reset`, `/models`, `/model`, `/prompt` + обработчик произвольного текста и файлов — [`app/adapters/telegram/handlers/`](./app/adapters/telegram/handlers).
 - **Файловые входы**: документы (PDF/TXT/MD), голосовые сообщения (Voice/Audio), фотографии (Photo) — [`app/adapters/telegram/files.py`](./app/adapters/telegram/files.py), [`app/services/transcribe.py`](./app/services/transcribe.py), [`app/services/vision.py`](./app/services/vision.py).
@@ -28,7 +28,7 @@ Telegram-бот, работающий как **AI-агент** на локаль
 ## Требования
 
 - **Python** 3.11+ (рекомендуется 3.12).
-- **Ollama** (`https://ollama.com`) с предзагруженными моделями `qwen3.5:4b` и `nomic-embed-text`.
+- **Ollama** (`https://ollama.com`) с предзагруженными моделями `qwen3.5:4b`, `nomic-embed-text` и `llava:7b`.
 - **Telegram bot token** от [@BotFather](https://t.me/BotFather).
 - ОС: Linux / WSL2 / macOS. Windows нативно — не приоритет.
 
@@ -59,7 +59,8 @@ pip install -r requirements.txt
    ```bash
    ollama pull qwen3.5:4b
    ollama pull nomic-embed-text
-   ollama list   # убедиться, что обе модели доступны
+   ollama pull llava:7b
+   ollama list   # убедиться, что все модели доступны
    ```
 
 3. Полный список переменных окружения — в `_docs/stack.md` §9 и в самом `.env.example` (поля прокомментированы).

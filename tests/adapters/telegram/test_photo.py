@@ -21,6 +21,7 @@ def mock_settings():
     settings.telegram_max_file_mb = 20
     settings.history_summary_threshold = 10
     settings.vision_model = None
+    settings.tmp_files_dir = Path("tmp")
     return settings
 
 
@@ -116,7 +117,7 @@ async def test_handle_photo_success(
     from app.adapters.telegram.handlers import messages
 
     # Настраиваем vision-модель
-    mock_settings.vision_model = "llava:13b"
+    mock_settings.vision_model = "llava:7b"
 
     # Мокаем Vision на уровне модуля
     from app.services import vision
@@ -130,7 +131,7 @@ async def test_handle_photo_success(
     # Мокаем download_telegram_file
     original_download = messages.download_telegram_file
 
-    async def mock_download(bot, file_id, *, max_size_mb):
+    async def mock_download(bot, file_id, *, max_size_mb, tmp_dir, mime_type=None):
         from pathlib import Path
         import tempfile
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:

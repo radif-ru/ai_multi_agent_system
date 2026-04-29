@@ -98,7 +98,7 @@ Telegram-адаптер принимает текст, оборачивает е
 - **Логирование**: `LOG_LEVEL`, `LOG_FILE`, `LOG_LLM_CONTEXT`.
 - **Временные файлы**: `TMP_FILES_DIR` (default `tmp`).
 - **Whisper (STT)**: `WHISPER_MODEL` (default `base`), `WHISPER_LANGUAGE` (default `ru`).
-- **Vision**: `VISION_MODEL` (default `None`).
+- **Vision**: `VISION_MODEL` (default `None`). Пример: `llava:7b` для описания изображений.
 
 Валидация: `OLLAMA_DEFAULT_MODEL ∈ OLLAMA_AVAILABLE_MODELS`, `HISTORY_SUMMARY_THRESHOLD ≤ HISTORY_MAX_MESSAGES`, оба `> 0`, `EMBEDDING_DIMENSIONS > 0`, путь `AGENT_SYSTEM_PROMPT_PATH` существует.
 

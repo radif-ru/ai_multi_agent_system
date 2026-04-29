@@ -26,6 +26,7 @@ def mock_settings():
     settings.history_summary_threshold = 10
     settings.whisper_model = "base"
     settings.whisper_language = "ru"
+    settings.tmp_files_dir = Path("tmp")
     return settings
 
 

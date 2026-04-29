@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
+from tempfile import TemporaryDirectory
 
 import pytest
 
@@ -22,8 +23,15 @@ def mock_bot():
     return bot
 
 
+@pytest.fixture
+def tmp_dir():
+    """Временная директория для тестов."""
+    with TemporaryDirectory() as tmp:
+        yield Path(tmp)
+
+
 @pytest.mark.asyncio
-async def test_download_telegram_file_success(mock_bot):
+async def test_download_telegram_file_success(mock_bot, tmp_dir):
     """Успешная загрузка файла."""
     # Настройка мока
     mock_file = MagicMock()
@@ -31,12 +39,20 @@ async def test_download_telegram_file_success(mock_bot):
     mock_file.file_size = 1024  # 1 КБ
     mock_bot.get_file.return_value = mock_file
 
+    # Мокаем download_file, чтобы он создавал файл
+    async def mock_download(file_path, destination):
+        destination.write_text("test content")
+
+    mock_bot.download_file = AsyncMock(side_effect=mock_download)
+
     # Вызов
-    result = await download_telegram_file(mock_bot, "file123", max_size_mb=20)
+    result = await download_telegram_file(mock_bot, "file123", max_size_mb=20, tmp_dir=tmp_dir, mime_type="application/pdf")
 
     # Проверки
     assert isinstance(result, Path)
     assert result.exists()
+    assert result.parent == tmp_dir
+    assert result.suffix == ".pdf"
     mock_bot.get_file.assert_called_once_with("file123")
     mock_bot.download_file.assert_called_once()
 
@@ -45,7 +61,7 @@ async def test_download_telegram_file_success(mock_bot):
 
 
 @pytest.mark.asyncio
-async def test_download_telegram_file_too_large(mock_bot):
+async def test_download_telegram_file_too_large(mock_bot, tmp_dir):
     """Превышение лимита размера."""
     # Настройка мока: файл 25 МБ при лимите 20 МБ
     mock_file = MagicMock()
@@ -55,7 +71,7 @@ async def test_download_telegram_file_too_large(mock_bot):
 
     # Вызов и проверка исключения
     with pytest.raises(FileTooLargeError) as exc_info:
-        await download_telegram_file(mock_bot, "file456", max_size_mb=20)
+        await download_telegram_file(mock_bot, "file456", max_size_mb=20, tmp_dir=tmp_dir)
 
     assert exc_info.value.file_size_mb == 25
     assert exc_info.value.max_size_mb == 20
@@ -63,22 +79,22 @@ async def test_download_telegram_file_too_large(mock_bot):
 
 
 @pytest.mark.asyncio
-async def test_download_telegram_file_download_error(mock_bot):
+async def test_download_telegram_file_download_error(mock_bot, tmp_dir):
     """Ошибка при скачивании файла."""
     # Настройка мока
     mock_file = MagicMock()
     mock_file.file_path = "documents/test.txt"
     mock_file.file_size = 1024
     mock_bot.get_file.return_value = mock_file
-    mock_bot.download_file.side_effect = Exception("Network error")
+    mock_bot.download_file = AsyncMock(side_effect=Exception("Network error"))
 
     # Вызов и проверка исключения
     with pytest.raises(Exception, match="Network error"):
-        await download_telegram_file(mock_bot, "file789", max_size_mb=20)
+        await download_telegram_file(mock_bot, "file789", max_size_mb=20, tmp_dir=tmp_dir)
 
 
 @pytest.mark.asyncio
-async def test_download_telegram_file_no_size_info(mock_bot):
+async def test_download_telegram_file_no_size_info(mock_bot, tmp_dir):
     """Загрузка файла без информации о размере (file_size=None)."""
     # Настройка мока: file_size=None (Telegram иногда не предоставляет размер)
     mock_file = MagicMock()
@@ -86,12 +102,20 @@ async def test_download_telegram_file_no_size_info(mock_bot):
     mock_file.file_size = None
     mock_bot.get_file.return_value = mock_file
 
+    # Мокаем download_file, чтобы он создавал файл
+    async def mock_download(file_path, destination):
+        destination.write_text("test content")
+
+    mock_bot.download_file = AsyncMock(side_effect=mock_download)
+
     # Вызов - должно сработать без проверки размера
-    result = await download_telegram_file(mock_bot, "file000", max_size_mb=20)
+    result = await download_telegram_file(mock_bot, "file000", max_size_mb=20, tmp_dir=tmp_dir, mime_type="text/plain")
 
     # Проверки
     assert isinstance(result, Path)
     assert result.exists()
+    assert result.parent == tmp_dir
+    assert result.suffix == ".txt"
     mock_bot.get_file.assert_called_once_with("file000")
     mock_bot.download_file.assert_called_once()
 

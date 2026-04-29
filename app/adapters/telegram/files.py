@@ -35,6 +35,8 @@ async def download_telegram_file(
     file_id: str,
     *,
     max_size_mb: int,
+    tmp_dir: Path,
+    mime_type: str | None = None,
 ) -> Path:
     """Скачать файл из Telegram с проверкой размера.
 
@@ -42,6 +44,8 @@ async def download_telegram_file(
         bot: Экземпляр aiogram Bot.
         file_id: Идентификатор файла в Telegram.
         max_size_mb: Максимальный размер файла в мегабайтах.
+        tmp_dir: Директория для временных файлов (Settings.tmp_files_dir).
+        mime_type: MIME-type файла из Telegram (для определения расширения).
 
     Returns:
         Путь к скачанному временному файлу.
@@ -65,21 +69,41 @@ async def download_telegram_file(
             )
             raise FileTooLargeError(int(file_size_mb), max_size_mb)
 
-    # Скачиваем во временный файл
+    # Определяем расширение по mime_type
+    extension = ""
+    if mime_type:
+        mime_to_ext = {
+            "application/pdf": ".pdf",
+            "text/plain": ".txt",
+            "text/markdown": ".md",
+            "image/jpeg": ".jpg",
+            "image/png": ".png",
+            "image/webp": ".webp",
+            "audio/ogg": ".ogg",
+            "audio/mpeg": ".mp3",
+            "audio/wav": ".wav",
+        }
+        extension = mime_to_ext.get(mime_type, "")
+
+    # Скачиваем во временный файл в указанной директории
     try:
-        # Используем tempfile.NamedTemporaryFile с delete=False,
-        # чтобы файл не удалился при выходе из контекста.
-        # Ответственность за удаление лежит на вызывающем коде.
-        with tempfile.NamedTemporaryFile(delete=False) as tmp:
-            tmp_path = Path(tmp.name)
-            await bot.download_file(file_info.file_path, tmp_path)
-            logger.info(
-                "Файл %s (%d байт) скачан в %s",
-                file_id,
-                file_info.file_size or 0,
-                tmp_path,
-            )
-            return tmp_path
+        # Создаём директорию, если она не существует
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+
+        # Создаём уникальное имя файла с расширением
+        import uuid
+
+        file_name = f"{file_id}_{uuid.uuid4().hex[:8]}{extension}"
+        tmp_path = tmp_dir / file_name
+
+        await bot.download_file(file_info.file_path, tmp_path)
+        logger.info(
+            "Файл %s (%d байт) скачан в %s",
+            file_id,
+            file_info.file_size or 0,
+            tmp_path,
+        )
+        return tmp_path
     except Exception as e:
         logger.error("Ошибка скачивания файла %s: %s", file_id, e)
         raise

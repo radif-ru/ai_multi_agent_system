@@ -25,6 +25,7 @@
 | Ollama Python SDK | https://github.com/ollama/ollama-python | `app/services/llm.py` — `ollama.AsyncClient`, `ollama.ResponseError` |
 | Модель `qwen3.5:4b` | https://ollama.com/library/qwen | значение `OLLAMA_DEFAULT_MODEL` по умолчанию |
 | Модель `nomic-embed-text` | https://ollama.com/library/nomic-embed-text | значение `EMBEDDING_MODEL` по умолчанию |
+| Модель `llava:7b` | https://ollama.com/library/llava | значение `VISION_MODEL` по умолчанию для описания изображений |
 | httpx (исключения) | https://www.python-httpx.org/exceptions/ | `app/services/llm.py` — маппинг `TimeoutException`, `ConnectError` в `LLMError` |
 
 ## 3. Векторная БД

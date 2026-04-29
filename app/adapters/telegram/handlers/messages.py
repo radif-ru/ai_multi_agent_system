@@ -162,7 +162,7 @@ async def handle_document(
     user_id = message.from_user.id
     chat_id = message.chat.id if message.chat is not None else user_id
     document = message.document
-    caption = document.caption or ""
+    caption = message.caption or ""
 
     # Скачиваем файл
     try:
@@ -170,6 +170,8 @@ async def handle_document(
             message.bot,
             document.file_id,
             max_size_mb=settings.telegram_max_file_mb,
+            tmp_dir=settings.tmp_files_dir,
+            mime_type=document.mime_type,
         )
     except FileTooLargeError as exc:
         logger.warning("File too large user=%s size=%d", user_id, exc.file_size_mb)
@@ -262,6 +264,8 @@ async def handle_voice(
             message.bot,
             voice.file_id,
             max_size_mb=settings.telegram_max_file_mb,
+            tmp_dir=settings.tmp_files_dir,
+            mime_type=voice.mime_type,
         )
     except FileTooLargeError as exc:
         logger.warning("Voice too large user=%s size=%d", user_id, exc.file_size_mb)
@@ -378,6 +382,8 @@ async def handle_photo(
             message.bot,
             photo.file_id,
             max_size_mb=settings.telegram_max_file_mb,
+            tmp_dir=settings.tmp_files_dir,
+            mime_type="image/jpeg",  # Telegram photos всегда JPEG
         )
     except FileTooLargeError as exc:
         logger.warning("Photo too large user=%s size=%d", user_id, exc.file_size_mb)
@@ -391,7 +397,7 @@ async def handle_photo(
     # Описываем изображение
     try:
         vision = Vision(ollama=llm, model=settings.vision_model)
-        description = vision.describe(file_path, caption=caption)
+        description = await vision.describe(file_path, caption=caption)
     except Exception as exc:
         logger.error("Vision description failed user=%s: %s", user_id, exc)
         await message.answer(GENERIC_ERROR_REPLY)
@@ -451,6 +457,87 @@ async def handle_photo(
         await message.answer(part)
 
 
+def build_document_handler(
+    *,
+    settings: "Settings",
+    user_settings: "UserSettingsRegistry",
+    conversations: "ConversationStore",
+    summarizer: "Summarizer",
+    executor: "Executor",
+    llm: "OllamaClient | None" = None,
+    semantic_memory: "SemanticMemory | None" = None,
+) -> Callable[[Message], Awaitable[None]]:
+    """Собрать async-handler для документов."""
+
+    async def handler(message: Message) -> None:
+        await handle_document(
+            message,
+            settings=settings,
+            user_settings=user_settings,
+            conversations=conversations,
+            summarizer=summarizer,
+            executor=executor,
+            llm=llm,
+            semantic_memory=semantic_memory,
+        )
+
+    return handler
+
+
+def build_voice_handler(
+    *,
+    settings: "Settings",
+    user_settings: "UserSettingsRegistry",
+    conversations: "ConversationStore",
+    summarizer: "Summarizer",
+    executor: "Executor",
+    llm: "OllamaClient | None" = None,
+    semantic_memory: "SemanticMemory | None" = None,
+) -> Callable[[Message], Awaitable[None]]:
+    """Собрать async-handler для голосовых сообщений."""
+
+    async def handler(message: Message) -> None:
+        await handle_voice(
+            message,
+            settings=settings,
+            user_settings=user_settings,
+            conversations=conversations,
+            summarizer=summarizer,
+            executor=executor,
+            llm=llm,
+            semantic_memory=semantic_memory,
+        )
+
+    return handler
+
+
+def build_photo_handler(
+    *,
+    settings: "Settings",
+    user_settings: "UserSettingsRegistry",
+    conversations: "ConversationStore",
+    summarizer: "Summarizer",
+    executor: "Executor",
+    llm: "OllamaClient | None" = None,
+    semantic_memory: "SemanticMemory | None" = None,
+) -> Callable[[Message], Awaitable[None]]:
+    """Собрать async-handler для фотографий."""
+
+    async def handler(message: Message) -> None:
+        await handle_photo(
+            message,
+            settings=settings,
+            user_settings=user_settings,
+            conversations=conversations,
+            summarizer=summarizer,
+            executor=executor,
+            llm=llm,
+            semantic_memory=semantic_memory,
+        )
+
+    return handler
+
+
 def build_messages_router(
     *,
     settings: "Settings",
@@ -473,9 +560,39 @@ def build_messages_router(
         semantic_memory=semantic_memory,
     )
 
+    document_handler = build_document_handler(
+        settings=settings,
+        user_settings=user_settings,
+        conversations=conversations,
+        summarizer=summarizer,
+        executor=executor,
+        llm=llm,
+        semantic_memory=semantic_memory,
+    )
+
+    voice_handler = build_voice_handler(
+        settings=settings,
+        user_settings=user_settings,
+        conversations=conversations,
+        summarizer=summarizer,
+        executor=executor,
+        llm=llm,
+        semantic_memory=semantic_memory,
+    )
+
+    photo_handler = build_photo_handler(
+        settings=settings,
+        user_settings=user_settings,
+        conversations=conversations,
+        summarizer=summarizer,
+        executor=executor,
+        llm=llm,
+        semantic_memory=semantic_memory,
+    )
+
     router = Router(name="messages")
-    router.message.register(text_handler)
-    router.message.register(handle_document, lambda m: m.document is not None)
-    router.message.register(handle_voice, lambda m: m.voice is not None)
-    router.message.register(handle_photo, lambda m: m.photo is not None)
+    router.message.register(text_handler, lambda m: m.text is not None and not m.text.startswith("/"))
+    router.message.register(document_handler, lambda m: m.document is not None)
+    router.message.register(voice_handler, lambda m: m.voice is not None)
+    router.message.register(photo_handler, lambda m: m.photo is not None)
     return router

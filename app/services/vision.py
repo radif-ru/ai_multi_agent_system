@@ -28,12 +28,12 @@ class Vision:
 
         Args:
             ollama: Экземпляр OllamaClient.
-            model: Название vision-модели (например, llava:13b).
+            model: Название vision-модели (например, llava:7b).
         """
         self._ollama = ollama
         self._model = model
 
-    def describe(self, image_path: Path, caption: str = "") -> str:
+    async def describe(self, image_path: Path, caption: str = "") -> str:
         """Описать изображение.
 
         Args:
@@ -63,14 +63,18 @@ class Vision:
         if caption:
             prompt += f" Caption: {caption}"
 
-        # Вызываем Ollama API с images параметром
+        # Вызываем Ollama API с изображением внутри сообщения
         try:
-            response = self._ollama.chat(
+            # Изображения передаются внутри сообщения, а не как отдельный параметр
+            response = await self._ollama.chat(
                 model=self._model,
-                messages=[{"role": "user", "content": prompt}],
-                images=[image_base64],
+                messages=[{
+                    "role": "user",
+                    "content": prompt,
+                    "images": [image_base64]
+                }],
             )
-            description = response.get("message", {}).get("content", "").strip()
+            description = response.strip()
             logger.info("Vision description complete: %d chars", len(description))
             return description
         except Exception as exc:
