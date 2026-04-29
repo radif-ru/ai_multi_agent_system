@@ -83,14 +83,15 @@
 2. Установить Ollama (`https://ollama.com`), запустить сервис (`ollama serve`).
 3. Загрузить модели:
    - `ollama pull qwen3.5:4b` (или ближайший доступный тег семейства Qwen3.5);
-   - `ollama pull nomic-embed-text`.
+   - `ollama pull nomic-embed-text`;
+   - `ollama pull llava:7b`.
 4. Создать Telegram-бота через `@BotFather`, сохранить токен локально (пока **не** коммитить).
 5. Создать виртуальное окружение в корне репозитория: `python -m venv .venv`, активировать.
 
 #### Definition of Done
 
 - [x] `python -V` выводит версию ≥ 3.11 (3.12.3).
-- [x] `ollama list` показывает обе модели (`qwen3.5:4b`, `nomic-embed-text:latest`).
+- [x] `ollama list` показывает все модели (`qwen3.5:4b`, `nomic-embed-text:latest`, `llava:7b`).
 - [x] Токен Telegram получен и сохранён локально (`.env`, вне репозитория).
 - [x] Каталог `.venv/` создан, активация работает, `pip --version` отрабатывает внутри окружения.
 - [x] В репозитории **не появилось** артефактов от установки (`.env`, `.venv/` в `git status` не коммитятся).

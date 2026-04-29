@@ -102,15 +102,32 @@
 Чек-лист приёмки MVP (Спринт 02) — заполняется по мере реализации
 -----------------------------------------------------------------
 
-[ ] 1. История диалога доходит до LLM (тест test_dialog_memory + ручная
+[+] 1. История диалога доходит до LLM (тест test_dialog_memory + ручная
        проверка «Привет, я Радиф / Как меня зовут»).
-[ ] 2. Авто-подгрузка релевантных чанков из data/memory.db в начало новой
+       Покрыто tests/core/test_orchestrator.py::test_executor_receives_history и
+       tests/core/test_dialog_memory.py.
+[+] 2. Авто-подгрузка релевантных чанков из data/memory.db в начало новой
        сессии (флаг SESSION_BOOTSTRAP_ENABLED).
-[ ] 3. Бот принимает Document (PDF/TXT/MD), отвечает по содержимому.
-[ ] 4. Бот принимает Voice, распознаёт речь в текст (faster-whisper или
+       Покрыто tests/core/test_orchestrator.py::test_session_bootstrap.
+[+] 3. Бот принимает Document (PDF/TXT/MD), отвечает по содержимому.
+       Покрыто tests/adapters/telegram/test_documents.py + tests/tools/test_read_document.py.
+[+] 4. Бот принимает Voice, распознаёт речь в текст (faster-whisper или
        fallback при отсутствии зависимости).
-[ ] 5. Бот принимает Photo, описывает через vision-модель (или fallback при
+       Покрыто tests/adapters/telegram/test_voice.py + tests/services/test_transcribe.py.
+[+] 5. Бот принимает Photo, описывает через vision-модель (или fallback при
        отсутствии VISION_MODEL).
-[ ] 6. Превышение TELEGRAM_MAX_FILE_MB → понятное сообщение, без скачивания.
-[ ] 7. Документация (_docs/agent-loop.md, memory.md, architecture.md,
+       Покрыто tests/adapters/telegram/test_photo.py + tests/services/test_vision.py.
+[+] 6. Превышение TELEGRAM_MAX_FILE_MB → понятное сообщение, без скачивания.
+       Покрыто tests/adapters/telegram/files.py.
+[+] 7. Полное архивирование сессии при `/new` (Этап 4).
+       Покрыто tests/services/test_archiver.py + tests/adapters/telegram/test_commands.py.
+[+] 8. Снятие markdown-fence в парсере JSON (Этап 5).
+       Покрыто tests/agents/test_protocol.py.
+[+] 9. Документация (_docs/agent-loop.md, memory.md, architecture.md,
        commands.md, tools.md, requirements.md, README.md) соответствует коду.
+       Обновлены разделы про файловые входы, актуальное состояние, roadmap.
+
+Легенда:
+[+] — выполнено;
+[~] — частично (например, покрыто моком, нужна ручная проверка в реальном Telegram);
+[ ] — не начато.

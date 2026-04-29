@@ -88,14 +88,17 @@ Telegram-адаптер принимает текст, оборачивает е
 
 Класс `Settings(BaseSettings)` на `pydantic-settings`. Полный список полей и валидаторов — в `stack.md` §9. Ключевые блоки:
 
-- **Telegram**: `TELEGRAM_BOT_TOKEN`.
+- **Telegram**: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_MAX_FILE_MB` (default 20).
 - **Ollama (LLM)**: `OLLAMA_BASE_URL`, `OLLAMA_DEFAULT_MODEL`, `OLLAMA_AVAILABLE_MODELS`, `OLLAMA_TIMEOUT`.
 - **Ollama (Embedding)**: `EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS`.
 - **Agent loop**: `AGENT_MAX_STEPS`, `AGENT_MAX_OUTPUT_CHARS`.
 - **Memory (краткосрочная)**: `HISTORY_MAX_MESSAGES`, `HISTORY_SUMMARY_THRESHOLD`, `SUMMARIZATION_PROMPT`.
 - **Memory (долгосрочная)**: `MEMORY_DB_PATH`, `MEMORY_CHUNK_SIZE`, `MEMORY_CHUNK_OVERLAP`, `MEMORY_SEARCH_TOP_K`.
-- **Prompts**: `AGENT_SYSTEM_PROMPT_PATH`.
-- **Logging**: `LOG_LEVEL`, `LOG_FILE`, `LOG_LLM_CONTEXT`.
+- **Промпты**: `AGENT_SYSTEM_PROMPT_PATH`.
+- **Логирование**: `LOG_LEVEL`, `LOG_FILE`, `LOG_LLM_CONTEXT`.
+- **Временные файлы**: `TMP_FILES_DIR` (default `tmp`).
+- **Whisper (STT)**: `WHISPER_MODEL` (default `base`), `WHISPER_LANGUAGE` (default `ru`).
+- **Vision**: `VISION_MODEL` (default `None`). Пример: `llava:7b` для описания изображений.
 
 Валидация: `OLLAMA_DEFAULT_MODEL ∈ OLLAMA_AVAILABLE_MODELS`, `HISTORY_SUMMARY_THRESHOLD ≤ HISTORY_MAX_MESSAGES`, оба `> 0`, `EMBEDDING_DIMENSIONS > 0`, путь `AGENT_SYSTEM_PROMPT_PATH` существует.
 
@@ -188,9 +191,13 @@ class Executor:
 ### 3.12 Telegram-адаптер (`app/adapters/telegram/`)
 
 - `handlers/commands.py`: `/start`, `/help`, `/models`, `/model`, `/prompt`, `/new`, `/reset`.
-- `handlers/messages.py`: обработчик произвольного текста — вызывает `core.handle_user_task` и отдаёт результат.
+- `handlers/messages.py`: обработчик произвольного текста и файлов — вызывает `core.handle_user_task` и отдаёт результат. Поддерживает три типа файлов:
+  - `handle_document`: обрабатывает `Document` сообщения (PDF/TXT/MD). Скачивает файл, формирует обогащённый goal с путём к файлу и caption, передаёт в `core.handle_user_task` (агент использует tool `read_document`).
+  - `handle_voice`: обрабатывает `Voice`/`Audio` сообщения. Скачивает файл, транскрибирует через `Transcriber` (faster-whisper), передаёт распознанный текст в `core.handle_user_task`.
+  - `handle_photo`: обрабатывает `Photo` сообщения. Скачивает файл, описывает через `Vision` (Ollama vision API), передаёт описание в `core.handle_user_task`.
 - `handlers/errors.py`: глобальный error handler.
 - `middlewares/logging_mw.py`: логирует каждый апдейт.
+- `files.py`: утилита `download_telegram_file` для скачивания файлов из Telegram с проверкой размера и лимитов.
 
 Адаптер **не знает** про executor / tools / memory напрямую — только про `core.handle_user_task`, `ConversationStore`, `UserSettingsRegistry`, `Archiver`.
 
@@ -227,7 +234,56 @@ class Executor:
 5. Пользователю — сообщение «Архивировано N чанков, новая сессия открыта».
 6. Если суммаризация / эмбеддинг упали — `WARNING`, история не очищается (чтобы не потерять контекст), пользователь получает сообщение «Архивирование не удалось, попробуйте ещё раз».
 
-## 6. Обработка ошибок
+## 6. Поток обработки файлов (Document, Voice, Photo)
+
+Система поддерживает три типа файлов из Telegram: документы (PDF/TXT/MD), голосовые сообщения (Voice/Audio) и фотографии (Photo). Все файлы скачиваются во временную директорию (`Settings.tmp_files_dir`, default `tmp`), обрабатываются соответствующими сервисами, а результат передаётся в агентный цикл как обычный текст.
+
+### 6.1 Общие компоненты
+
+- **`download_telegram_file`** (`app/adapters/telegram/files.py`): async-утилита для скачивания файлов из Telegram. Проверяет размер файла до скачивания (`TELEGRAM_MAX_FILE_MB`, default 20), выбрасывает `FileTooLargeError` при превышении. Скачивает в `tempfile.NamedTemporaryFile` с авто-очисткой.
+- **`Settings.tmp_files_dir`**: директория для временных файлов (создаётся автоматически при старте). Все операции чтения файлов ограничены этой директорией для защиты от path traversal.
+
+### 6.2 Handler Document
+
+- **`handle_document`** (`app/adapters/telegram/handlers/messages.py`): обрабатывает `Document` сообщения.
+- Поток:
+  1. Скачивает файл через `download_telegram_file`.
+  2. Формирует обогащённый goal: `«Пользователь прислал документ {path}. Caption: {caption}. Прочитай через read_document и ответь по сути.»`
+  3. Передаёт goal в `core.handle_user_task` (агент использует tool `read_document`).
+  4. Удаляет временный файл после обработки.
+- При превышении лимита размера — сообщение «Файл слишком большой, отправьте файл меньшего размера».
+
+### 6.3 Handler Voice
+
+- **`Transcriber`** (`app/services/transcribe.py`): обёртка над `faster-whisper` для транскрипции речи. Опциональная зависимость — если не установлен, handler отвечает fallback-сообщением.
+- **`handle_voice`** (`app/adapters/telegram/handlers/messages.py`): обрабатывает `Voice`/`Audio` сообщения.
+- Поток:
+  1. Скачивает файл через `download_telegram_file`.
+  2. Транскрибирует через `Transcriber.transcribe(path)` → текст.
+  3. Передаёт распознанный текст в `core.handle_user_task` как обычное сообщение.
+  4. Удаляет временный файл после обработки.
+- Конфигурация: `WHISPER_MODEL` (default `base`), `WHISPER_LANGUAGE` (default `ru`).
+- При недоступности faster-whisper — сообщение «Распознавание речи недоступно, установите faster-whisper».
+
+### 6.4 Handler Photo
+
+- **`Vision`** (`app/services/vision.py`): обёртка над `OllamaClient.chat` с поддержкой параметра `images` для описания изображений. Кодирует изображение в base64 и передаёт в Ollama vision API.
+- **`handle_photo`** (`app/adapters/telegram/handlers/messages.py`): обрабатывает `Photo` сообщения.
+- Поток:
+  1. Скачивает файл через `download_telegram_file`.
+  2. Описывает через `Vision.describe(path, caption)` → текст описания.
+  3. Передаёт описание в `core.handle_user_task` как обычное сообщение.
+  4. Удаляет временный файл после обработки.
+- Конфигурация: `VISION_MODEL` (default `None`). Если не задана — сообщение «Vision-модель не подключена, отправь текстом, что на картинке».
+
+### 6.5 Tool `read_document`
+
+- **`ReadDocumentTool`** (`app/tools/read_document.py`): tool для чтения документов из временной директории.
+- Поддерживаемые форматы: PDF (через `pypdf`), TXT, MD.
+- Защита от path traversal: файлы читаются только из `Settings.tmp_files_dir`.
+- Усечение вывода до `max_chars` (default 8000).
+
+## 7. Обработка ошибок
 
 | Сценарий                                    | Действие                                                                  |
 |---------------------------------------------|---------------------------------------------------------------------------|

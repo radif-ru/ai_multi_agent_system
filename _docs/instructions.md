@@ -139,6 +139,7 @@ cp .env.example .env
 ollama serve &
 ollama pull qwen3.5:4b
 ollama pull nomic-embed-text
+ollama pull llava:7b
 
 # 4) запуск бота
 python -m app

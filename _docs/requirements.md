@@ -67,6 +67,17 @@
 | FR-32 | Все запросы к LLM логируются (`user`, `chat`, `model`, `step`, `len_in`, `len_out`, `dur_ms`, `status`). |
 | FR-33 | Перед каждым LLM-запросом полный контекст (`messages`) и его размер (в приближённых токенах) логируются. Печать полного payload управляется флагом `LOG_LLM_CONTEXT`. |
 
+### 1.7 Медиа-файлы
+
+| ID    | Требование |
+|-------|------------|
+| FR-34 | Бот поддерживает загрузку файлов из Telegram с проверкой размера (`TELEGRAM_MAX_FILE_MB`, default 20). При превышении лимита — понятное сообщение пользователю. |
+| FR-35 | Handler `Document` обрабатывает документы (PDF/TXT/MD). Скачивает файл, формирует обогащённый goal с путём к файлу и caption, передаёт в агентный цикл. Агент использует tool `read_document`. |
+| FR-36 | Tool `read_document` читает документы из временной директории (`TMP_FILES_DIR`, default `tmp`). Поддерживает PDF (через `pypdf`), TXT, MD. Защита от path traversal. Усечение вывода до `max_chars` (default 8000). |
+| FR-37 | Handler `Voice` обрабатывает голосовые сообщения (Voice/Audio). Скачивает файл, транскрибирует через `Transcriber` (faster-whisper), передаёт распознанный текст в агентный цикл. Опциональная зависимость — при недоступности fallback-сообщение. |
+| FR-38 | Handler `Photo` обрабатывает фотографии. Скачивает файл, описывает через `Vision` (Ollama vision API, например, `llava:7b`), передаёт описание в агентный цикл. Опциональная зависимость — при недоступности vision-модели fallback-сообщение. |
+| FR-39 | Временные файлы удаляются после обработки. Директория `TMP_FILES_DIR` создаётся автоматически при старте. |
+
 ## 2. Нефункциональные требования (NFR)
 
 | ID     | Требование |
@@ -122,6 +133,7 @@
 | FR-28 | `app/services/prompts.py::PromptLoader` (читает `_prompts/`); инжекция в системный промпт агента |
 | FR-29..FR-31 | `app/config.py`, `.env.example`, `.gitignore`, корневой `README.md` |
 | FR-32, FR-33 | `app/services/llm.py` + `app/middlewares/logging_mw.py` |
+| FR-34..FR-39 | `app/adapters/telegram/files.py`, `app/tools/read_document.py`, `app/services/transcribe.py`, `app/services/vision.py`, `app/adapters/telegram/handlers/messages.py` (Document/Voice/Photo handlers) |
 | NFR-1..NFR-11 | Общие правила в `instructions.md` и `architecture.md` |
 
 ## 6. Критерии верификации

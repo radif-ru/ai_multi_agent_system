@@ -36,6 +36,7 @@ from app.tools.calculator import CalculatorTool
 from app.tools.http_request import HttpRequestTool
 from app.tools.load_skill import LoadSkillTool
 from app.tools.memory_search import MemorySearchTool
+from app.tools.read_document import ReadDocumentTool
 from app.tools.read_file import ReadFileTool
 from app.tools.registry import ToolRegistry
 from app.tools.web_search import WebSearchTool
@@ -104,6 +105,7 @@ async def _build_components(settings: Settings) -> _Components:
         [
             CalculatorTool(),
             ReadFileTool(),
+            ReadDocumentTool(tmp_files_dir=settings.tmp_files_dir),
             HttpRequestTool(),
             WebSearchTool(),
             MemorySearchTool(),
