@@ -1,4 +1,4 @@
-# ai_multi_agent_system
+# ai-multi-agent-system
 
 Telegram-бот, работающий как **AI-агент** на локальной LLM. Принимает задачу от пользователя, **выполняет цикл `thought → action → observation`** до получения финального ответа: думает, выбирает инструмент, наблюдает результат, повторяет. Ответ модели — строго в JSON-формате (`{"thought", "action", "args"}` либо `{"final_answer"}`).
 
@@ -36,7 +36,7 @@ Telegram-бот, работающий как **AI-агент** на локаль
 
 ```bash
 git clone <repo-url>
-cd ai_multi_agent_system
+cd ai-multi-agent-system
 
 python -m venv .venv
 source .venv/bin/activate
@@ -91,7 +91,7 @@ python -m app
 ## Структура проекта (целевая)
 
 ```
-ai_multi_agent_system/
+ai-multi-agent-system/
 ├── _docs/        # проектная документация (см. _docs/README.md)
 ├── _board/       # доска задач: спринты + процесс
 ├── _skills/      # markdown-скиллы (SKILL.md в каждой подпапке)
