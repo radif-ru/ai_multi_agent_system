@@ -120,7 +120,7 @@ CREATE TABLE IF NOT EXISTS memory_chunks (
 
 ### Задача 1.3. Рекомендации по лёгким vision-моделям
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** XS
 - **Зависит от:** —
@@ -142,11 +142,11 @@ CREATE TABLE IF NOT EXISTS memory_chunks (
 
 #### Definition of Done
 
-- [ ] Документ сравнение моделей: размер, скорость, качество, use case.
-- [ ] Обновить `.env.example`: закомментированный `VISION_MODEL=gemma3:4b` с пояснением.
-- [ ] **Документация добавлена:** `_docs/vision-models.md` (или раздел в `_docs/stack.md`).
-- [ ] Тесты: n/a (документация).
-- [ ] `git status` чист, `pytest -q` зелёный.
+- [x] Документ сравнение моделей: размер, скорость, качество, use case.
+- [x] Обновить `.env.example`: `VISION_MODEL=gemma3:4b` с пояснением.
+- [x] **Документация добавлена:** `_docs/vision-models.md`, ссылка в `_docs/README.md`.
+- [x] Тесты: n/a (документация).
+- [x] `git status` чист, `pytest -q` зелёный.
 
 ---
 
@@ -426,7 +426,7 @@ Tool `web_search` читает активный поисковик из конт
 |-----|--------|:---------:|:-----:|:------:|:----------:|
 | 1.1 | Диагностика и устранение таймаутов | high | M | Done | — |
 | 1.2 | Проверка схемы SQLite | high | S | ToDo | — |
-| 1.3 | Рекомендации vision-моделей | high | XS | Progress | — |
+| 1.3 | Рекомендации vision-моделей | high | XS | Done | — |
 | 1.4 | Поддержка YAML frontmatter | high | S | Done | — |
 | 1.5 | Контекст картинки для уточнений | high | M | ToDo | 1.3 |
 | 2.1 | Спецификация консольного режима | high | S | ToDo | — |
@@ -442,4 +442,5 @@ Tool `web_search` читает активный поисковик из конт
 
 - **2026-04-30** — спринт открыт, ветка `feature/03-bugs-and-console` создана от `main`.
 - **2026-04-30** — задача 1.1 Done: диагностика и устранение таймаутов `/new` (логирование этапов, параллельный embedding, progress callback, EMBEDDING_CONCURRENCY).
+- **2026-04-30** — задача 1.3 Done: рекомендации по vision-моделям (gemma3:4b по умолчанию, сравнительная таблица моделей).
 - **2026-04-30** — задача 1.4 Done: поддержка YAML frontmatter в скиллах (bash-linux, bash-pro, weather), обратная совместимость с legacy форматом.
