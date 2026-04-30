@@ -170,16 +170,17 @@ async def run(args: dict, ctx: ToolContext) -> str:
 ```sql
 -- метаданные (обычная таблица)
 CREATE TABLE IF NOT EXISTS memory_chunks (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id         INTEGER NOT NULL,
-    chat_id         INTEGER NOT NULL,
-    conversation_id TEXT    NOT NULL,
-    chunk_index     INTEGER NOT NULL,
-    created_at      TEXT    NOT NULL,         -- ISO 8601
-    text            TEXT    NOT NULL
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,  -- rowid, связь с memory_vec
+    user_id         INTEGER NOT NULL,                    -- фильтр поиска (scope_user_id)
+    chat_id         INTEGER NOT NULL,                    -- future-proof для групп/каналов
+    conversation_id TEXT    NOT NULL,                    -- идентификатор сессии (/new)
+    chunk_index     INTEGER NOT NULL,                    -- порядковый номер чанка
+    created_at      TEXT    NOT NULL,                    -- ISO 8601, для TTL/cleanup
+    text            TEXT    NOT NULL                     -- текст чанка
 );
 CREATE INDEX IF NOT EXISTS ix_memory_user ON memory_chunks(user_id);
 CREATE INDEX IF NOT EXISTS ix_memory_conv ON memory_chunks(conversation_id);
+CREATE INDEX IF NOT EXISTS ix_memory_created ON memory_chunks(created_at);  -- для cleanup старых записей
 
 -- векторы (sqlite-vec virtual table)
 CREATE VIRTUAL TABLE IF NOT EXISTS memory_vec USING vec0 (
