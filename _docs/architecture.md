@@ -224,15 +224,21 @@ class Executor:
 ## 5. Поток `/new` (архивирование сессии)
 
 1. Handler `/new` берёт текущий `conversation_id` и историю из `ConversationStore`.
-2. Если история пустая → ответ «Архивировать нечего, новая сессия открыта»; просто ротируем `conversation_id`.
-3. Иначе вызываем `Archiver.archive(history, conversation_id, user_id)`:
-   1. `Summarizer.summarize(history)` → текст резюме.
+2. Если история пустая → ответ «Сессия пустая, новая открыта»; просто ротируем `conversation_id`.
+3. Иначе вызываем `Archiver.archive(history, conversation_id, user_id, progress_callback)`:
+   1. `Summarizer.summarize(history)` → текст резюме (map-reduce для длинных сессий).
+      - Лог: `archive stage=summarize dur_ms=N`
    2. Резюме режется на чанки `(MEMORY_CHUNK_SIZE, MEMORY_CHUNK_OVERLAP)`.
-   3. Для каждого чанка `OllamaClient.embed(chunk)` → вектор.
-   4. `SemanticMemory.insert(chunk, embedding, metadata)` — `metadata` включает `conversation_id`, `chat_id`, `created_at`, `chunk_index`.
+      - Лог: `archive stage=chunking chunks=N dur_ms=N`
+   3. **Параллельный embedding**: чанки обрабатываются через `asyncio.gather` с семафором `EMBEDDING_CONCURRENCY` (default 5).
+      - Лог: `archive stage=embedding chunks=N dur_ms=N`
+   4. `SemanticMemory.insert(chunk, embedding, metadata)` — `metadata` включает `conversation_id`, `chat_id`, `chunk_index`.
+      - Лог: `archive stage=database chunks=N dur_ms=N`
+   5. **Прогресс**: при `progress_callback` пользователю показываются этапы («Суммирую…», «Создаю эмбеддинги…»).
 4. `ConversationStore.clear(user_id)` + `rotate_conversation_id(user_id)`.
 5. Пользователю — сообщение «Архивировано N чанков, новая сессия открыта».
-6. Если суммаризация / эмбеддинг упали — `WARNING`, история не очищается (чтобы не потерять контекст), пользователь получает сообщение «Архивирование не удалось, попробуйте ещё раз».
+6. Если суммаризация / эмбеддинг упали — `WARNING`, история не очищается (чтобы не потерять контекст), пользователь получает сообщение «Архивирование не удалось: <error>. Сессия сохранена, попробуйте /new ещё раз позже».
+7. Итоговое логирование: `archive ok user_id=N conv=<id> chunks=N total_dur_ms=N`.
 
 ## 6. Поток обработки файлов (Document, Voice, Photo)
 

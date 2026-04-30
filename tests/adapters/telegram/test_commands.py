@@ -54,6 +54,7 @@ class _FakeArchiver:
         conversation_id: str,
         user_id: int,
         chat_id: int,
+        progress_callback: Any | None = None,
     ) -> int:
         self.calls.append(
             {

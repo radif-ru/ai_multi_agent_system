@@ -135,6 +135,8 @@ def build_command_handlers(
         await message.answer("Системный промпт обновлён.")
 
     async def cmd_new(message: Message) -> None:
+        import time
+
         user_id = _user_id(message)
         chat_id = message.chat.id if message.chat is not None else user_id
         # Архивируем ПОЛНЫЙ лог сессии (см. _docs/memory.md §2.5):
@@ -146,12 +148,30 @@ def build_command_handlers(
             await message.answer("Сессия пустая, новая открыта.")
             return
         conversation_id = conversations.current_conversation_id(user_id)
+
+        # Показываем прогресс для долгих операций
+        progress_msg = None
+        last_update = 0.0
+
+        async def _progress_callback(text: str) -> None:
+            nonlocal progress_msg, last_update
+            now = time.monotonic()
+            # Обновляем не чаще чем раз в 3 секунды
+            if now - last_update < 3.0 and progress_msg is not None:
+                return
+            if progress_msg is None:
+                progress_msg = await message.answer(f"⏳ {text}")
+            else:
+                await progress_msg.edit_text(f"⏳ {text}")
+            last_update = now
+
         try:
             inserted = await archiver.archive(
                 history,
                 conversation_id=conversation_id,
                 user_id=user_id,
                 chat_id=chat_id,
+                progress_callback=_progress_callback,
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception(
@@ -164,6 +184,14 @@ def build_command_handlers(
             return
         conversations.clear(user_id)
         conversations.rotate_conversation_id(user_id)
+
+        # Удаляем сообщение о прогрессе, если было
+        if progress_msg is not None:
+            try:
+                await progress_msg.delete()
+            except Exception:  # noqa: BLE001
+                pass  # Игнорируем ошибки удаления
+
         await message.answer(
             f"Архивировано {inserted} чанков, новая сессия открыта."
         )

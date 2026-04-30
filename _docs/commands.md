@@ -78,15 +78,21 @@
 - **Вход:** нет параметров.
 - **Эффект:**
   1. Если `ConversationStore.get_session_log(user_id)` пуст → ничего не архивируем, просто `rotate_conversation_id(user_id)`. Ответ: «Сессия пустая, новая открыта.»
-  2. Иначе вызвать `Archiver.archive(history=...)`, где `history` — это **полный лог сессии** (`get_session_log`), а не in-session `get_history` (см. `_docs/memory.md` §2.5; `replace_with_summary` мог сжать `get_history` до summary + tail, и ранние факты были бы потеряны):
-     1. Суммировать полный лог через `Summarizer`.
+  2. Иначе вызвать `Archiver.archive(history=..., progress_callback)`, где `history` — это **полный лог сессии** (`get_session_log`), а не in-session `get_history` (см. `_docs/memory.md` §2.5; `replace_with_summary` мог сжать `get_history` до summary + tail, и ранние факты были бы потеряны):
+     1. Суммировать полный лог через `Summarizer` (map-reduce для длинных сессий).
+        - Логирование времени: `archive stage=summarize dur_ms=N`
      2. Разрезать саммари на чанки (`MEMORY_CHUNK_SIZE` / `MEMORY_CHUNK_OVERLAP`).
-     3. Для каждого чанка получить embedding через `OllamaClient.embed(...)`.
-     4. Записать чанки + векторы + метаданные (`user_id`, `chat_id`, `conversation_id`, `chunk_index`, `created_at`) в `SemanticMemory`.
-  3. Очистить `ConversationStore.clear(user_id)` и `rotate_conversation_id(user_id)`.
+        - Логирование: `archive stage=chunking chunks=N dur_ms=N`
+     3. **Параллельный embedding**: для всех чанков через `asyncio.gather` с семафором `EMBEDDING_CONCURRENCY` (default 5).
+        - Логирование: `archive stage=embedding chunks=N dur_ms=N`
+     4. Записать чанки + векторы + метаданные (`user_id`, `chat_id`, `conversation_id`, `chunk_index`) в `SemanticMemory`.
+        - Логирование: `archive stage=database chunks=N dur_ms=N`
+  3. **Прогресс**: при длительности > 5 секунд пользователю показываются этапы («⏳ Суммирую историю диалога…», «⏳ Создаю эмбеддинги для N чанков…»).
+  4. Очистить `ConversationStore.clear(user_id)` и `rotate_conversation_id(user_id)`.
 - **Ответ (успех):** «Архивировано N чанков, новая сессия открыта.»
 - **Ответ (ошибка суммаризации/эмбеддинга):** «Архивирование не удалось: <причина>. Сессия сохранена, попробуйте `/new` ещё раз позже.» (in-memory история **не очищается**, чтобы не потерять контекст).
 - **Что НЕ делает:** не трогает per-user модель / системный промпт. Это контракт: `/new` — это про **сессию**, а не про настройки.
+- **Логирование:** итоговое `archive ok user_id=N conv=<id> chunks=N total_dur_ms=N`.
 
 ### `/reset`
 

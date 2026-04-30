@@ -5,8 +5,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from typing import Sequence
+import time
+from typing import Any, Sequence
 
 from app.services.llm import OllamaClient
 from app.services.memory import SemanticMemory
@@ -46,6 +48,7 @@ class Archiver:
         embedding_model: str,
         chunk_size: int,
         chunk_overlap: int,
+        concurrency_limit: int = 5,
     ) -> None:
         self._llm = llm
         self._summarizer = summarizer
@@ -54,6 +57,7 @@ class Archiver:
         self._embedding_model = embedding_model
         self._chunk_size = chunk_size
         self._chunk_overlap = chunk_overlap
+        self._concurrency_limit = concurrency_limit
 
     async def archive(
         self,
@@ -62,27 +66,82 @@ class Archiver:
         conversation_id: str,
         user_id: int,
         chat_id: int,
+        progress_callback: "callable[[str], Any] | None" = None,
     ) -> int:
         """Засуммаризовать историю и записать чанки в долгосрочную память.
 
         Возвращает количество записанных чанков. Если на каком-то шаге
         падает `embed`/`insert`, ранее записанные в этом вызове чанки удаляются,
         чтобы не оставлять «осиротевших» строк.
+
+        Args:
+            progress_callback: функция обратного вызова для уведомления о прогрессе
+                              (может быть sync или async)
         """
+        async def _notify(text: str) -> None:
+            if progress_callback is not None:
+                import asyncio
+                result = progress_callback(text)
+                if asyncio.iscoroutine(result):
+                    await result
         if not history:
             return 0
+
+        total_start = time.monotonic()
+
+        # Этап 1: Суммаризация
+        await _notify("Суммирую историю диалога...")
+        sum_start = time.monotonic()
         summary = await self._summarizer.summarize(
             history, model=self._summarizer_model
         )
+        sum_dur = time.monotonic() - sum_start
+        logger.info("archive stage=summarize dur_ms=%d", int(sum_dur * 1000))
+
+        # Этап 2: Чанкинг
+        chunk_start = time.monotonic()
         chunks = chunk_text(
             summary, size=self._chunk_size, overlap=self._chunk_overlap
         )
+        chunk_dur = time.monotonic() - chunk_start
+        logger.info("archive stage=chunking chunks=%d dur_ms=%d", len(chunks), int(chunk_dur * 1000))
+
+        if not chunks:
+            return 0
+
+        # Этап 3: Параллельный embedding
+        await _notify(f"Создаю эмбеддинги для {len(chunks)} чанков...")
+        embed_start = time.monotonic()
+
+        semaphore = asyncio.Semaphore(self._concurrency_limit)
+
+        async def _embed_one(idx: int, text: str) -> tuple[int, list[float]]:
+            async with semaphore:
+                vector = await self._llm.embed(text, model=self._embedding_model)
+                return idx, vector
+
+        embed_tasks = [_embed_one(i, chunk) for i, chunk in enumerate(chunks)]
+        embed_results = await asyncio.gather(*embed_tasks, return_exceptions=True)
+
+        # Проверяем ошибки
+        vectors: list[tuple[int, list[float]]] = []
+        for result in embed_results:
+            if isinstance(result, Exception):
+                raise result
+            vectors.append(result)
+
+        embed_dur = time.monotonic() - embed_start
+        logger.info("archive stage=embedding chunks=%d dur_ms=%d", len(chunks), int(embed_dur * 1000))
+
+        # Этап 4: Запись в БД
+        await _notify("Сохраняю в память...")
+        db_start = time.monotonic()
+
         inserted_ids: list[int] = []
         try:
-            for idx, chunk in enumerate(chunks):
-                vector = await self._llm.embed(chunk, model=self._embedding_model)
+            for idx, vector in vectors:
                 rowid = await self._memory.insert(
-                    chunk,
+                    chunks[idx],
                     vector,
                     {
                         "user_id": user_id,
@@ -99,10 +158,19 @@ class Archiver:
                 except Exception:  # noqa: BLE001
                     logger.exception("откат: не удалось удалить chunk rowid=%s", rowid)
             raise
+
+        db_dur = time.monotonic() - db_start
+        total_dur = time.monotonic() - total_start
+
         logger.info(
-            "archive ok user_id=%s conv=%s chunks=%d",
+            "archive stage=database chunks=%d dur_ms=%d",
+            len(inserted_ids), int(db_dur * 1000)
+        )
+        logger.info(
+            "archive ok user_id=%s conv=%s chunks=%d total_dur_ms=%d",
             user_id,
             conversation_id,
             len(inserted_ids),
+            int(total_dur * 1000),
         )
         return len(inserted_ids)

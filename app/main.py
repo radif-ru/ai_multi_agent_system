@@ -120,6 +120,7 @@ async def _build_components(settings: Settings) -> _Components:
         embedding_model=settings.embedding_model,
         chunk_size=settings.memory_chunk_size,
         chunk_overlap=settings.memory_chunk_overlap,
+        concurrency_limit=settings.embedding_concurrency,
     )
     executor = Executor(
         settings=settings,

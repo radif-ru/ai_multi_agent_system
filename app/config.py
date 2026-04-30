@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     # --- Ollama (Embedding) ---
     embedding_model: str = "nomic-embed-text"
     embedding_dimensions: int = 768
+    embedding_concurrency: int = 5
 
     # --- Agent loop ---
     agent_max_steps: int = 10
@@ -130,6 +131,13 @@ class Settings(BaseSettings):
     def _check_summarizer_chunk(cls, v: int) -> int:
         if v <= 0:
             raise ValueError("SUMMARIZER_CHUNK_MESSAGES must be > 0")
+        return v
+
+    @field_validator("embedding_concurrency")
+    @classmethod
+    def _check_embedding_concurrency(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("EMBEDDING_CONCURRENCY must be > 0")
         return v
 
     @model_validator(mode="after")
