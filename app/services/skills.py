@@ -3,14 +3,19 @@
 См. `_docs/skills.md` §3 (формат) и §4 (как агент использует).
 
 Каждая подпапка `_skills/<name>/` с файлом `SKILL.md` — отдельный скилл.
-Первая строка `SKILL.md` обязана начинаться с префикса `Description:` —
-её содержимое идёт в системный промпт через `{{SKILLS_DESCRIPTION}}`.
+Поддерживаются два формата:
+1. Legacy: первая строка `Description: <текст>`
+2. YAML frontmatter: `---\ndescription: ...\n---`
+
+Описание идёт в системный промпт через `{{SKILLS_DESCRIPTION}}`.
 Остальное тело отдаётся `LoadSkillTool` через `get_body(name)`.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
+
+import yaml
 
 _DESCRIPTION_PREFIX = "Description:"
 
@@ -34,19 +39,53 @@ class SkillRegistry:
             if not skill_md.is_file():
                 continue
             text = skill_md.read_text(encoding="utf-8")
-            first_line, _, rest = text.partition("\n")
-            stripped = first_line.strip()
-            if not stripped.startswith(_DESCRIPTION_PREFIX):
-                raise ValueError(
-                    f"SKILL.md без 'Description:' в первой строке: {skill_md}"
-                )
-            description = stripped[len(_DESCRIPTION_PREFIX):].strip()
+
+            description, body = self._parse_skill(text, skill_md)
+
             if not description:
-                raise ValueError(
-                    f"Пустое описание в SKILL.md: {skill_md}"
-                )
+                raise ValueError(f"Пустое описание в SKILL.md: {skill_md}")
+
             self._descriptions[entry.name] = description
-            self._bodies[entry.name] = rest.lstrip("\n")
+            self._bodies[entry.name] = body
+
+    def _parse_skill(self, text: str, skill_md: Path) -> tuple[str, str]:
+        """Парсит SKILL.md, поддерживает YAML frontmatter и legacy формат.
+
+        Returns:
+            (description, body)
+        """
+        lines = text.splitlines()
+
+        # YAML frontmatter: начинается с ---
+        if lines and lines[0].strip() == "---":
+            frontmatter_end = -1
+            for i, line in enumerate(lines[1:], start=1):
+                if line.strip() == "---":
+                    frontmatter_end = i
+                    break
+
+            if frontmatter_end > 0:
+                yaml_text = "\n".join(lines[1:frontmatter_end])
+                try:
+                    frontmatter = yaml.safe_load(yaml_text) or {}
+                except yaml.YAMLError as exc:
+                    raise ValueError(
+                        f"Невалидный YAML frontmatter в {skill_md}: {exc}"
+                    ) from exc
+
+                description = frontmatter.get("description", "")
+                body = "\n".join(lines[frontmatter_end + 1:]).lstrip("\n")
+                return description, body
+
+        # Legacy формат: Description: в первой строке
+        first_line, _, rest = text.partition("\n")
+        stripped = first_line.strip()
+        if not stripped.startswith(_DESCRIPTION_PREFIX):
+            raise ValueError(
+                f"SKILL.md без 'Description:' или YAML frontmatter: {skill_md}"
+            )
+        description = stripped[len(_DESCRIPTION_PREFIX):].strip()
+        return description, rest.lstrip("\n")
 
     def list_descriptions(self) -> list[dict[str, str]]:
         """Список `[{name, description}]` в алфавитном порядке имён."""

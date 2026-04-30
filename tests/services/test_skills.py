@@ -89,3 +89,81 @@ def test_missing_directory_results_in_empty_registry(tmp_path: Path) -> None:
     reg = SkillRegistry(tmp_path / "does-not-exist")
     reg.load()
     assert reg.list_descriptions() == []
+
+
+def test_yaml_frontmatter_parsed_correctly(tmp_path: Path) -> None:
+    """YAML frontmatter с description парсится корректно."""
+    _write_skill(
+        tmp_path,
+        "yaml-skill",
+        "---\nname: yaml-skill\ndescription: \"YAML skill description\"\nrisk: unknown\n---\n\n# Body\n\nContent.\n",
+    )
+    reg = SkillRegistry(tmp_path)
+    reg.load()
+
+    assert reg.list_descriptions() == [
+        {"name": "yaml-skill", "description": "YAML skill description"},
+    ]
+    body = reg.get_body("yaml-skill")
+    assert "# Body" in body
+    assert "description:" not in body  # frontmatter отделен
+
+
+def test_yaml_frontmatter_multiline_description(tmp_path: Path) -> None:
+    """YAML frontmatter с многострочным description."""
+    _write_skill(
+        tmp_path,
+        "multiline",
+        '---\ndescription: |\n  Line one\n  Line two\n---\n\nBody.\n',
+    )
+    reg = SkillRegistry(tmp_path)
+    reg.load()
+
+    desc = reg.list_descriptions()[0]["description"]
+    assert "Line one" in desc
+    assert "Line two" in desc
+
+
+def test_legacy_and_yaml_skills_together(tmp_path: Path) -> None:
+    """Legacy и YAML скиллы работают вместе."""
+    _write_skill(
+        tmp_path,
+        "legacy",
+        "Description: legacy skill\n\nLegacy body.\n",
+    )
+    _write_skill(
+        tmp_path,
+        "yaml",
+        "---\ndescription: yaml skill\n---\n\nYAML body.\n",
+    )
+    reg = SkillRegistry(tmp_path)
+    reg.load()
+
+    descs = reg.list_descriptions()
+    assert len(descs) == 2
+    names = {d["name"] for d in descs}
+    assert names == {"legacy", "yaml"}
+
+
+def test_yaml_frontmatter_invalid_yaml_raises(tmp_path: Path) -> None:
+    """Невалидный YAML вызывает ValueError."""
+    _write_skill(
+        tmp_path,
+        "invalid-yaml",
+        "---\n[invalid yaml: : :\n---\n\nBody.\n",
+    )
+    reg = SkillRegistry(tmp_path)
+    with pytest.raises(ValueError, match="YAML"):
+        reg.load()
+
+
+def test_yaml_frontmatter_empty_description_raises(tmp_path: Path) -> None:
+    """Пустое description в YAML frontmatter вызывает ValueError."""
+    _write_skill(
+        tmp_path,
+        "empty-yaml",
+        "---\nname: test\n---\n\nBody.\n",
+    )
+    reg = SkillRegistry(tmp_path)
+    with pytest.raises(ValueError, match="Пустое описание"):
+        reg.load()
