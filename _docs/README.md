@@ -38,6 +38,7 @@ AI-агент с локальной LLM (Ollama), работающий в цик
 
 ### Справочное
 
+- [`vision-models.md`](./vision-models.md) — рекомендации по vision-моделям для Ollama (gemma3:4b, llava-phi3 и др.).
 - [`links.md`](./links.md) — каталог внешних ссылок: aiogram, Ollama, sqlite-vec, ddgs, pydantic-settings, pytest и др.
 
 ## Порядок чтения
