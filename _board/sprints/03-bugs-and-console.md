@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS memory_chunks (
 
 ### Задача 1.4. Поддержка YAML frontmatter в скиллах
 
-- **Статус:** ToDo
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** —
@@ -179,13 +179,13 @@ description: "..."
 
 #### Definition of Done
 
-- [ ] `SkillRegistry.load()` парсит оба формата (legacy и YAML frontmatter).
-- [ ] Для YAML frontmatter: извлекаем `description`, опционально `name`, `risk`, `source`.
-- [ ] Тест: скилл с YAML frontmatter загружается без ошибок.
-- [ ] Тест: legacy-скилл (`example-summary`) продолжает работать.
-- [ ] **Документация обновлена:** `_docs/skills.md` §3 (форматы SKILL.md).
-- [ ] **Тесты добавлены:** парсинг YAML frontmatter, fallback на legacy.
-- [ ] `git status` чист, `pytest -q` зелёный.
+- [x] `SkillRegistry.load()` парсит оба формата (legacy и YAML frontmatter).
+- [x] Для YAML frontmatter: извлекаем `description`, опционально `name`, `risk`, `source`.
+- [x] Тест: скилл с YAML frontmatter загружается без ошибок.
+- [x] Тест: legacy-скилл (`example-summary`) продолжает работать.
+- [x] **Документация обновлена:** `_docs/skills.md` §3 (форматы SKILL.md), `_skills/README.md`.
+- [x] **Тесты добавлены:** парсинг YAML frontmatter, fallback на legacy.
+- [x] `git status` чист, `pytest -q` зелёный.
 
 ---
 
@@ -427,7 +427,7 @@ Tool `web_search` читает активный поисковик из конт
 | 1.1 | Диагностика и устранение таймаутов | high | M | Done | — |
 | 1.2 | Проверка схемы SQLite | high | S | ToDo | — |
 | 1.3 | Рекомендации vision-моделей | high | XS | ToDo | — |
-| 1.4 | Поддержка YAML frontmatter | high | S | ToDo | — |
+| 1.4 | Поддержка YAML frontmatter | high | S | Done | — |
 | 1.5 | Контекст картинки для уточнений | high | M | ToDo | 1.3 |
 | 2.1 | Спецификация консольного режима | high | S | ToDo | — |
 | 2.2 | Вынос команд в общий модуль | high | M | ToDo | 2.1 |
@@ -442,3 +442,4 @@ Tool `web_search` читает активный поисковик из конт
 
 - **2026-04-30** — спринт открыт, ветка `feature/03-bugs-and-console` создана от `main`.
 - **2026-04-30** — задача 1.1 Done: диагностика и устранение таймаутов `/new` (логирование этапов, параллельный embedding, progress callback, EMBEDDING_CONCURRENCY).
+- **2026-04-30** — задача 1.4 Done: поддержка YAML frontmatter в скиллах (bash-linux, bash-pro, weather), обратная совместимость с legacy форматом.
