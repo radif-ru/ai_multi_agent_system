@@ -501,7 +501,7 @@ Tool `web_search` читает активный поисковик из конт
 
 ### Задача 4.4. Перевод community-скиллов на русский
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** medium
 - **Объём:** S
 - **Зависит от:** —
@@ -516,14 +516,14 @@ Tool `web_search` читает активный поисковик из конт
 
 #### Definition of Done
 
-- [ ] В трёх скиллах `description` (внутри YAML frontmatter) — на русском, ≤ 200 символов, с явным триггером.
-- [ ] Заголовки и пояснения в теле — на русском.
-- [ ] Имена команд (`grep`, `curl`, `lsof`, флаги, аргументы wttr.in) — латиницей (это код, не текст).
-- [ ] `bash-pro` — допустимо сократить до основного содержания (community-шаблон содержит много formal-секций «Limitations», «Use this skill when» с шаблонными формулировками).
-- [ ] Smoke: при старте `SkillRegistry.load()` все три скилла загружаются без ошибок.
-- [ ] **Документация обновлена** (`_skills/README.md`, если упоминаются конкретные скиллы) — n/a, шаблоны там общие.
-- [ ] Тесты: n/a (контент скиллов).
-- [ ] `git status` чист, `pytest -q` зелёный.
+- [x] В трёх скиллах `description` (внутри YAML frontmatter) — на русском, ≤ 200 символов, с явным триггером.
+- [x] Заголовки и пояснения в теле — на русском.
+- [x] Имена команд (`grep`, `curl`, `lsof`, флаги, аргументы wttr.in) — латиницей (это код, не текст).
+- [x] `bash-pro` сокращён с 320 до ~140 строк, убраны шаблонные community-секции, добавлено примечание про отсутствие shell-tool в проекте.
+- [x] Smoke: `SkillRegistry.load()` возвращает все 4 скилла (bash-linux, bash-pro, example-summary, weather) с русскими описаниями.
+- [x] **Документация обновлена** (`_skills/README.md` — n/a, шаблоны там общие).
+- [x] Тесты: n/a (контент скиллов).
+- [x] `git status` чист, `pytest -q` зелёный.
 
 ---
 
@@ -616,7 +616,7 @@ Tool `web_search` читает активный поисковик из конт
 | 4.1 | Перенумерация architecture.md и кросс-ссылки | high | S | Done | — |
 | 4.2 | Заполнить `_board/README.md` | medium | XS | Done | — |
 | 4.3 | Чистка ссылок на CLAUDE.md в instructions.md/process.md | medium | XS | Done | — |
-| 4.4 | Перевод community-скиллов на русский | medium | S | Progress | — |
+| 4.4 | Перевод community-скиллов на русский | medium | S | Done | — |
 | 4.5 | Русификация логов и ToolError | medium | S | ToDo | — |
 | 4.6 | Мелкие правки `archiver.py` и `files.py` | low | XS | ToDo | — |
 
@@ -633,3 +633,4 @@ Tool `web_search` читает активный поисковик из конт
 - **2026-05-03** — задача 4.1 Done: architecture.md §7 (двойной) → §8, кросс-ссылки §6→§7 в errors.py/test_errors.py/commands.md, §7.4→§8.4 в roadmap.md и спринте 03 (задача 2.1), синхронизация VISION_MODEL=gemma3:4b в architecture.md §3.2/§6.4.
 - **2026-05-03** — задача 4.2 Done: заполнен `_board/README.md` (навигация по plan/process/progress/sprints, разграничение `_board/` vs `_docs/`).
 - **2026-05-03** — задача 4.3 Done: убраны сломанные ссылки на `CLAUDE.md` §4/§0 в `_docs/instructions.md` §1 и `_board/process.md` чек-листе.
+- **2026-05-03** — задача 4.4 Done: community-скиллы `bash-linux`, `bash-pro`, `weather` переведены на русский (технические идентификаторы остаются латиницей); `bash-pro` сокращён с 320 до ~140 строк.
