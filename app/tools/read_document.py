@@ -47,36 +47,36 @@ class ReadDocumentTool(Tool):
 
         # Запрещаем явные `..`-обходы
         if ".." in candidate.parts:
-            raise ToolError("path not allowed")
+            raise ToolError("путь вне разрешённой директории")
 
         try:
             resolved = candidate.resolve(strict=False)
         except OSError as exc:
-            raise ToolError(f"path resolve error: {exc}") from exc
+            raise ToolError(f"ошибка разрешения пути: {exc}") from exc
 
         # Сначала проверяем существование файла
         if not resolved.exists():
-            raise ToolError("file not found")
+            raise ToolError("файл не найден")
         if not resolved.is_file():
-            raise ToolError("not a regular file")
+            raise ToolError("не является обычным файлом")
 
         # Проверяем, что путь внутри tmp_files_dir
         try:
             resolved.relative_to(self._tmp_dir)
         except ValueError:
-            raise ToolError("path not allowed")
+            raise ToolError("путь вне разрешённой директории")
 
         # Определяем тип по расширению
         suffix = resolved.suffix.lower()
 
         if suffix == ".pdf":
             if PdfReader is None:
-                raise ToolError("pypdf not installed")
+                raise ToolError("pypdf не установлен")
             return self._read_pdf(resolved, max_chars)
         elif suffix in (".txt", ".md"):
             return self._read_text(resolved, max_chars)
         else:
-            raise ToolError(f"unsupported file type: {suffix}")
+            raise ToolError(f"неподдерживаемый тип файла: {suffix}")
 
     def _read_pdf(self, path: Path, max_chars: int) -> str:
         """Извлечь текст из PDF через pypdf."""
@@ -97,7 +97,7 @@ class ReadDocumentTool(Tool):
             text = "\n".join(text_parts)
             return truncate_output(text, max_chars)
         except Exception as exc:
-            raise ToolError(f"PDF read error: {exc}") from exc
+            raise ToolError(f"ошибка чтения PDF: {exc}") from exc
 
     def _read_text(self, path: Path, max_chars: int) -> str:
         """Прочитать текстовый файл."""
@@ -105,6 +105,6 @@ class ReadDocumentTool(Tool):
             text = path.read_text(encoding="utf-8")
             return truncate_output(text, max_chars)
         except UnicodeDecodeError:
-            raise ToolError("file is not valid UTF-8 text")
+            raise ToolError("файл не является валидным UTF-8 текстом")
         except OSError as exc:
-            raise ToolError(f"file read error: {exc}") from exc
+            raise ToolError(f"ошибка чтения файла: {exc}") from exc
