@@ -112,11 +112,11 @@ def build_text_handler(
             await message.answer(LLM_TIMEOUT_REPLY)
             return
         except LLMUnavailable:
-            logger.error("LLM unavailable user=%s", user_id)
+            logger.error("LLM недоступна user=%s", user_id)
             await message.answer(LLM_UNAVAILABLE_REPLY)
             return
         except LLMBadResponse:
-            logger.warning("LLM bad response user=%s", user_id)
+            logger.warning("LLM вернула некорректный ответ user=%s", user_id)
             await message.answer(LLM_BAD_RESPONSE_REPLY)
             return
 
@@ -133,7 +133,7 @@ def build_text_handler(
                 )
             except Exception:  # noqa: BLE001
                 logger.warning(
-                    "in-session summary failed user=%s",
+                    "in-session суммаризация не удалась user=%s",
                     user_id,
                     exc_info=True,
                 )
@@ -174,11 +174,11 @@ async def handle_document(
             mime_type=document.mime_type,
         )
     except FileTooLargeError as exc:
-        logger.warning("File too large user=%s size=%d", user_id, exc.file_size_mb)
+        logger.warning("файл слишком большой user=%s size=%d", user_id, exc.file_size_mb)
         await message.answer(FILE_TOO_LARGE_REPLY)
         return
     except Exception as exc:
-        logger.error("Download failed user=%s: %s", user_id, exc)
+        logger.error("ошибка загрузки файла user=%s: %s", user_id, exc)
         await message.answer(GENERIC_ERROR_REPLY)
         return
 
@@ -205,11 +205,11 @@ async def handle_document(
         await message.answer(LLM_TIMEOUT_REPLY)
         return
     except LLMUnavailable:
-        logger.error("LLM unavailable user=%s", user_id)
+        logger.error("LLM недоступна user=%s", user_id)
         await message.answer(LLM_UNAVAILABLE_REPLY)
         return
     except LLMBadResponse:
-        logger.warning("LLM bad response user=%s", user_id)
+        logger.warning("LLM вернула некорректный ответ user=%s", user_id)
         await message.answer(LLM_BAD_RESPONSE_REPLY)
         return
 
@@ -221,7 +221,7 @@ async def handle_document(
             summary = await summarizer.summarize(history[:-2], model=model)
             conversations.replace_with_summary(user_id, summary, kept_tail=2)
         except Exception:  # noqa: BLE001
-            logger.warning("in-session summary failed user=%s", user_id, exc_info=True)
+            logger.warning("in-session суммаризация не удалась user=%s", user_id, exc_info=True)
 
     for part in split_long_message(reply, TELEGRAM_MAX_MESSAGE_LENGTH):
         await message.answer(part)
@@ -230,7 +230,7 @@ async def handle_document(
     try:
         file_path.unlink()
     except Exception:  # noqa: BLE001
-        logger.warning("Failed to delete tmp file %s", file_path)
+        logger.warning("не удалось удалить временный файл %s", file_path)
 
 
 async def handle_voice(
@@ -254,7 +254,7 @@ async def handle_voice(
 
     # Проверяем доступность transcriber
     if not is_transcriber_available():
-        logger.warning("Transcriber unavailable user=%s", user_id)
+        logger.warning("transcriber недоступен user=%s", user_id)
         await message.answer(VOICE_TRANSCRIPTION_UNAVAILABLE_REPLY)
         return
 
@@ -268,11 +268,11 @@ async def handle_voice(
             mime_type=voice.mime_type,
         )
     except FileTooLargeError as exc:
-        logger.warning("Voice too large user=%s size=%d", user_id, exc.file_size_mb)
+        logger.warning("голосовое слишком большое user=%s size=%d", user_id, exc.file_size_mb)
         await message.answer(FILE_TOO_LARGE_REPLY)
         return
     except Exception as exc:
-        logger.error("Download failed user=%s: %s", user_id, exc)
+        logger.error("ошибка загрузки файла user=%s: %s", user_id, exc)
         await message.answer(GENERIC_ERROR_REPLY)
         return
 
@@ -283,11 +283,11 @@ async def handle_voice(
         )
         text = transcriber.transcribe(file_path)
     except TranscriberUnavailableError:
-        logger.warning("Transcriber initialization failed user=%s", user_id)
+        logger.warning("transcriber: инициализация не удалась user=%s", user_id)
         await message.answer(VOICE_TRANSCRIPTION_UNAVAILABLE_REPLY)
         return
     except Exception as exc:
-        logger.error("Transcription failed user=%s: %s", user_id, exc)
+        logger.error("transcribe: ошибка распознавания user=%s: %s", user_id, exc)
         await message.answer(GENERIC_ERROR_REPLY)
         return
     finally:
@@ -295,7 +295,7 @@ async def handle_voice(
         try:
             file_path.unlink()
         except Exception:  # noqa: BLE001
-            logger.warning("Failed to delete tmp voice file %s", file_path)
+            logger.warning("не удалось удалить временный voice-файл %s", file_path)
 
     # Если транскрипция пуста
     if not text:
@@ -323,11 +323,11 @@ async def handle_voice(
         await message.answer(LLM_TIMEOUT_REPLY)
         return
     except LLMUnavailable:
-        logger.error("LLM unavailable user=%s", user_id)
+        logger.error("LLM недоступна user=%s", user_id)
         await message.answer(LLM_UNAVAILABLE_REPLY)
         return
     except LLMBadResponse:
-        logger.warning("LLM bad response user=%s", user_id)
+        logger.warning("LLM вернула некорректный ответ user=%s", user_id)
         await message.answer(LLM_BAD_RESPONSE_REPLY)
         return
 
@@ -339,7 +339,7 @@ async def handle_voice(
             summary = await summarizer.summarize(history[:-2], model=model)
             conversations.replace_with_summary(user_id, summary, kept_tail=2)
         except Exception:  # noqa: BLE001
-            logger.warning("in-session summary failed user=%s", user_id, exc_info=True)
+            logger.warning("in-session суммаризация не удалась user=%s", user_id, exc_info=True)
 
     for part in split_long_message(reply, TELEGRAM_MAX_MESSAGE_LENGTH):
         await message.answer(part)
@@ -367,12 +367,12 @@ async def handle_photo(
 
     # Проверяем доступность vision-модели
     if not settings.vision_model:
-        logger.warning("Vision model not configured user=%s", user_id)
+        logger.warning("vision-модель не настроена user=%s", user_id)
         await message.answer(VISION_UNAVAILABLE_REPLY)
         return
 
     if llm is None:
-        logger.warning("LLM not available for vision user=%s", user_id)
+        logger.warning("LLM недоступна для vision user=%s", user_id)
         await message.answer(LLM_UNAVAILABLE_REPLY)
         return
 
@@ -386,11 +386,11 @@ async def handle_photo(
             mime_type="image/jpeg",  # Telegram photos всегда JPEG
         )
     except FileTooLargeError as exc:
-        logger.warning("Photo too large user=%s size=%d", user_id, exc.file_size_mb)
+        logger.warning("фото слишком большое user=%s size=%d", user_id, exc.file_size_mb)
         await message.answer(FILE_TOO_LARGE_REPLY)
         return
     except Exception as exc:
-        logger.error("Download failed user=%s: %s", user_id, exc)
+        logger.error("ошибка загрузки файла user=%s: %s", user_id, exc)
         await message.answer(GENERIC_ERROR_REPLY)
         return
 
@@ -399,7 +399,7 @@ async def handle_photo(
         vision = Vision(ollama=llm, model=settings.vision_model)
         description = await vision.describe(file_path, caption=caption)
     except Exception as exc:
-        logger.error("Vision description failed user=%s: %s", user_id, exc)
+        logger.error("vision: описание не удалось user=%s: %s", user_id, exc)
         await message.answer(GENERIC_ERROR_REPLY)
         return
     finally:
@@ -407,7 +407,7 @@ async def handle_photo(
         try:
             file_path.unlink()
         except Exception:  # noqa: BLE001
-            logger.warning("Failed to delete tmp photo file %s", file_path)
+            logger.warning("не удалось удалить временный photo-файл %s", file_path)
 
     # Если описание пусто
     if not description:
@@ -435,11 +435,11 @@ async def handle_photo(
         await message.answer(LLM_TIMEOUT_REPLY)
         return
     except LLMUnavailable:
-        logger.error("LLM unavailable user=%s", user_id)
+        logger.error("LLM недоступна user=%s", user_id)
         await message.answer(LLM_UNAVAILABLE_REPLY)
         return
     except LLMBadResponse:
-        logger.warning("LLM bad response user=%s", user_id)
+        logger.warning("LLM вернула некорректный ответ user=%s", user_id)
         await message.answer(LLM_BAD_RESPONSE_REPLY)
         return
 
@@ -451,7 +451,7 @@ async def handle_photo(
             summary = await summarizer.summarize(history[:-2], model=model)
             conversations.replace_with_summary(user_id, summary, kept_tail=2)
         except Exception:  # noqa: BLE001
-            logger.warning("in-session summary failed user=%s", user_id, exc_info=True)
+            logger.warning("in-session суммаризация не удалась user=%s", user_id, exc_info=True)
 
     for part in split_long_message(reply, TELEGRAM_MAX_MESSAGE_LENGTH):
         await message.answer(part)

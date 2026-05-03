@@ -47,7 +47,12 @@ class Vision:
             VisionUnavailableError: Если модель не настроена.
             Exception: При ошибке описания.
         """
-        logger.info("Describing %s with model=%s caption=%s", image_path, self._model, caption)
+        logger.info(
+            "vision: описываю %s model=%s caption=%s",
+            image_path,
+            self._model,
+            caption,
+        )
 
         # Читаем изображение и кодируем в base64
         try:
@@ -55,7 +60,7 @@ class Vision:
                 image_data = f.read()
             image_base64 = base64.b64encode(image_data).decode("utf-8")
         except OSError as exc:
-            logger.error("Failed to read image %s: %s", image_path, exc)
+            logger.error("vision: не удалось прочитать изображение %s: %s", image_path, exc)
             raise
 
         # Формируем prompt
@@ -75,8 +80,8 @@ class Vision:
                 }],
             )
             description = response.strip()
-            logger.info("Vision description complete: %d chars", len(description))
+            logger.info("vision: описание готово len=%d chars", len(description))
             return description
         except Exception as exc:
-            logger.error("Vision description failed: %s", exc)
+            logger.error("vision: описание не удалось: %s", exc)
             raise

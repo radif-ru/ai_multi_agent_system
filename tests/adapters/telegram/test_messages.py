@@ -177,7 +177,7 @@ async def test_llm_unavailable_replies_and_logs_error(
         await handler(msg)
 
     answer.assert_awaited_once_with(LLM_UNAVAILABLE_REPLY)
-    assert any("LLM unavailable" in r.message for r in caplog.records)
+    assert any("LLM недоступна" in r.message for r in caplog.records)
 
 
 @pytest.mark.asyncio
@@ -261,4 +261,4 @@ async def test_in_session_summary_failure_does_not_break_reply(
         await handler(msg)
 
     answer.assert_awaited_once_with("ответ")
-    assert any("summary failed" in r.message for r in caplog.records)
+    assert any("суммаризация не удалась" in r.message for r in caplog.records)
