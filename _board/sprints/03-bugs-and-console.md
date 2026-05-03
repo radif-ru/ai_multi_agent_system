@@ -562,7 +562,7 @@ Tool `web_search` читает активный поисковик из конт
 
 ### Задача 4.6. Мелкие правки кода `archiver.py` и `files.py`
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** low
 - **Объём:** XS
 - **Зависит от:** —
@@ -579,11 +579,11 @@ Tool `web_search` читает активный поисковик из конт
 
 #### Definition of Done
 
-- [ ] `archiver.py`: type-hint `progress_callback` — корректный `Callable[[str], Awaitable[None] | None] | None`.
-- [ ] `archiver.py`: убран лишний `import asyncio` внутри `_notify`.
-- [ ] `files.py`: `import uuid` поднят в верхушку файла.
-- [ ] Тесты: `pytest -q` зелёный (правки чисто стилистические, поведение не меняется).
-- [ ] `git status` чист.
+- [x] `archiver.py`: type-hint `progress_callback` — `Callable[[str], Awaitable[None] | None] | None` с импортом из `typing`. `Any` убран из импорта как осиротевший.
+- [x] `archiver.py`: убран лишний `import asyncio` внутри `_notify`.
+- [x] `files.py`: `import uuid` поднят в верхушку файла.
+- [x] Тесты: `pytest -q` зелёный (256 passed; правки чисто стилистические).
+- [x] `git status` чист.
 
 ---
 
@@ -618,7 +618,7 @@ Tool `web_search` читает активный поисковик из конт
 | 4.3 | Чистка ссылок на CLAUDE.md в instructions.md/process.md | medium | XS | Done | — |
 | 4.4 | Перевод community-скиллов на русский | medium | S | Done | — |
 | 4.5 | Русификация логов и ToolError | medium | S | Done | — |
-| 4.6 | Мелкие правки `archiver.py` и `files.py` | low | XS | Progress | — |
+| 4.6 | Мелкие правки `archiver.py` и `files.py` | low | XS | Done | — |
 
 ---
 
@@ -635,3 +635,4 @@ Tool `web_search` читает активный поисковик из конт
 - **2026-05-03** — задача 4.3 Done: убраны сломанные ссылки на `CLAUDE.md` §4/§0 в `_docs/instructions.md` §1 и `_board/process.md` чек-листе.
 - **2026-05-03** — задача 4.4 Done: community-скиллы `bash-linux`, `bash-pro`, `weather` переведены на русский (технические идентификаторы остаются латиницей); `bash-pro` сокращён с 320 до ~140 строк.
 - **2026-05-03** — задача 4.5 Done: логи vision/transcribe/messages и ToolError-сообщения read_document переведены на русский, структурные поля сохранены латиницей; assertions в тестах обновлены.
+- **2026-05-03** — задача 4.6 Done: archiver.py — исправлена аннотация progress_callback (Callable из typing), убраны лишний import asyncio и осиротевший Any; files.py — import uuid поднят наверх.
