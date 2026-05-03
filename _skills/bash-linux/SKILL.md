@@ -1,125 +1,125 @@
 ---
 name: bash-linux
-description: "Bash/Linux terminal patterns. Critical commands, piping, error handling, scripting. Use when working on macOS or Linux systems."
+description: "Шпаргалка по Bash/Linux: команды, операторы, перенаправления, обработка ошибок. Триггер — задачи на macOS/Linux про работу в терминале, сборку конвейеров, скрипты."
 risk: unknown
 source: community
 date_added: "2026-02-27"
 ---
 
-# Bash Linux Patterns
+# Skill: bash-linux
 
-> Essential patterns for Bash on Linux/macOS.
-
----
-
-## 1. Operator Syntax
-
-### Chaining Commands
-
-| Operator | Meaning | Example |
-|----------|---------|---------|
-| `;` | Run sequentially | `cmd1; cmd2` |
-| `&&` | Run if previous succeeded | `npm install && npm run dev` |
-| `\|\|` | Run if previous failed | `npm test \|\| echo "Tests failed"` |
-| `\|` | Pipe output | `ls \| grep ".js"` |
+> Базовые шаблоны Bash для Linux/macOS.
 
 ---
 
-## 2. File Operations
+## 1. Операторы и связки
 
-### Essential Commands
+### Цепочки команд
 
-| Task | Command |
-|------|---------|
-| List all | `ls -la` |
-| Find files | `find . -name "*.js" -type f` |
-| File content | `cat file.txt` |
-| First N lines | `head -n 20 file.txt` |
-| Last N lines | `tail -n 20 file.txt` |
-| Follow log | `tail -f log.txt` |
-| Search in files | `grep -r "pattern" --include="*.js"` |
-| File size | `du -sh *` |
-| Disk usage | `df -h` |
+| Оператор | Значение | Пример |
+|----------|----------|--------|
+| `;` | Запуск последовательно | `cmd1; cmd2` |
+| `&&` | Запуск, если предыдущая успешна | `npm install && npm run dev` |
+| `\|\|` | Запуск, если предыдущая упала | `npm test \|\| echo "Tests failed"` |
+| `\|` | Передать вывод по конвейеру | `ls \| grep ".js"` |
 
 ---
 
-## 3. Process Management
+## 2. Файловые операции
 
-| Task | Command |
-|------|---------|
-| List processes | `ps aux` |
-| Find by name | `ps aux \| grep node` |
-| Kill by PID | `kill -9 <PID>` |
-| Find port user | `lsof -i :3000` |
-| Kill port | `kill -9 $(lsof -t -i :3000)` |
-| Background | `npm run dev &` |
-| Jobs | `jobs -l` |
-| Bring to front | `fg %1` |
+### Базовые команды
 
----
-
-## 4. Text Processing
-
-### Core Tools
-
-| Tool | Purpose | Example |
-|------|---------|---------|
-| `grep` | Search | `grep -rn "TODO" src/` |
-| `sed` | Replace | `sed -i 's/old/new/g' file.txt` |
-| `awk` | Extract columns | `awk '{print $1}' file.txt` |
-| `cut` | Cut fields | `cut -d',' -f1 data.csv` |
-| `sort` | Sort lines | `sort -u file.txt` |
-| `uniq` | Unique lines | `sort file.txt \| uniq -c` |
-| `wc` | Count | `wc -l file.txt` |
+| Задача | Команда |
+|--------|---------|
+| Список всех файлов | `ls -la` |
+| Найти файлы по шаблону | `find . -name "*.js" -type f` |
+| Содержимое файла | `cat file.txt` |
+| Первые N строк | `head -n 20 file.txt` |
+| Последние N строк | `tail -n 20 file.txt` |
+| Следить за логом | `tail -f log.txt` |
+| Поиск в файлах | `grep -r "pattern" --include="*.js"` |
+| Размер файла/каталога | `du -sh *` |
+| Свободное место | `df -h` |
 
 ---
 
-## 5. Environment Variables
+## 3. Управление процессами
 
-| Task | Command |
-|------|---------|
-| View all | `env` or `printenv` |
-| View one | `echo $PATH` |
-| Set temporary | `export VAR="value"` |
-| Set in script | `VAR="value" command` |
-| Add to PATH | `export PATH="$PATH:/new/path"` |
-
----
-
-## 6. Network
-
-| Task | Command |
-|------|---------|
-| Download | `curl -O https://example.com/file` |
-| API request | `curl -X GET https://api.example.com` |
-| POST JSON | `curl -X POST -H "Content-Type: application/json" -d '{"key":"value"}' URL` |
-| Check port | `nc -zv localhost 3000` |
-| Network info | `ifconfig` or `ip addr` |
+| Задача | Команда |
+|--------|---------|
+| Список процессов | `ps aux` |
+| Найти по имени | `ps aux \| grep node` |
+| Убить по PID | `kill -9 <PID>` |
+| Кто слушает порт | `lsof -i :3000` |
+| Убить процесс на порту | `kill -9 $(lsof -t -i :3000)` |
+| Запустить в фоне | `npm run dev &` |
+| Список фоновых задач | `jobs -l` |
+| Вернуть в foreground | `fg %1` |
 
 ---
 
-## 7. Script Template
+## 4. Обработка текста
+
+### Основные инструменты
+
+| Инструмент | Назначение | Пример |
+|------------|------------|--------|
+| `grep` | Поиск | `grep -rn "TODO" src/` |
+| `sed` | Замена | `sed -i 's/old/new/g' file.txt` |
+| `awk` | Извлечь столбцы | `awk '{print $1}' file.txt` |
+| `cut` | Вырезать поля | `cut -d',' -f1 data.csv` |
+| `sort` | Сортировка | `sort -u file.txt` |
+| `uniq` | Уникальные строки | `sort file.txt \| uniq -c` |
+| `wc` | Подсчёт | `wc -l file.txt` |
+
+---
+
+## 5. Переменные окружения
+
+| Задача | Команда |
+|--------|---------|
+| Показать все | `env` или `printenv` |
+| Показать одну | `echo $PATH` |
+| Установить временно | `export VAR="value"` |
+| Установить только для команды | `VAR="value" command` |
+| Добавить в PATH | `export PATH="$PATH:/new/path"` |
+
+---
+
+## 6. Сеть
+
+| Задача | Команда |
+|--------|---------|
+| Скачать файл | `curl -O https://example.com/file` |
+| GET-запрос к API | `curl -X GET https://api.example.com` |
+| POST с JSON | `curl -X POST -H "Content-Type: application/json" -d '{"key":"value"}' URL` |
+| Проверить порт | `nc -zv localhost 3000` |
+| Сетевые интерфейсы | `ifconfig` или `ip addr` |
+
+---
+
+## 7. Шаблон скрипта
 
 ```bash
 #!/bin/bash
-set -euo pipefail  # Exit on error, undefined var, pipe fail
+set -euo pipefail  # Падать на ошибке, неинициализированной переменной, ошибке в пайпе
 
-# Colors (optional)
+# Цвета (по желанию)
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m'
 
-# Script directory
+# Каталог скрипта
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Functions
+# Функции
 log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 
-# Main
+# Точка входа
 main() {
     log_info "Starting..."
-    # Your logic here
+    # Логика здесь
     log_info "Done!"
 }
 
@@ -128,9 +128,9 @@ main "$@"
 
 ---
 
-## 8. Common Patterns
+## 8. Часто встречающиеся паттерны
 
-### Check if command exists
+### Проверить, что команда существует
 
 ```bash
 if command -v node &> /dev/null; then
@@ -138,13 +138,13 @@ if command -v node &> /dev/null; then
 fi
 ```
 
-### Default variable value
+### Значение по умолчанию для аргумента
 
 ```bash
 NAME=${1:-"default_value"}
 ```
 
-### Read file line by line
+### Чтение файла построчно
 
 ```bash
 while IFS= read -r line; do
@@ -152,7 +152,7 @@ while IFS= read -r line; do
 done < file.txt
 ```
 
-### Loop over files
+### Цикл по файлам
 
 ```bash
 for file in *.js; do
@@ -162,31 +162,31 @@ done
 
 ---
 
-## 9. Differences from PowerShell
+## 9. Отличия от PowerShell
 
-| Task | PowerShell | Bash |
-|------|------------|------|
-| List files | `Get-ChildItem` | `ls -la` |
-| Find files | `Get-ChildItem -Recurse` | `find . -type f` |
-| Environment | `$env:VAR` | `$VAR` |
-| String concat | `"$a$b"` | `"$a$b"` (same) |
-| Null check | `if ($x)` | `if [ -n "$x" ]` |
-| Pipeline | Object-based | Text-based |
+| Задача | PowerShell | Bash |
+|--------|------------|------|
+| Список файлов | `Get-ChildItem` | `ls -la` |
+| Рекурсивный поиск | `Get-ChildItem -Recurse` | `find . -type f` |
+| Переменная окружения | `$env:VAR` | `$VAR` |
+| Конкатенация строк | `"$a$b"` | `"$a$b"` (так же) |
+| Проверка на null | `if ($x)` | `if [ -n "$x" ]` |
+| Природа конвейера | По объектам | По тексту |
 
 ---
 
-## 10. Error Handling
+## 10. Обработка ошибок
 
-### Set options
+### Опции `set`
 
 ```bash
-set -e          # Exit on error
-set -u          # Exit on undefined variable
-set -o pipefail # Exit on pipe failure
-set -x          # Debug: print commands
+set -e          # Падать при ошибке
+set -u          # Падать при неинициализированной переменной
+set -o pipefail # Падать, если упала любая команда в пайпе
+set -x          # Дебаг: печатать команды
 ```
 
-### Trap for cleanup
+### `trap` для очистки
 
 ```bash
 cleanup() {
@@ -198,12 +198,14 @@ trap cleanup EXIT
 
 ---
 
-> **Remember:** Bash is text-based. Use `&&` for success chains, `set -e` for safety, and quote your variables!
+> **Главное:** Bash работает с текстом. Используй `&&` для цепочек по успеху, `set -e` для безопасности, **всегда** оборачивай переменные в кавычки.
 
-## When to Use
-This skill is applicable to execute the workflow or actions described in the overview.
+## Когда использовать
 
-## Limitations
-- Use this skill only when the task clearly matches the scope described above.
-- Do not treat the output as a substitute for environment-specific validation, testing, or expert review.
-- Stop and ask for clarification if required inputs, permissions, safety boundaries, or success criteria are missing.
+Этот скилл применим, если задача требует выполнить шаги или действия из обзора выше: команды Bash, конвейеры, обработка текста, написание простых скриптов под Linux/macOS.
+
+## Ограничения
+
+- Применяй скилл только когда задача явно подпадает под описанный охват.
+- Не считай вывод заменой реальной валидации в окружении пользователя, тестов или экспертного ревью.
+- Останови работу и задай уточняющий вопрос, если не хватает входных данных, прав, границ безопасности или критериев успеха.

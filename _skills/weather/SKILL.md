@@ -1,6 +1,6 @@
 ---
 name: weather
-description: "Get current weather, rain, temperature, and forecasts for locations or travel planning."
+description: "Получает текущую погоду, прогноз, температуру и осадки для города/локации через wttr.in. Триггер — запросы про погоду, дождь, прогноз на день/неделю, планирование поездки."
 homepage: https://wttr.in/:help
 metadata:
   {
@@ -22,108 +22,104 @@ metadata:
   }
 ---
 
-# Weather Skill
+# Skill: weather
 
-Get current weather conditions and forecasts.
+Получает текущие погодные условия и прогноз через сервис `wttr.in` (без API-ключа, по `curl`).
 
-## When to Use
+## Когда использовать
 
-✅ **USE this skill when:**
+- «Какая сейчас погода?»
+- «Будет ли дождь сегодня/завтра?»
+- «Температура в Москве»
+- «Прогноз на неделю»
+- Планирование поездки — проверить погоду в точке назначения.
 
-- "What's the weather?"
-- "Will it rain today/tomorrow?"
-- "Temperature in [city]"
-- "Weather forecast for the week"
-- Travel planning weather checks
+## Когда **не** использовать
 
-## When NOT to Use
+- Исторические данные о погоде → нужны архивы погоды/специализированные API.
+- Климатический анализ или тренды → специализированные источники.
+- Гипер-локальные микро-климатические данные → локальные сенсоры.
+- Штормовые предупреждения → официальные службы (Гидрометцентр, NWS).
+- Авиационная/морская погода → специализированные сервисы (METAR и т. п.).
 
-❌ **DON'T use this skill when:**
+## Местоположение
 
-- Historical weather data → use weather archives/APIs
-- Climate analysis or trends → use specialized data sources
-- Hyper-local microclimate data → use local sensors
-- Severe weather alerts → check official NWS sources
-- Aviation/marine weather → use specialized services (METAR, etc.)
+В запрос всегда добавляй город, регион или код аэропорта (IATA/ICAO).
 
-## Location
+## Команды
 
-Always include a city, region, or airport code in weather queries.
-
-## Commands
-
-### Current Weather
+### Текущая погода
 
 ```bash
-# One-line summary
-curl "wttr.in/London?format=3"
+# Однострочное резюме
+curl "wttr.in/Moscow?format=3"
 
-# Detailed current conditions
-curl "wttr.in/London?0"
+# Подробные текущие условия
+curl "wttr.in/Moscow?0"
 
-# Specific city
+# Конкретный город (пробелы — через `+`)
 curl "wttr.in/New+York?format=3"
 ```
 
-### Forecasts
+### Прогноз
 
 ```bash
-# 3-day forecast
-curl "wttr.in/London"
+# Прогноз на 3 дня (по умолчанию)
+curl "wttr.in/Moscow"
 
-# Week forecast
-curl "wttr.in/London?format=v2"
+# Прогноз на неделю
+curl "wttr.in/Moscow?format=v2"
 
-# Specific day (0=today, 1=tomorrow, 2=day after)
-curl "wttr.in/London?1"
+# Конкретный день: 0 — сегодня, 1 — завтра, 2 — послезавтра
+curl "wttr.in/Moscow?1"
 ```
 
-### Format Options
+### Опции форматирования
 
 ```bash
-# One-liner
-curl "wttr.in/London?format=%l:+%c+%t+%w"
+# Однострочный кастомный формат
+curl "wttr.in/Moscow?format=%l:+%c+%t+%w"
 
-# JSON output
-curl "wttr.in/London?format=j1"
+# JSON-вывод
+curl "wttr.in/Moscow?format=j1"
 
-# PNG image
-curl "wttr.in/London.png"
+# PNG-картинка
+curl "wttr.in/Moscow.png"
 ```
 
-### Format Codes
+### Коды формата
 
-- `%c` — Weather condition emoji
-- `%t` — Temperature
-- `%f` — "Feels like"
-- `%w` — Wind
-- `%h` — Humidity
-- `%p` — Precipitation
-- `%l` — Location
+- `%c` — иконка/смайлик условий
+- `%t` — температура
+- `%f` — ощущается как
+- `%w` — ветер
+- `%h` — влажность
+- `%p` — осадки
+- `%l` — название локации
 
-## Quick Responses
+## Готовые шаблоны ответов
 
-**"What's the weather?"**
+**«Какая сейчас погода?»**
 
 ```bash
-curl -s "wttr.in/London?format=%l:+%c+%t+(feels+like+%f),+%w+wind,+%h+humidity"
+curl -s "wttr.in/Moscow?format=%l:+%c+%t+(\u043e\u0449\u0443\u0449\u0430\u0435\u0442\u0441\u044f+\u043a\u0430\u043a+%f),+%w+\u0432\u0435\u0442\u0435\u0440,+%h+\u0432\u043b\u0430\u0436\u043d\u043e\u0441\u0442\u044c"
 ```
 
-**"Will it rain?"**
+**«Будет ли дождь?»**
 
 ```bash
-curl -s "wttr.in/London?format=%l:+%c+%p"
+curl -s "wttr.in/Moscow?format=%l:+%c+%p"
 ```
 
-**"Weekend forecast"**
+**«Прогноз на выходные»**
 
 ```bash
-curl "wttr.in/London?format=v2"
+curl "wttr.in/Moscow?format=v2"
 ```
 
-## Notes
+## Заметки
 
-- No API key needed (uses wttr.in)
-- Rate limited; don't spam requests
-- Works for most global cities
-- Supports airport codes: `curl wttr.in/ORD`
+- API-ключ не нужен (используется `wttr.in`).
+- Есть rate-limit; не спамить запросами.
+- Работает для большинства городов мира.
+- Поддерживает коды аэропортов: `curl wttr.in/SVO`.
