@@ -501,7 +501,7 @@ Tool `web_search` читает активный поисковик из конт
 
 ### Задача 4.4. Перевод community-скиллов на русский
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** medium
 - **Объём:** S
 - **Зависит от:** —
@@ -616,7 +616,7 @@ Tool `web_search` читает активный поисковик из конт
 | 4.1 | Перенумерация architecture.md и кросс-ссылки | high | S | Done | — |
 | 4.2 | Заполнить `_board/README.md` | medium | XS | Done | — |
 | 4.3 | Чистка ссылок на CLAUDE.md в instructions.md/process.md | medium | XS | Done | — |
-| 4.4 | Перевод community-скиллов на русский | medium | S | ToDo | — |
+| 4.4 | Перевод community-скиллов на русский | medium | S | Progress | — |
 | 4.5 | Русификация логов и ToolError | medium | S | ToDo | — |
 | 4.6 | Мелкие правки `archiver.py` и `files.py` | low | XS | ToDo | — |
 
