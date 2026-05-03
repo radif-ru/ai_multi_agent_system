@@ -453,7 +453,7 @@ Tool `web_search` читает активный поисковик из конт
 
 ### Задача 4.2. Заполнить `_board/README.md`
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** medium
 - **Объём:** XS
 - **Зависит от:** —
@@ -614,7 +614,7 @@ Tool `web_search` читает активный поисковик из конт
 | 3.2 | Форматирование кода | medium | XS | ToDo | — |
 | 3.3 | Обработка reply | medium | S | ToDo | — |
 | 4.1 | Перенумерация architecture.md и кросс-ссылки | high | S | Done | — |
-| 4.2 | Заполнить `_board/README.md` | medium | XS | ToDo | — |
+| 4.2 | Заполнить `_board/README.md` | medium | XS | Progress | — |
 | 4.3 | Чистка ссылок на CLAUDE.md в instructions.md/process.md | medium | XS | ToDo | — |
 | 4.4 | Перевод community-скиллов на русский | medium | S | ToDo | — |
 | 4.5 | Русификация логов и ToolError | medium | S | ToDo | — |
