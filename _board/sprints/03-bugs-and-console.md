@@ -415,7 +415,7 @@ Tool `web_search` читает активный поисковик из конт
 
 ### Задача 4.1. Перенумерация `_docs/architecture.md` и сломанные кросс-ссылки
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** —
@@ -613,7 +613,7 @@ Tool `web_search` читает активный поисковик из конт
 | 3.1 | Выбор поисковика | medium | S | ToDo | 2.2 |
 | 3.2 | Форматирование кода | medium | XS | ToDo | — |
 | 3.3 | Обработка reply | medium | S | ToDo | — |
-| 4.1 | Перенумерация architecture.md и кросс-ссылки | high | S | ToDo | — |
+| 4.1 | Перенумерация architecture.md и кросс-ссылки | high | S | Progress | — |
 | 4.2 | Заполнить `_board/README.md` | medium | XS | ToDo | — |
 | 4.3 | Чистка ссылок на CLAUDE.md в instructions.md/process.md | medium | XS | ToDo | — |
 | 4.4 | Перевод community-скиллов на русский | medium | S | ToDo | — |
