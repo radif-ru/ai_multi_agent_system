@@ -529,7 +529,7 @@ Tool `web_search` читает активный поисковик из конт
 
 ### Задача 4.5. Русификация логов и сообщений ошибок
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** medium
 - **Объём:** S
 - **Зависит от:** —
@@ -551,12 +551,12 @@ Tool `web_search` читает активный поисковик из конт
 
 #### Definition of Done
 
-- [ ] Логи в указанных файлах переведены на русский, структурные поля сохранены латиницей.
-- [ ] `ToolError` в `read_document.py` переведены на русский.
-- [ ] Если в тестах есть assertions на английский текст — обновлены под русский.
-- [ ] **Документация обновлена**: n/a (правило в `_docs/instructions.md` §0/§5 уже зафиксировано).
-- [ ] Тесты: `pytest -q` зелёный.
-- [ ] `git status` чист.
+- [x] Логи в `vision.py` (4 строки), `transcribe.py` (2 строки), `messages.py` (~17 строк) переведены на русский, структурные поля (`user=`, `model=`, `caption=`, `size=`) сохранены латиницей.
+- [x] 9 `ToolError`-сообщений в `read_document.py` переведены на русский.
+- [x] Assertions в `tests/adapters/telegram/test_messages.py` (2 шт) и `tests/tools/test_read_document.py` (5 шт) обновлены под русский текст.
+- [x] **Документация обновлена**: n/a (правило в `_docs/instructions.md` §0/§5 уже зафиксировано).
+- [x] Тесты: `pytest -q` зелёный (256 passed).
+- [x] `git status` чист.
 
 ---
 
@@ -617,7 +617,7 @@ Tool `web_search` читает активный поисковик из конт
 | 4.2 | Заполнить `_board/README.md` | medium | XS | Done | — |
 | 4.3 | Чистка ссылок на CLAUDE.md в instructions.md/process.md | medium | XS | Done | — |
 | 4.4 | Перевод community-скиллов на русский | medium | S | Done | — |
-| 4.5 | Русификация логов и ToolError | medium | S | Progress | — |
+| 4.5 | Русификация логов и ToolError | medium | S | Done | — |
 | 4.6 | Мелкие правки `archiver.py` и `files.py` | low | XS | ToDo | — |
 
 ---
@@ -634,3 +634,4 @@ Tool `web_search` читает активный поисковик из конт
 - **2026-05-03** — задача 4.2 Done: заполнен `_board/README.md` (навигация по plan/process/progress/sprints, разграничение `_board/` vs `_docs/`).
 - **2026-05-03** — задача 4.3 Done: убраны сломанные ссылки на `CLAUDE.md` §4/§0 в `_docs/instructions.md` §1 и `_board/process.md` чек-листе.
 - **2026-05-03** — задача 4.4 Done: community-скиллы `bash-linux`, `bash-pro`, `weather` переведены на русский (технические идентификаторы остаются латиницей); `bash-pro` сокращён с 320 до ~140 строк.
+- **2026-05-03** — задача 4.5 Done: логи vision/transcribe/messages и ToolError-сообщения read_document переведены на русский, структурные поля сохранены латиницей; assertions в тестах обновлены.
