@@ -409,7 +409,185 @@ Tool `web_search` читает активный поисковик из конт
 
 ---
 
-## 7. Риски и смягчение
+## 7. Этап 4. Аудит и техдолг после Этапов 1–3
+
+Цель — закрыть мелкие огрехи и рассинхронизации, накопившиеся за Этапы 1–3 этого спринта и за Этапы 3–5 спринта 02. Не критично для пользователя, но мешает дальнейшей разработке: ломаются перекрёстные ссылки, агент видит часть промпта на английском, новые скиллы непереведённые, дефолт vision-модели разный в коде и доке.
+
+### Задача 4.1. Перенумерация `_docs/architecture.md` и сломанные кросс-ссылки
+
+- **Статус:** ToDo
+- **Приоритет:** high
+- **Объём:** S
+- **Зависит от:** —
+- **Связанные документы:** `_docs/architecture.md`; `_docs/commands.md`; `app/adapters/telegram/handlers/errors.py`.
+- **Затрагиваемые файлы:** `_docs/architecture.md`, `_docs/commands.md`, `app/adapters/telegram/handlers/errors.py`, `tests/adapters/telegram/test_errors.py`, `_board/sprints/03-bugs-and-console.md`.
+
+#### Описание
+
+После Этапа 3 спринта 02 в `_docs/architecture.md` вставили секцию §6 «Поток обработки файлов», но не сдвинули нумерацию остальных. Получилось:
+
+- §6 «Поток обработки файлов» (новая)
+- §7 «Обработка ошибок» (была §6)
+- §7 «Расширяемость» (была §7) ← **дубликат номера**
+- §8 «Конкурентность», §9, §10 ← всё на единицу не сдвинуто
+
+Кроме этого:
+
+- В §3.2 и §6.4 `VISION_MODEL` указана как default `None`, пример `llava:7b`. После задачи 03.1.3 в `.env.example` стоит `VISION_MODEL=gemma3:4b`. Рассинхронизация.
+- В §10 «Что архитектура **не делает**» пункт «Не парсит мультимодальный ввод (фото / аудио / документы) в MVP» противоречит реализации Этапа 3 спринта 02.
+- Кросс-ссылки на старую нумерацию `§6` (про обработку ошибок) живут в `app/adapters/telegram/handlers/errors.py`, `tests/adapters/telegram/test_errors.py`, `_docs/commands.md` (по поиску `architecture.md` §6).
+- Кросс-ссылка на `§7.4` (web/MAX-адаптеры) живёт в этом же файле спринта, в Задаче 2.1 — после перенумерации станет §8.4.
+
+#### Definition of Done
+
+- [ ] В `_docs/architecture.md` устранена двойная нумерация: «Расширяемость» → §8, «Конкурентность» → §9, «Точки наблюдаемости» → §10, «Что архитектура не делает» → §11. Подсекции §7.1–§7.5 → §8.1–§8.5.
+- [ ] В §3.2 и §6.4 указано `VISION_MODEL` (default `gemma3:4b`) с ссылкой на `_docs/vision-models.md`.
+- [ ] В §11 убран пункт «Не парсит мультимодальный ввод» (или переформулирован в актуальное «MVP-набор: текст, документы, голос, изображения; видео — в roadmap»).
+- [ ] Кросс-ссылки на старую нумерацию `§6` (обработка ошибок) исправлены в `app/adapters/telegram/handlers/errors.py`, `tests/adapters/telegram/test_errors.py`, `_docs/commands.md`.
+- [ ] Кросс-ссылка `§7.4` → `§8.4` исправлена в этом же файле спринта (Задача 2.1).
+- [ ] **Документация обновлена** (это и есть содержание задачи).
+- [ ] Тесты: n/a (контент только в `_docs/`, докстрингах и комментарии).
+- [ ] `git status` чист, `pytest -q` зелёный.
+
+---
+
+### Задача 4.2. Заполнить `_board/README.md`
+
+- **Статус:** ToDo
+- **Приоритет:** medium
+- **Объём:** XS
+- **Зависит от:** —
+- **Связанные документы:** `_docs/README.md`; `_board/plan.md`; `_board/process.md`; `_board/progress.txt`.
+- **Затрагиваемые файлы:** `_board/README.md`.
+
+#### Описание
+
+`_board/README.md` пустой (1 байт), хотя `_docs/README.md` указывает его как точку входа для нового LLM-агента: «`CLAUDE.md` → `_docs/README.md` → `_board/README.md` → `_board/plan.md` → ...». Нужно лаконично описать, что лежит в `_board/`, и направить читателя дальше.
+
+#### Definition of Done
+
+- [ ] `_board/README.md` содержит: краткое назначение каталога, состав (`plan.md`, `process.md`, `progress.txt`, `sprints/`), порядок чтения, явное разграничение `_board/` vs `_docs/`.
+- [ ] Тесты: n/a (документация).
+- [ ] `git status` чист, `pytest -q` зелёный.
+
+---
+
+### Задача 4.3. Чистка сломанных ссылок на `CLAUDE.md` в `instructions.md` и `process.md`
+
+- **Статус:** ToDo
+- **Приоритет:** medium
+- **Объём:** XS
+- **Зависит от:** —
+- **Связанные документы:** `CLAUDE.md`; `_docs/instructions.md`; `_board/process.md`.
+- **Затрагиваемые файлы:** `_docs/instructions.md`, `_board/process.md`.
+
+#### Описание
+
+После замены `CLAUDE.md` на перевод гайдлайнов Karpathy (§1 «Сначала думай», §2 «Минимализм», §3 «Хирургические правки», §4 «Выполнение от цели») остались две сломанные ссылки:
+
+- `_docs/instructions.md` §1, абзац про ритуал коммитов: «Подробно — в `CLAUDE.md` §4 и `_board/process.md`». В `CLAUDE.md` §4 — про «Выполнение от цели», не про коммиты. Нужно убрать ссылку на `CLAUDE.md`, оставить `_board/process.md` (§3, §8, §9).
+- `_board/process.md` §«Чек-лист перед переходом к следующей задаче»: «**Документация обновлена ...** (см. CLAUDE.md §0)». В `CLAUDE.md` нет §0. Заменить на ссылку на `_docs/instructions.md` §8 «Документация».
+
+Ссылки `CLAUDE.md §3` и `CLAUDE.md §2` в `_docs/instructions.md` §10 — корректные (§3 «Хирургические правки», §2 «Минимализм»), не трогаем.
+
+#### Definition of Done
+
+- [ ] В `_docs/instructions.md` §1 ссылка на `CLAUDE.md §4` убрана, оставлена только `_board/process.md` (§3, §8, §9).
+- [ ] В `_board/process.md` чек-лист — ссылка на `CLAUDE.md §0` заменена на `_docs/instructions.md` §8.
+- [ ] Тесты: n/a (документация).
+- [ ] `git status` чист, `pytest -q` зелёный.
+
+---
+
+### Задача 4.4. Перевод community-скиллов на русский
+
+- **Статус:** ToDo
+- **Приоритет:** medium
+- **Объём:** S
+- **Зависит от:** —
+- **Связанные документы:** `_docs/skills.md` §3; `_skills/README.md`.
+- **Затрагиваемые файлы:** `_skills/bash-linux/SKILL.md`, `_skills/bash-pro/SKILL.md`, `_skills/weather/SKILL.md`.
+
+#### Описание
+
+После задачи 03.1.4 (YAML frontmatter) в `_skills/` появились три community-скилла из внешних источников: `bash-linux`, `bash-pro`, `weather`. Все три — на английском, включая `description`, который попадает в системный промпт агента на каждом ходе через `{{SKILLS_DESCRIPTION}}`. По правилу `_docs/instructions.md` §0 язык проекта — русский (с латиницей в именах команд / флагов / технических идентификаторов).
+
+Подход: переводим заголовки секций, описания и пояснения. Имена bash-команд / curl-аргументов / флагов остаются латиницей — это технические идентификаторы.
+
+#### Definition of Done
+
+- [ ] В трёх скиллах `description` (внутри YAML frontmatter) — на русском, ≤ 200 символов, с явным триггером.
+- [ ] Заголовки и пояснения в теле — на русском.
+- [ ] Имена команд (`grep`, `curl`, `lsof`, флаги, аргументы wttr.in) — латиницей (это код, не текст).
+- [ ] `bash-pro` — допустимо сократить до основного содержания (community-шаблон содержит много formal-секций «Limitations», «Use this skill when» с шаблонными формулировками).
+- [ ] Smoke: при старте `SkillRegistry.load()` все три скилла загружаются без ошибок.
+- [ ] **Документация обновлена** (`_skills/README.md`, если упоминаются конкретные скиллы) — n/a, шаблоны там общие.
+- [ ] Тесты: n/a (контент скиллов).
+- [ ] `git status` чист, `pytest -q` зелёный.
+
+---
+
+### Задача 4.5. Русификация логов и сообщений ошибок
+
+- **Статус:** ToDo
+- **Приоритет:** medium
+- **Объём:** S
+- **Зависит от:** —
+- **Связанные документы:** `_docs/instructions.md` §0, §5.
+- **Затрагиваемые файлы:** `app/services/vision.py`, `app/services/transcribe.py`, `app/adapters/telegram/handlers/messages.py`, `app/tools/read_document.py`, при необходимости — соответствующие тесты.
+
+#### Описание
+
+В коде, добавленном на Этапе 3 спринта 02, логи и `ToolError`-сообщения остались на английском. По §0 язык проекта — русский (структурные поля и идентификаторы — латиницей).
+
+Конкретно:
+
+- `app/services/vision.py`: `Describing %s with model=%s caption=%s`, `Failed to read image %s: %s`, `Vision description complete: %d chars`, `Vision description failed: %s`.
+- `app/services/transcribe.py`: `Transcribing %s with model=%s language=%s`, `Transcription complete: %d chars`.
+- `app/adapters/telegram/handlers/messages.py`: ~17 строк `logger.warning/error/info` (`LLM timeout`, `LLM unavailable`, `LLM bad response`, `in-session summary failed`, `File too large`, `Voice too large`, `Photo too large`, `Failed to delete tmp file`, `Vision model not configured`, `LLM not available for vision`, `Transcriber unavailable`, `Transcriber initialization failed`, `Transcription failed`, `Vision description failed`, `Download failed`, `Failed to delete tmp voice file`, `Failed to delete tmp photo file`).
+- `app/tools/read_document.py`: 8 `ToolError`-сообщений (`path not allowed`, `path resolve error`, `file not found`, `not a regular file`, `pypdf not installed`, `unsupported file type`, `PDF read error`, `file is not valid UTF-8 text`, `file read error`). Уходят как `observation` агенту, который должен видеть их по-русски.
+
+Структурные поля логов (`user=`, `dur_ms=`, `model=`, `tool=`) и URI / mime-types остаются латиницей.
+
+#### Definition of Done
+
+- [ ] Логи в указанных файлах переведены на русский, структурные поля сохранены латиницей.
+- [ ] `ToolError` в `read_document.py` переведены на русский.
+- [ ] Если в тестах есть assertions на английский текст — обновлены под русский.
+- [ ] **Документация обновлена**: n/a (правило в `_docs/instructions.md` §0/§5 уже зафиксировано).
+- [ ] Тесты: `pytest -q` зелёный.
+- [ ] `git status` чист.
+
+---
+
+### Задача 4.6. Мелкие правки кода `archiver.py` и `files.py`
+
+- **Статус:** ToDo
+- **Приоритет:** low
+- **Объём:** XS
+- **Зависит от:** —
+- **Связанные документы:** `_docs/instructions.md` §2 (стиль), §3 (async).
+- **Затрагиваемые файлы:** `app/services/archiver.py`, `app/adapters/telegram/files.py`.
+
+#### Описание
+
+Найдены два мелких огреха стиля, не критичных, но нарушающих правила проекта:
+
+1. `app/services/archiver.py:69`: type-hint `progress_callback: "callable[[str], Any] | None" = None` — `callable` с маленькой буквы. Должен быть `Callable` из `collections.abc` (или `typing`). Сейчас не падает только потому что строковая forward-reference и никем не валидируется.
+2. `app/services/archiver.py:81-86`: внутри `_notify` повторный `import asyncio`, хотя `asyncio` уже импортирован сверху файла.
+3. `app/adapters/telegram/files.py:94`: `import uuid` внутри тела функции `download_telegram_file`. По §2 импорты должны быть в начале файла.
+
+#### Definition of Done
+
+- [ ] `archiver.py`: type-hint `progress_callback` — корректный `Callable[[str], Awaitable[None] | None] | None`.
+- [ ] `archiver.py`: убран лишний `import asyncio` внутри `_notify`.
+- [ ] `files.py`: `import uuid` поднят в верхушку файла.
+- [ ] Тесты: `pytest -q` зелёный (правки чисто стилистические, поведение не меняется).
+- [ ] `git status` чист.
+
+---
+
+## 8. Риски и смягчение
 
 | # | Риск | Смягчение |
 |---|------|-----------|
@@ -420,7 +598,7 @@ Tool `web_search` читает активный поисковик из конт
 
 ---
 
-## 8. Сводная таблица задач спринта
+## 9. Сводная таблица задач спринта
 
 | #   | Задача | Приоритет | Объём | Статус | Зависит от |
 |-----|--------|:---------:|:-----:|:------:|:----------:|
@@ -435,13 +613,20 @@ Tool `web_search` читает активный поисковик из конт
 | 3.1 | Выбор поисковика | medium | S | ToDo | 2.2 |
 | 3.2 | Форматирование кода | medium | XS | ToDo | — |
 | 3.3 | Обработка reply | medium | S | ToDo | — |
+| 4.1 | Перенумерация architecture.md и кросс-ссылки | high | S | ToDo | — |
+| 4.2 | Заполнить `_board/README.md` | medium | XS | ToDo | — |
+| 4.3 | Чистка ссылок на CLAUDE.md в instructions.md/process.md | medium | XS | ToDo | — |
+| 4.4 | Перевод community-скиллов на русский | medium | S | ToDo | — |
+| 4.5 | Русификация логов и ToolError | medium | S | ToDo | — |
+| 4.6 | Мелкие правки `archiver.py` и `files.py` | low | XS | ToDo | — |
 
 ---
 
-## 9. История изменений спринта
+## 10. История изменений спринта
 
 - **2026-04-30** — спринт открыт, ветка `feature/03-bugs-and-console` создана от `main`.
 - **2026-04-30** — задача 1.1 Done: диагностика и устранение таймаутов `/new` (логирование этапов, параллельный embedding, progress callback, EMBEDDING_CONCURRENCY).
 - **2026-04-30** — задача 1.2 Done: проверка схемы SQLite (индекс по created_at, комментарии к полям).
 - **2026-04-30** — задача 1.3 Done: рекомендации по vision-моделям (gemma3:4b по умолчанию, сравнительная таблица моделей).
 - **2026-04-30** — задача 1.4 Done: поддержка YAML frontmatter в скиллах (bash-linux, bash-pro, weather), обратная совместимость с legacy форматом.
+- **2026-05-03** — открыт Этап 4 «Аудит и техдолг после Этапов 1–3»: добавлены задачи 4.1–4.6 (перенумерация architecture.md, README в `_board/`, ссылки на CLAUDE.md, перевод скиллов, русские логи, мелкие правки кода).
