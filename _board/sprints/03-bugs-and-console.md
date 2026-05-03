@@ -474,7 +474,7 @@ Tool `web_search` читает активный поисковик из конт
 
 ### Задача 4.3. Чистка сломанных ссылок на `CLAUDE.md` в `instructions.md` и `process.md`
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** medium
 - **Объём:** XS
 - **Зависит от:** —
@@ -492,10 +492,10 @@ Tool `web_search` читает активный поисковик из конт
 
 #### Definition of Done
 
-- [ ] В `_docs/instructions.md` §1 ссылка на `CLAUDE.md §4` убрана, оставлена только `_board/process.md` (§3, §8, §9).
-- [ ] В `_board/process.md` чек-лист — ссылка на `CLAUDE.md §0` заменена на `_docs/instructions.md` §8.
-- [ ] Тесты: n/a (документация).
-- [ ] `git status` чист, `pytest -q` зелёный.
+- [x] В `_docs/instructions.md` §1 ссылка на `CLAUDE.md §4` убрана, оставлена только `_board/process.md` (§3, §8, §9).
+- [x] В `_board/process.md` чек-лист — ссылка на `CLAUDE.md §0` заменена на `_docs/instructions.md` §8.
+- [x] Тесты: n/a (документация).
+- [x] `git status` чист, `pytest -q` зелёный.
 
 ---
 
@@ -615,7 +615,7 @@ Tool `web_search` читает активный поисковик из конт
 | 3.3 | Обработка reply | medium | S | ToDo | — |
 | 4.1 | Перенумерация architecture.md и кросс-ссылки | high | S | Done | — |
 | 4.2 | Заполнить `_board/README.md` | medium | XS | Done | — |
-| 4.3 | Чистка ссылок на CLAUDE.md в instructions.md/process.md | medium | XS | Progress | — |
+| 4.3 | Чистка ссылок на CLAUDE.md в instructions.md/process.md | medium | XS | Done | — |
 | 4.4 | Перевод community-скиллов на русский | medium | S | ToDo | — |
 | 4.5 | Русификация логов и ToolError | medium | S | ToDo | — |
 | 4.6 | Мелкие правки `archiver.py` и `files.py` | low | XS | ToDo | — |
@@ -632,3 +632,4 @@ Tool `web_search` читает активный поисковик из конт
 - **2026-05-03** — открыт Этап 4 «Аудит и техдолг после Этапов 1–3»: добавлены задачи 4.1–4.6 (перенумерация architecture.md, README в `_board/`, ссылки на CLAUDE.md, перевод скиллов, русские логи, мелкие правки кода).
 - **2026-05-03** — задача 4.1 Done: architecture.md §7 (двойной) → §8, кросс-ссылки §6→§7 в errors.py/test_errors.py/commands.md, §7.4→§8.4 в roadmap.md и спринте 03 (задача 2.1), синхронизация VISION_MODEL=gemma3:4b в architecture.md §3.2/§6.4.
 - **2026-05-03** — задача 4.2 Done: заполнен `_board/README.md` (навигация по plan/process/progress/sprints, разграничение `_board/` vs `_docs/`).
+- **2026-05-03** — задача 4.3 Done: убраны сломанные ссылки на `CLAUDE.md` §4/§0 в `_docs/instructions.md` §1 и `_board/process.md` чек-листе.
