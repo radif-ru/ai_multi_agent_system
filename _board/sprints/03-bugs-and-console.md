@@ -562,7 +562,7 @@ Tool `web_search` читает активный поисковик из конт
 
 ### Задача 4.6. Мелкие правки кода `archiver.py` и `files.py`
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** low
 - **Объём:** XS
 - **Зависит от:** —
@@ -618,7 +618,7 @@ Tool `web_search` читает активный поисковик из конт
 | 4.3 | Чистка ссылок на CLAUDE.md в instructions.md/process.md | medium | XS | Done | — |
 | 4.4 | Перевод community-скиллов на русский | medium | S | Done | — |
 | 4.5 | Русификация логов и ToolError | medium | S | Done | — |
-| 4.6 | Мелкие правки `archiver.py` и `files.py` | low | XS | ToDo | — |
+| 4.6 | Мелкие правки `archiver.py` и `files.py` | low | XS | Progress | — |
 
 ---
 
