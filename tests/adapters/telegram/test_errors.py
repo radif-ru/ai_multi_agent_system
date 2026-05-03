@@ -1,6 +1,6 @@
 """Тесты глобального error handler'а Telegram-адаптера.
 
-См. `_docs/architecture.md` §6, `_docs/testing.md` §3.11.
+См. `_docs/architecture.md` §7, `_docs/testing.md` §3.11.
 """
 
 from __future__ import annotations

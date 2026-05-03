@@ -62,7 +62,7 @@ Telegram-адаптер принимает текст, оборачивает е
 ## 2. Принципы
 
 - **Local-first.** Только локальная Ollama, никаких облачных LLM. Без доступа к интернету проект должен запускаться и решать локальные задачи (поиск тогда падает понятной ошибкой, остальное работает).
-- **Слоистая изоляция.** Адаптер (Telegram) → Core → Executor → Tool/LLM/Memory. Слой ниже **не знает** про слой выше: tool не знает про aiogram, memory не знает про executor, executor не знает про Telegram. Это даёт реализуемость FR-10 и расширяемость под новые адаптеры (web, MAX) — `architecture.md` §7.
+- **Слоистая изоляция.** Адаптер (Telegram) → Core → Executor → Tool/LLM/Memory. Слой ниже **не знает** про слой выше: tool не знает про aiogram, memory не знает про executor, executor не знает про Telegram. Это даёт реализуемость FR-10 и расширяемость под новые адаптеры (web, MAX) — `architecture.md` §8.
 - **Структурированный диалог с моделью.** Ответ LLM в цикле — **строго JSON** одной из двух форм. Никаких prose-ответов в цикле. См. `agent-loop.md`.
 - **Memory split.** Краткосрочная память — in-memory per-user (`ConversationStore`), теряется при рестарте. Долгосрочная — `sqlite-vec` (`SemanticMemory`), пополняется только саммари (не сырыми сообщениями) при `/new`. См. `memory.md`.
 - **Tools as a registry.** Каждый tool — отдельный модуль с фиксированным контрактом (`name`, `description`, `args_schema`, `async run(args, ctx) -> str`). Регистрация — централизованная в `app/tools/registry.py`. См. `tools.md`.
@@ -98,7 +98,7 @@ Telegram-адаптер принимает текст, оборачивает е
 - **Логирование**: `LOG_LEVEL`, `LOG_FILE`, `LOG_LLM_CONTEXT`.
 - **Временные файлы**: `TMP_FILES_DIR` (default `tmp`).
 - **Whisper (STT)**: `WHISPER_MODEL` (default `base`), `WHISPER_LANGUAGE` (default `ru`).
-- **Vision**: `VISION_MODEL` (default `None`). Пример: `llava:7b` для описания изображений.
+- **Vision**: `VISION_MODEL` (default `gemma3:4b`). См. `_docs/vision-models.md` — сравнение лёгких моделей для локального запуска.
 
 Валидация: `OLLAMA_DEFAULT_MODEL ∈ OLLAMA_AVAILABLE_MODELS`, `HISTORY_SUMMARY_THRESHOLD ≤ HISTORY_MAX_MESSAGES`, оба `> 0`, `EMBEDDING_DIMENSIONS > 0`, путь `AGENT_SYSTEM_PROMPT_PATH` существует.
 
@@ -280,7 +280,7 @@ class Executor:
   2. Описывает через `Vision.describe(path, caption)` → текст описания.
   3. Передаёт описание в `core.handle_user_task` как обычное сообщение.
   4. Удаляет временный файл после обработки.
-- Конфигурация: `VISION_MODEL` (default `None`). Если не задана — сообщение «Vision-модель не подключена, отправь текстом, что на картинке».
+- Конфигурация: `VISION_MODEL` (default `gemma3:4b`, см. `_docs/vision-models.md`). Если пустая — сообщение «Vision-модель не подключена, отправь текстом, что на картинке».
 
 ### 6.5 Tool `read_document`
 
@@ -303,22 +303,22 @@ class Executor:
 | Пустой / слишком длинный ввод               | Сообщение-подсказка пользователю.                                          |
 | Необработанное исключение handler           | Перехват в глобальном `errors.py`, лог, нейтральный ответ.                 |
 
-## 7. Расширяемость
+## 8. Расширяемость
 
-### 7.1 Новый tool
+### 8.1 Новый tool
 
 1. Создать `app/tools/<name>.py` по контракту из `tools.md` §2.
 2. Зарегистрировать в `app/tools/registry.py`.
 3. Описание автоматически попадёт в `{{TOOLS_DESCRIPTION}}` системного промпта.
 4. Покрыть unit-тестом в `tests/tools/test_<name>.py`.
 
-### 7.2 Новый skill
+### 8.2 Новый skill
 
 1. Создать `_skills/<name>/SKILL.md` с первой строкой `Description: ...`.
 2. Перезапустить процесс — `SkillRegistry` подхватит автоматически.
 3. Описание попадёт в `{{SKILLS_DESCRIPTION}}` системного промпта; агент сможет вызвать `load_skill("<name>")` для получения тела.
 
-### 7.3 Мульти-агент (Planner / Critic) — будущий спринт
+### 8.3 Мульти-агент (Planner / Critic) — будущий спринт
 
 `Executor` сейчас — единственный агент. Расширение:
 
@@ -327,24 +327,24 @@ class Executor:
 3. Расширить `Core` (`orchestrator.py`): `task → planner → executor (per-step) → critic → final`. Вместо текущей прямой передачи в `Executor`.
 4. **Ничего не меняется** на уровнях tools / memory / skills / Telegram-адаптера. Это и есть точка изоляции NFR-10.
 
-### 7.4 Новый адаптер (web, MAX)
+### 8.4 Новый адаптер (web, MAX)
 
 1. Создать `app/adapters/<channel>/` с собственным «приёмником» (FastAPI handler / MAX webhook).
 2. Адаптер вызывает `core.handle_user_task(text, user_id=..., chat_id=...)` — тот же контракт, что у Telegram.
 3. **Ничего не меняется** в core / agents / tools / memory. Это NFR-11.
 
-### 7.5 Webhook вместо polling
+### 8.5 Webhook вместо polling
 
 Заменяется код запуска в `app/main.py` (вместо `start_polling` — `aiohttp` / `aiogram`-webhook сервер). Сервис-слой не страдает.
 
-## 8. Конкурентность и производительность
+## 9. Конкурентность и производительность
 
 - aiogram + `asyncio` обрабатывает несколько апдейтов конкурентно.
 - HTTP-клиент к Ollama — один на приложение (shared `AsyncClient`).
 - `sqlite-vec` — через `sqlite3` в connection pool из одного соединения (все операции из одного event loop'а; параллельные write — не нужны для нашего объёма).
 - Ollama сама сериализует запросы к модели (узкое место — GPU/CPU), но event loop не блокируется.
 
-## 9. Точки наблюдаемости
+## 10. Точки наблюдаемости
 
 - INFO-строка middleware на каждый апдейт: `user`, `chat`, `type`, `dur_ms`, `status`.
 - INFO-строка LLM-клиента на каждый вызов: `model`, `len_in`, `len_out`, `dur_ms`, `status`.
@@ -354,11 +354,11 @@ class Executor:
 
 В будущем точки фактически готовы под Prometheus / OpenTelemetry — соответствующая интеграция в roadmap.
 
-## 10. Что архитектура **не делает** (по дизайну)
+## 11. Что архитектура **не делает** (по дизайну)
 
 - Не использует БД, кроме `sqlite-vec` (одного `.db`-файла).
 - Не персистит сырые сообщения диалога.
 - Не работает с облачными LLM.
 - Не использует webhook в MVP.
-- Не парсит мультимодальный ввод (фото / аудио / документы) в MVP.
+- Не работает с видео и стримами медиа (принимаются только Document/Voice/Photo, см. §6).
 - Не имеет UI кроме Telegram (web — будущий спринт).

@@ -230,7 +230,7 @@ description: "..."
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** —
-- **Связанные документы:** `_docs/architecture.md` §7.4; `_docs/commands.md`; `_docs/instructions.md` §0.
+- **Связанные документы:** `_docs/architecture.md` §8.4; `_docs/commands.md`; `_docs/instructions.md` §0.
 - **Затрагиваемые файлы:** `_docs/console-adapter.md` (новый), `_docs/architecture.md`.
 
 #### Описание
@@ -251,7 +251,7 @@ description: "..."
 #### Definition of Done
 
 - [ ] Документ `_docs/console-adapter.md` со спецификацией.
-- [ ] Обновить `_docs/architecture.md` §7.4 — упомянуть консольный адаптер как пример.
+- [ ] Обновить `_docs/architecture.md` §8.4 — упомянуть консольный адаптер как пример.
 - [ ] Тесты: n/a (документация).
 - [ ] `git status` чист, `pytest -q` зелёный.
 

@@ -1,6 +1,6 @@
 """Глобальный error handler Telegram-адаптера.
 
-См. `_docs/architecture.md` §6 (таблица обработки ошибок) и
+См. `_docs/architecture.md` §7 (таблица обработки ошибок) и
 `_docs/testing.md` §3.11.
 
 Ловит **любое необработанное исключение** в handler'ах команд и текста,

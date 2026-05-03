@@ -115,7 +115,7 @@
   5. Дописать финальный ответ в `ConversationStore` как `assistant`-сообщение.
   6. **Условная in-session суммаризация**: если `len(history) >= history_summary_threshold`, вызвать `Summarizer.summarize(history[:-2])` и `replace_with_summary(..., kept_tail=2)`. Падение суммаризации → `WARNING`, ответ пользователю не страдает.
   7. Отправить ответ пользователю (`message.answer(response)`). Если ответ длиннее 4096 символов — разбивка на части (Telegram limit).
-  8. При ошибке — человекочитаемое сообщение (см. `architecture.md` §6).
+  8. При ошибке — человекочитаемое сообщение (см. `architecture.md` §7).
 
 ### Файлы (Document, Voice, Photo)
 

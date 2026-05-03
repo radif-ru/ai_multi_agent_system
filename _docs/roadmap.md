@@ -68,7 +68,7 @@
 
 ## Этап 5. Новые адаптеры (web, MAX)
 
-Архитектурно адаптеры подключаются единым контрактом `core.handle_user_task(text, user_id, chat_id)` (см. `architecture.md` §7.4).
+Архитектурно адаптеры подключаются единым контрактом `core.handle_user_task(text, user_id, chat_id)` (см. `architecture.md` §8.4).
 
 - [ ] **Web-адаптер**: FastAPI/aiohttp + simple HTML chat-страница, общается с `core` напрямую (тот же event loop).
 - [ ] **MAX-адаптер**: интеграция с мессенджером MAX (после изучения их API).
