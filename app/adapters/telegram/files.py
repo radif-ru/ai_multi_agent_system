@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import tempfile
+import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -91,8 +92,6 @@ async def download_telegram_file(
         tmp_dir.mkdir(parents=True, exist_ok=True)
 
         # Создаём уникальное имя файла с расширением
-        import uuid
-
         file_name = f"{file_id}_{uuid.uuid4().hex[:8]}{extension}"
         tmp_path = tmp_dir / file_name
 

@@ -8,7 +8,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import Any, Sequence
+from typing import Awaitable, Callable, Sequence
 
 from app.services.llm import OllamaClient
 from app.services.memory import SemanticMemory
@@ -66,7 +66,7 @@ class Archiver:
         conversation_id: str,
         user_id: int,
         chat_id: int,
-        progress_callback: "callable[[str], Any] | None" = None,
+        progress_callback: Callable[[str], Awaitable[None] | None] | None = None,
     ) -> int:
         """Засуммаризовать историю и записать чанки в долгосрочную память.
 
@@ -80,7 +80,6 @@ class Archiver:
         """
         async def _notify(text: str) -> None:
             if progress_callback is not None:
-                import asyncio
                 result = progress_callback(text)
                 if asyncio.iscoroutine(result):
                     await result
