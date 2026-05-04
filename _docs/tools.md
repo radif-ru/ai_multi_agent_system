@@ -157,6 +157,14 @@ class ToolRegistry:
 - **Return:** содержимое `SKILL.md` без первой строки (которая `Description: ...` уже инжектирована в промпт).
 - **Реализация:** `ctx.skills.get_body(name)`. Если скилла нет — `ToolError("skill not found: <name>")`.
 
+### 4.7 `describe_image`
+
+- **Описание:** Повторно описать изображение по пути к файлу. Используется для уточнения деталей после первичного описания.
+- **Args:** `{"image_path": "<строка>", "caption": "<строка, optional>"}`.
+- **Return:** описание изображения от vision-модели.
+- **Реализация:** валидация пути (должен быть в `tmp/`, без `..`, существующий файл изображения); вызов `Vision.describe(image_path, caption)`. Путь к файлу сохраняется в `tmp/` и не удаляется сразу — живёт до `/new` или TTL cleanup (1 час).
+- **Ошибки:** путь вне `tmp/` → `ToolError("path not allowed")`; файла нет → `ToolError("file not found")`; не изображение → `ToolError("not an image file")`; LLM недоступна → `ToolError("LLM unavailable for vision")`.
+
 ## 5. Как добавить новый tool
 
 1. Создать `app/tools/<name>.py` по контракту §2.
