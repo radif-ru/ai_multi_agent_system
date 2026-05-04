@@ -226,7 +226,7 @@ async def handle_document(
         return
 
     # Формируем обогащённый goal
-    goal = f"Пользователь прислал документ {file_path}. Caption: {caption}. Прочитай через read_document и ответь по сути."
+    goal = f"Пользователь прислал документ {file_path}. Caption: {caption}. Прочитай через read_document и ответь по сути. Важно: используй полный путь к файлу как указано выше, не меняй его."
 
     conversations.add_user_message(user_id, goal)
     # Сохраняем контекст файла по message_id для ответов на конкретный файл

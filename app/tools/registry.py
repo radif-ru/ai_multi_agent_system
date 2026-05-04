@@ -101,6 +101,7 @@ class ToolRegistry:
         ctx: ToolContext,
     ) -> str:
         started = time.monotonic()
+        logger.info("tool=%s args=%s", name, args)
         try:
             tool = self.get(name)
         except ToolNotFound:
