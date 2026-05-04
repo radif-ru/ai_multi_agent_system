@@ -97,7 +97,7 @@ async def test_handle_photo_vision_model_not_configured(
     )
 
     # Проверяем, что отправлено сообщение о недоступности
-    message.answer.assert_called_once_with(VISION_UNAVAILABLE_REPLY)
+    message.answer.assert_called_once_with(VISION_UNAVAILABLE_REPLY, parse_mode=None)
 
     # Проверяем, что executor не вызывался
     mock_conversations.add_user_message.assert_not_called()

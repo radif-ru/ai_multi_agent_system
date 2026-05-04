@@ -208,6 +208,16 @@ await bot.set_my_commands([
 - Поддерживаемые типы файлов: Document (PDF/TXT/MD), Voice/Audio (.ogg/.opus), Photo. Другие типы файлов игнорируются.
 - В рамках одного цикла размер ответа модели на одном шаге ограничен `AGENT_MAX_OUTPUT_CHARS` (default 8000); при превышении — `LLMBadResponse`.
 
+## Форматирование ответов
+
+Ответы агента автоматически форматируются для Telegram:
+
+- **Кодовые блоки** (markdown ```` ```python\n...\n``` ````) преобразуются в HTML с подсветкой синтаксиса: `<pre><code class="language-python">...</code></pre>`. Используется `ParseMode.HTML`.
+- **Обычный текст** без кода отправляется с `ParseMode.MARKDOWN` (если есть markdown-разметка) или без парсинга (если разметки нет).
+- Утилита `format_for_telegram` в `app/adapters/telegram/utils.py` определяет режим парсинга и выполняет преобразование.
+
+Это обеспечивает красивое отображение кода в Telegram-клиенте.
+
 ## Различие `/new` vs `/reset`
 
 | | `/new` | `/reset` |

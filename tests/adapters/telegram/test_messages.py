@@ -142,7 +142,7 @@ async def test_success_path_calls_orchestrator_and_replies(
         {"role": "assistant", "content": "ответ"},
     ]
     # Ответ отправлен пользователю.
-    answer.assert_awaited_once_with("ответ")
+    answer.assert_awaited_once_with("ответ", parse_mode=None)
 
 
 @pytest.mark.asyncio
@@ -154,7 +154,7 @@ async def test_too_long_input_skips_orchestrator(patch_handle_user_task) -> None
     await handler(msg)
 
     assert calls == []
-    answer.assert_awaited_once_with(TOO_LONG_INPUT_REPLY)
+    answer.assert_awaited_once_with(TOO_LONG_INPUT_REPLY, parse_mode=None)
 
 
 @pytest.mark.asyncio
@@ -166,7 +166,7 @@ async def test_non_text_message_is_rejected(patch_handle_user_task) -> None:
     await handler(msg)
 
     assert calls == []
-    answer.assert_awaited_once_with(NON_TEXT_REPLY)
+    answer.assert_awaited_once_with(NON_TEXT_REPLY, parse_mode=None)
 
 
 @pytest.mark.asyncio
@@ -180,7 +180,7 @@ async def test_llm_unavailable_replies_and_logs_error(
     with caplog.at_level(logging.ERROR, logger="app.adapters.telegram.handlers.messages"):
         await handler(msg)
 
-    answer.assert_awaited_once_with(LLM_UNAVAILABLE_REPLY)
+    answer.assert_awaited_once_with(LLM_UNAVAILABLE_REPLY, parse_mode=None)
     assert any("LLM недоступна" in r.message for r in caplog.records)
 
 
@@ -194,7 +194,7 @@ async def test_llm_timeout_replies_with_timeout_message(
 
     await handler(msg)
 
-    answer.assert_awaited_once_with(LLM_TIMEOUT_REPLY)
+    answer.assert_awaited_once_with(LLM_TIMEOUT_REPLY, parse_mode=None)
 
 
 @pytest.mark.asyncio
@@ -207,7 +207,7 @@ async def test_llm_bad_response_replies_with_format_message(
 
     await handler(msg)
 
-    answer.assert_awaited_once_with(LLM_BAD_RESPONSE_REPLY)
+    answer.assert_awaited_once_with(LLM_BAD_RESPONSE_REPLY, parse_mode=None)
 
 
 @pytest.mark.asyncio
@@ -264,5 +264,5 @@ async def test_in_session_summary_failure_does_not_break_reply(
     with caplog.at_level(logging.WARNING, logger="app.adapters.telegram.handlers.messages"):
         await handler(msg)
 
-    answer.assert_awaited_once_with("ответ")
+    answer.assert_awaited_once_with("ответ", parse_mode=None)
     assert any("суммаризация не удалась" in r.message for r in caplog.records)

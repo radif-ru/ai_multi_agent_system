@@ -11,7 +11,11 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from app.adapters.telegram.files import FileTooLargeError
-from app.adapters.telegram.handlers.messages import FILE_TOO_LARGE_REPLY, handle_document
+from app.adapters.telegram.handlers.messages import (
+    FILE_TOO_LARGE_REPLY,
+    GENERIC_ERROR_REPLY,
+    handle_document,
+)
 
 
 @pytest.fixture
@@ -176,7 +180,7 @@ async def test_handle_document_too_large(
         )
 
         # Проверяем, что отправлено сообщение о превышении
-        message.answer.assert_called_once_with(FILE_TOO_LARGE_REPLY)
+        message.answer.assert_called_once_with(FILE_TOO_LARGE_REPLY, parse_mode=None)
 
         # Проверяем, что executor не вызывался
         mock_conversations.add_user_message.assert_not_called()
@@ -200,7 +204,7 @@ async def test_handle_document_download_error(
 
     original_download = messages.download_telegram_file
 
-    async def mock_download(bot, file_id, *, max_size_mb, tmp_dir=None, user_id=None):
+    async def mock_download(bot, file_id, *, max_size_mb, tmp_dir=None, user_id=None, mime_type=None):
         raise Exception("Network error")
 
     messages.download_telegram_file = mock_download
@@ -227,7 +231,7 @@ async def test_handle_document_download_error(
         )
 
         # Проверяем, что отправлено сообщение об ошибке
-        message.answer.assert_called_once()
+        message.answer.assert_called_once_with(GENERIC_ERROR_REPLY, parse_mode=None)
 
         # Проверяем, что executor не вызывался
         mock_conversations.add_user_message.assert_not_called()
