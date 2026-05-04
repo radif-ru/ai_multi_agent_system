@@ -145,6 +145,7 @@ async def _build_components(settings: Settings) -> _Components:
         skills=skills,
         semantic_memory=semantic_memory,
         user_settings=user_settings,
+        summarizer=summarizer,
     )
     return _Components(
         settings=settings,

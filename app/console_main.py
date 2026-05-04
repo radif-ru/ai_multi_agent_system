@@ -110,6 +110,7 @@ async def _build_components(settings: Settings) -> tuple:
         skills=skills,
         semantic_memory=semantic_memory,
         user_settings=user_settings,
+        summarizer=summarizer,
     )
     return (
         settings,

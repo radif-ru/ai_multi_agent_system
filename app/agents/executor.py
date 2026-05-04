@@ -44,6 +44,7 @@ class Executor:
         skills: Any,
         semantic_memory: Any = None,
         user_settings: Any = None,
+        summarizer: Any = None,
     ) -> None:
         self._settings = settings
         self._llm = llm
@@ -52,6 +53,7 @@ class Executor:
         self._skills = skills
         self._semantic_memory = semantic_memory
         self._user_settings = user_settings
+        self._summarizer = summarizer
 
     async def run(
         self,
@@ -90,6 +92,29 @@ class Executor:
         goal_msg = {"role": "user", "content": goal}
         if not history_msgs or history_msgs[-1] != goal_msg:
             messages.append(goal_msg)
+
+        # Проверяем размер контекста и суммаризируем если нужно
+        max_context = self._settings.agent_max_context_chars
+        context_size = sum(len(m.get("content", "")) for m in messages)
+        if context_size > max_context and self._summarizer is not None:
+            logger.info("Контекст слишком большой (%d > %d), суммаризируем историю", context_size, max_context)
+            # Суммаризируем историю (кроме system prompt и текущего goal)
+            history_to_summarize = history_msgs[:-1] if len(history_msgs) > 1 else history_msgs
+            if history_to_summarize:
+                try:
+                    summary = await self._summarizer.summarize(
+                        history_to_summarize,
+                        model=chat_model
+                    )
+                    # Заменяем историю на суммаризацию
+                    messages = [
+                        {"role": "system", "content": self._build_system_prompt()},
+                        {"role": "user", "content": f"Краткая история диалога: {summary}"},
+                        goal_msg,
+                    ]
+                    logger.info("История суммаризирована, новый размер контекста: %d", sum(len(m.get("content", "")) for m in messages))
+                except Exception as exc:
+                    logger.warning("Не удалось суммаризировать историю: %s", exc)
 
         max_steps = self._settings.agent_max_steps
         max_chars = self._settings.agent_max_output_chars

@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     # --- Agent loop ---
     agent_max_steps: int = 15
     agent_max_output_chars: int = 12000
+    agent_max_context_chars: int = 8000
 
     # --- Memory (in-memory) ---
     history_max_messages: int = 20
