@@ -178,7 +178,7 @@ class ToolRegistry:
 
 Все tools в MVP — **локальные**: `calculator`, `read_file` (whitelist каталогов), `http_request` (без bearer-токенов / cookies), `web_search` (только DuckDuckGo), `memory_search` (свой `.db`), `load_skill` (только `_skills/`).
 
-В будущих спринтах появятся tools, требующие настоящего sandboxing'а (например, выполнение shell-команд, чтение из произвольного места ФС, запись в БД). Они будут идти отдельным контрактом `SandboxedTool` (см. `roadmap.md` Этап 12).
+В будущих спринтах появятся tools, требующие настоящего sandboxing'а (например, выполнение shell-команд, чтение из произвольного места ФС, запись в БД). Они будут идти отдельным контрактом `SandboxedTool` (см. `roadmap.md` Этап 13).
 
 ## 8. Не-цели MVP
 

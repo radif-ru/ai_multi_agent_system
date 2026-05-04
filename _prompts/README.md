@@ -15,7 +15,7 @@
 | `agent_system.md`   | `Executor` (агентный цикл)    | Главный системный промпт цикла. Объясняет модели формат ответа (JSON), набор tools, набор скиллов, правила поведения. Содержит плейсхолдеры `{{TOOLS_DESCRIPTION}}` и `{{SKILLS_DESCRIPTION}}`. |
 | `summarizer.md`     | `Summarizer` (in-session + `/new`) | Системный промпт для сжатия истории в краткое резюме. Используется и при достижении `HISTORY_SUMMARY_THRESHOLD` (in-session), и при архивировании на `/new`. |
 
-В будущих спринтах сюда добавятся `planner.md` и `critic.md` (см. `_docs/roadmap.md` Этап 4 «Multi-agent»).
+В будущих спринтах сюда добавятся `planner.md` и `critic.md` (см. `_docs/roadmap.md` Этап 5 «Multi-agent»).
 
 ## Плейсхолдеры в `agent_system.md`
 

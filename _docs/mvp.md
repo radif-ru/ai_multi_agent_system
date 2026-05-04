@@ -68,15 +68,15 @@ LLM — локальная (Ollama, `qwen3.5:4b` для чата, `nomic-embed-t
 
 ## 3. Что НЕ входит в MVP (явно отложено)
 
-- **Planner** и **Critic** агенты (multi-agent pipeline) — отдельный спринт, см. `roadmap.md` Этап 4.
-- **Web-адаптер** и **MAX-адаптер** — `roadmap.md` Этап 5.
-- **Webhook**-режим Telegram — `roadmap.md` Этап 6.
+- **Planner** и **Critic** агенты (multi-agent pipeline) — отдельный спринт, см. `roadmap.md` Этап 5.
+- **Web-адаптер** и **MAX-адаптер** — `roadmap.md` Этап 6.
+- **Webhook**-режим Telegram — `roadmap.md` Этап 7.
 - **Облачные LLM** (OpenAI, Anthropic и пр.) — запрещено по принципу `local-first` (`requirements.md` CON-2).
-- **Файловые загрузки** в Telegram (фото, аудио, документы) — `roadmap.md` Этап 7.
-- **Стриминг ответа** LLM в Telegram — `roadmap.md` Этап 8.
-- **Throttling middleware** (rate-limit на пользователя) — `roadmap.md` Этап 9.
-- **Docker / docker-compose** — `roadmap.md` Этап 10.
-- **CI** (GitHub Actions) — `roadmap.md` Этап 11.
+- **Файловые загрузки** в Telegram (фото, аудио, документы) — `roadmap.md` Этап 8.
+- **Стриминг ответа** LLM в Telegram — `roadmap.md` Этап 4.
+- **Throttling middleware** (rate-limit на пользователя) — `roadmap.md` Этап 10.
+- **Docker / docker-compose** — `roadmap.md` Этап 11.
+- **CI** (GitHub Actions) — `roadmap.md` Этап 12.
 
 ## 4. Модель по умолчанию
 

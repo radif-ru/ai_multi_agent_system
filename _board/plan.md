@@ -22,9 +22,9 @@
 
 | ID | Название | Файл | Источник |
 |:--:|----------|------|----------|
-| 04 | UX: Streaming steps | (создаётся при старте) | `_docs/roadmap.md` Этап 2 |
-| 05 | Multi-agent (Planner + Critic) | (создаётся при старте) | `_docs/roadmap.md` Этап 4 |
-| 06 | Web и MAX адаптеры | (создаётся при старте) | `_docs/roadmap.md` Этап 5 |
+| 04 | UX: Streaming steps | (создаётся при старте) | `_docs/roadmap.md` Этап 3 |
+| 05 | Multi-agent (Planner + Critic) | (создаётся при старте) | `_docs/roadmap.md` Этап 5 |
+| 06 | Web и MAX адаптеры | (создаётся при старте) | `_docs/roadmap.md` Этап 6 |
 | 07 | Внешние онлайн-LLM | (создаётся при старте) | ТЗ пользователя (пункт 7) |
 
 ## Сводная таблица состояния
@@ -34,7 +34,7 @@
 | 00. Bootstrap | Closed | 0 / 0 / 5 | `sprints/00-bootstrap.md` |
 | 01. MVP Agent | Closed | 0 / 0 / 28 | `sprints/01-mvp-agent.md` |
 | 02. Память и файловые входы | Closed | 0 / 0 / 19 | `sprints/02-memory-and-files.md` |
-| 03. Исправление багов и консольный режим | Active | 7 / 1 / 10 | `sprints/03-bugs-and-console.md` |
+| 03. Исправление багов и консольный режим | Active | 7 / 0 / 11 | `sprints/03-bugs-and-console.md` |
 
 > Таблицу обновлять одновременно с переходами статусов в файлах спринтов (см. `process.md` §7.3 и §7.9).
 
