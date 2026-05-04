@@ -170,7 +170,8 @@ async def handle_document(
             message.bot,
             document.file_id,
             max_size_mb=settings.telegram_max_file_mb,
-            tmp_dir=settings.tmp_files_dir,
+            tmp_dir=settings.tmp_base_dir,
+            user_id=user_id,
             mime_type=document.mime_type,
         )
     except FileTooLargeError as exc:
@@ -264,7 +265,8 @@ async def handle_voice(
             message.bot,
             voice.file_id,
             max_size_mb=settings.telegram_max_file_mb,
-            tmp_dir=settings.tmp_files_dir,
+            tmp_dir=settings.tmp_base_dir,
+            user_id=user_id,
             mime_type=voice.mime_type,
         )
     except FileTooLargeError as exc:
@@ -382,7 +384,8 @@ async def handle_photo(
             message.bot,
             photo.file_id,
             max_size_mb=settings.telegram_max_file_mb,
-            tmp_dir=settings.tmp_files_dir,
+            tmp_dir=settings.tmp_base_dir,
+            user_id=user_id,
             mime_type="image/jpeg",  # Telegram photos всегда JPEG
         )
     except FileTooLargeError as exc:
