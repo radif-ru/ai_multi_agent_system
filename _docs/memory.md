@@ -13,7 +13,7 @@
 
 ## 2. Краткосрочная память (in-memory)
 
-Реализация — `app/services/conversation.py::ConversationStore`. Заимствована из `ai_tg_bot` (предыдущий проект автора), уточнённая под мульти-агентный сценарий: добавлено понятие **`conversation_id`** (UUID или короткий слаг), который ротируется на `/new`. Помимо «rolling»-буфера `_messages` (который живёт под лимитом `HISTORY_MAX_MESSAGES` и периодически сжимается `replace_with_summary`), ведётся параллельный **полный лог сессии** `_session_log` — см. §2.5.
+Реализация — `app/services/conversation.py::ConversationStore`. Заимствована из `ai_tg_bot` (предыдущий проект автора), уточнённая под мульти-агентный сценарий: добавлено понятие **`conversation_id`** (UUID или короткий слаг), который ротируется на `/new`. Помимо «rolling»-буфера `_messages` (который живёт под лимитом `HISTORY_MAX_MESSAGES` и периодически сжимается `replace_with_summary`), ведётся параллельный **полный лог сессии** `_session_log` — см. §2.5. Также ведётся **контекст файлов** `_file_contexts` для reply на файлы — см. §2.6.
 
 ### 2.1 Структура
 
@@ -26,6 +26,9 @@ class ConversationStore:
     _session_log: dict[int, list[dict]]
     # user_id -> текущий conversation_id (для метаданных архива)
     _conversation_ids: dict[int, str]
+    # (user_id, message_id, file_type) -> context текст
+    # для reply на файлы (фото, документы, голосовые)
+    _file_contexts: dict[tuple[int, int, str], str]
 ```
 
 ### 2.2 API
@@ -38,8 +41,10 @@ class ConversationStore:
 | `replace_with_summary(user_id, summary, kept_tail=2)` | Заменить всё, кроме последних `kept_tail` сообщений, одним `{"role": "system", "content": "Краткое резюме предыдущей части диалога: ..."}`. Используется при срабатывании in-session порога. |
 | `current_conversation_id(user_id) -> str` | Текущий идентификатор сессии. |
 | `rotate_conversation_id(user_id) -> str` | Сгенерировать новый id и сохранить. Возвращает старый. |
-| `clear(user_id)` | Очистить всё: `_messages`, `_session_log` и `conversation_id`. |
+| `clear(user_id)` | Очистить всё: `_messages`, `_session_log`, `_file_contexts` и `conversation_id`. |
 | `get_session_log(user_id) -> list[dict]` | Копия **полного** лога сессии (без in-session compaction). Используется `cmd_new` → `Archiver`. См. §2.5. |
+| `save_file_context(user_id, message_id, file_type, context)` | Сохранить контекст файла для reply. Используется при обработке документов, голосовых сообщений и фотографий. |
+| `get_file_context(user_id, message_id, file_type) -> str | None` | Получить контекст файла по message_id и типу файла. Используется при reply на файлы. |
 
 ### 2.3 In-session суммаризация (порог)
 
@@ -96,6 +101,33 @@ ConversationStore                       Executor.run
 5. Верхняя страховка `Settings.session_log_max_messages` (env `SESSION_LOG_MAX_MESSAGES`, default 1000): при переполнении — отбрасывается голова лога и выдаётся `WARNING`. Это редкий сценарий (аномально длинная сессия без `/new`).
 
 **Инвариант высокого уровня**: in-session compaction оптимизирует только контекст для LLM (`_messages`); долгосрочная память при `/new` всегда видит сессию целиком (`_session_log`).
+
+### 2.6 Контекст файлов
+
+Для поддержки reply на файлы (фото, документы, голосовые) ведётся контекст файлов `_file_contexts`. Это позволяет агенту понимать, на какой файл пользователь отвечает, даже если файл был загружен ранее в сессии.
+
+**Проблема**: без контекста файлов при reply на документ/голосовое сообщение агент не видит содержимое файла и не может дать осмысленный ответ.
+
+**Решение**: при обработке файлов сохраняется их контекст в `_file_contexts` по ключу `(user_id, message_id, file_type)`. При reply на файл этот контекст подмешивается в текст сообщения.
+
+Инварианты:
+
+1. `save_file_context(user_id, message_id, file_type, context)` сохраняет контекст файла в памяти и в БД `files_contexts.db`.
+2. `get_file_context(user_id, message_id, file_type)` сначала ищет в памяти, затем в БД.
+3. При `/new` контекст файлов очищается из памяти и из БД.
+4. Файлы (документы, голосовые) не удаляются сразу после обработки — живут до `/new` или TTL cleanup, как и изображения.
+5. Изоляция файлов по пользователям: файлы сохраняются в отдельные каталоги `data/tmp/{user_id}/` (см. задачу 4.8).
+
+**Типы файлов**:
+- `photo` — изображения
+- `document` — документы (PDF, TXT, MD)
+- `voice` — голосовые сообщения
+
+**Использование в handler'ах**:
+- `handle_photo`: сохраняет контекст изображения после описания vision-моделью
+- `handle_document`: сохраняет контекст документа после суммаризации
+- `handle_voice`: сохраняет контекст голосового файла после транскрипции
+- `handle_text`: при reply на файл подмешивает контекст из `_file_contexts`
 
 ## 3. Долгосрочная память (sqlite-vec)
 

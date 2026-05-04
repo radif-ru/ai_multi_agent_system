@@ -2,7 +2,7 @@
 
 import pytest
 from app.adapters.console.adapter import ConsoleAdapter
-from app.commands.context import CommandContext, CommandResult
+from app.commands.context import CommandContext
 
 
 @pytest.fixture

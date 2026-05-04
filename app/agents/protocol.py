@@ -13,10 +13,13 @@
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
 from typing import Any, Literal
 
 from app.services.llm import LLMBadResponse
+
+logger = logging.getLogger(__name__)
 
 DecisionKind = Literal["action", "final"]
 
@@ -110,5 +113,13 @@ def _parse_action(payload: dict[str, Any]) -> AgentDecision:
         raise LLMBadResponse(
             f"'args' must be an object, got {type(args).__name__}"
         )
+
+    # Обработка случая, когда LLM использует final_answer как действие
+    if action == "final_answer":
+        # Преобразуем в правильный формат final_answer
+        logger.warning(
+            "LLM использует final_answer как действие, преобразуем в правильный формат"
+        )
+        return AgentDecision(kind="final", final_answer=thought)
 
     return AgentDecision(kind="action", thought=thought, action=action, args=args)

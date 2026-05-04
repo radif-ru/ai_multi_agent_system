@@ -11,7 +11,7 @@
 
 ## 1. Что работает
 
-> На момент закрытия Спринта 02 (Память и файловые входы) реализованы все задачи Этапов 1–5: агентный цикл, память, файловые входы (Document, Voice, Photo), авто-подгрузка архива, полное архивирование сессии.
+> На момент закрытия Спринта 03 (Баги и консольный режим) реализованы все задачи Этапов 1–5 Спринта 02 и Этапа 4 Спринта 03: агентный цикл, память, файловые входы (Document, Voice, Photo), авто-подгрузка архива, полное архивирование сессии, изоляция файлов по пользователям, сохранение контекста файлов для reply, инструмент weather, консольный адаптер.
 
 Шаблон записи (для будущих спринтов):
 
@@ -22,30 +22,34 @@
 ### 1.1 Агентный цикл
 
 - **Executor** — `app/agents/executor.py` реализует цикл `thought → action → observation → final_answer` с лимитом шагов и обработкой ошибок LLM.
-- **Protocol** — `app/agents/protocol.py` парсит JSON-ответы модели (с толерантностью к markdown-fence).
+- **Protocol** — `app/agents/protocol.py` парсит JSON-ответы модели (с толерантностью к markdown-fence и к некорректному формату `action: "final_answer"`).
 
 ### 1.2 Память
 
-- **ConversationStore** — `app/services/conversation.py` хранит in-memory историю и полный лог сессии (`_session_log`). Поддерживает in-session compaction для LLM-контекста и сохраняет полный лог для `/new`.
+- **ConversationStore** — `app/services/conversation.py` хранит in-memory историю, полный лог сессии (`_session_log`) и контекст файлов (`_file_contexts`) для reply. Поддерживает in-session compaction для LLM-контекста и сохраняет полный лог для `/new`. Контекст файлов сохраняется по ключу `(user_id, message_id, file_type)` и используется при reply на документы, голосовые и фотографии.
 - **SemanticMemory** — `app/services/memory.py` — долгосрочная память на `sqlite-vec` для поиска по семантическому сходству.
 - **Archiver** — `app/services/archiver.py` — оркестратор архивации сессии при `/new` (суммаризация → чанки → embedding → запись в `sqlite-vec`).
 - **Summarizer** — `app/services/summarizer.py` — суммаризация истории (in-session и при архивировании), поддерживает map-reduce для длинных логов.
 
 ### 1.3 Файлы
 
-- **download_telegram_file** — `app/adapters/telegram/files.py` — async-утилита для скачивания файлов из Telegram с проверкой размера (`TELEGRAM_MAX_FILE_MB`, default 20).
-- **Handler Document** — `app/adapters/telegram/handlers/messages.py` — обрабатывает `Document` сообщения (PDF/TXT/MD). Скачивает файл, формирует обогащённый goal, передаёт в агентный цикл.
-- **Handler Voice** — `app/adapters/telegram/handlers/messages.py` — обрабатывает `Voice`/`Audio` сообщения. Скачивает файл, транскрибирует через `Transcriber` (faster-whisper), передаёт распознанный текст в агентный цикл.
-- **Handler Photo** — `app/adapters/telegram/handlers/messages.py` — обрабатывает `Photo` сообщения. Скачивает файл, описывает через `Vision` (Ollama vision API), передаёт описание в агентный цикл.
+- **download_telegram_file** — `app/adapters/telegram/files.py` — async-утилита для скачивания файлов из Telegram с проверкой размера (`TELEGRAM_MAX_FILE_MB`, default 20). Файлы сохраняются в отдельные каталоги `data/tmp/{user_id}/` для изоляции по пользователям.
+- **Handler Document** — `app/adapters/telegram/handlers/messages.py` — обрабатывает `Document` сообщения (PDF/TXT/MD). Скачивает файл, формирует обогащённый goal, сохраняет контекст для reply, передаёт в агентный цикл. Файл не удаляется сразу — живёт до `/new` или TTL cleanup.
+- **Handler Voice** — `app/adapters/telegram/handlers/messages.py` — обрабатывает `Voice`/`Audio` сообщения. Скачивает файл, транскрибирует через `Transcriber` (faster-whisper), сохраняет контекст для reply, передаёт распознанный текст в агентный цикл. Файл не удаляется сразу — живёт до `/new` или TTL cleanup.
+- **Handler Photo** — `app/adapters/telegram/handlers/messages.py` — обрабатывает `Photo` сообщения. Скачивает файл, описывает через `Vision` (Ollama vision API), передаёт описание в агентный цикл. Файл не удаляется сразу — живёт до `/new` или TTL cleanup.
 - **Transcriber** — `app/services/transcribe.py` — обёртка над `faster-whisper` для транскрипции речи. Опциональная зависимость.
 - **Vision** — `app/services/vision.py` — обёртка над `OllamaClient.chat` с поддержкой параметра `images` для описания изображений.
 - **ReadDocumentTool** — `app/tools/read_document.py` — tool для чтения документов из временной директории (PDF/TXT/MD). Защита от path traversal, усечение вывода.
+- **DescribeImageTool** — `app/tools/describe_image.py` — tool для повторного описания изображений по пути к файлу. Используется для уточнения деталей после первичного описания.
+- **WeatherTool** — `app/tools/weather.py` — tool для получения погоды через wttr.in с fallback на WebSearchTool при недоступности сервиса.
 
-### 1.4 Telegram-адаптер
+### 1.4 Адаптеры
 
-- **Commands** — `app/adapters/telegram/handlers/commands.py` — команды `/start`, `/help`, `/models`, `/model`, `/prompt`, `/new`, `/reset`.
-- **Messages** — `app/adapters/telegram/handlers/messages.py` — обработчик текста и файлов, вызов `core.handle_user_task`.
-- **Errors** — `app/adapters/telegram/handlers/errors.py` — глобальный error handler.
+- **Telegram-адаптер** — `app/adapters/telegram/handlers/`:
+  - **Commands** — `app/adapters/telegram/handlers/commands.py` — команды `/start`, `/help`, `/models`, `/model`, `/prompt`, `/new`, `/reset`.
+  - **Messages** — `app/adapters/telegram/handlers/messages.py` — обработчик текста и файлов, вызов `core.handle_user_task`, поддержка reply на файлы (фото, документы, голосовые).
+  - **Errors** — `app/adapters/telegram/handlers/errors.py` — глобальный error handler.
+- **Консольный адаптер** — `app/adapters/console/adapter.py` — REPL-цикл с теми же командами, что и Telegram-адаптер (кроме файловых операций). Точка входа — `app/console_main.py`. См. `_docs/console-adapter.md`.
 
 ## 2. Известные проблемы и легаси
 
@@ -116,3 +120,11 @@
 **Исходная проблема:** `parse_agent_response` в `app/agents/protocol.py` делал `json.loads(text)` без предобработки, а `qwen3.5:4b` оборачивала JSON в markdown-fence (```json ... ```). Это приводило к `LLMBadResponse` и сообщению пользователю «Модель ответила в неожиданном формате».
 
 **Решение:** добавлена функция `_strip_code_fence(text)`, которая снимает fence-обёртку перед парсингом. Парсер теперь толерантен к ```json ... ``` и ``` ... ```. В системном промпте `_prompts/agent_system.md` ужесточено требование о голом JSON без обёртки. В `_docs/agent-loop.md` §2.3 зафиксирована толерантность парсера.
+
+### 6.2 LLM использует final_answer как действие (исправлено в спринте 03, задача 4.11)
+
+**Дата:** 2026-05-04. **SHA:** 377206a.
+
+**Исходная проблема:** LLM иногда возвращает некорректный формат `{"action": "final_answer", "args": {}}` вместо правильного `{"final_answer": "..."}`. Это приводило к ошибкам в парсере.
+
+**Решение:** добавлена обработка случая `action == "final_answer"` в `_parse_action` в `app/agents/protocol.py` с преобразованием в правильный формат `AgentDecision(kind="final", final_answer=thought)`. В системном промпте `_prompts/agent_system.md` добавлено явное предупреждение, что `final_answer` НЕ инструмент и его нельзя использовать как значение поля `action`.

@@ -127,8 +127,8 @@ async def test_handle_document_success(
         # Проверяем, что ответ добавлен
         mock_conversations.add_assistant_message.assert_called_once_with(123, "Ответ на документ")
 
-        # Проверяем, что файл удалён
-        assert not test_file.exists()
+        # Файл не удаляется сразу - он живёт до /new (как и изображения)
+        assert test_file.exists()
     finally:
         messages.download_telegram_file = original_download
 

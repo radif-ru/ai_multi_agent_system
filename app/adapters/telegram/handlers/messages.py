@@ -101,8 +101,8 @@ def build_text_handler(
                 if len(reply_text) > 500:
                     reply_text = reply_text[:500] + "..."
                 text = f"[В ответ на: {reply_text}]\n{text}"
-            # Если ответ на файл (фото или документ), добавляем контекст конкретного файла по message_id
-            if getattr(reply_msg, "photo", None) is not None or getattr(reply_msg, "document", None) is not None:
+            # Если ответ на файл (фото, документ или голосовой), добавляем контекст конкретного файла по message_id
+            if getattr(reply_msg, "photo", None) is not None or getattr(reply_msg, "document", None) is not None or getattr(reply_msg, "voice", None) is not None:
                 reply_msg_id = getattr(reply_msg, "message_id", None)
                 logger.info("reply на файл user=%s reply_msg_id=%s", user_id, reply_msg_id)
                 if reply_msg_id is not None:
@@ -251,11 +251,7 @@ async def handle_document(
     for part in split_long_message(reply, TELEGRAM_MAX_MESSAGE_LENGTH):
         await message.answer(part)
 
-    # Удаляем временный файл
-    try:
-        file_path.unlink()
-    except Exception:  # noqa: BLE001
-        logger.warning("не удалось удалить временный файл %s", file_path)
+    # Файл не удаляем сразу - он живёт до /new или TTL cleanup (как и изображения)
 
 
 async def handle_voice(
@@ -316,12 +312,6 @@ async def handle_voice(
         logger.error("transcribe: ошибка распознавания user=%s: %s", user_id, exc)
         await message.answer(GENERIC_ERROR_REPLY)
         return
-    finally:
-        # Удаляем временный файл
-        try:
-            file_path.unlink()
-        except Exception:  # noqa: BLE001
-            logger.warning("не удалось удалить временный voice-файл %s", file_path)
 
     # Если транскрипция пуста
     if not text:
@@ -330,6 +320,9 @@ async def handle_voice(
 
     # Передаём распознанный текст как обычное сообщение
     conversations.add_user_message(user_id, text)
+    # Сохраняем контекст голосового файла по message_id для ответов на конкретный файл
+    goal = f"Голосовое сообщение: {file_path}\nТранскрипция: {text}"
+    conversations.save_file_context(user_id, message.message_id, "voice", goal)
     model = user_settings.get_model(user_id)
 
     try:

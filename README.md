@@ -8,14 +8,14 @@ Telegram-бот, работающий как **AI-агент** на локаль
 
 ## Возможности
 
-Реализовано в спринтах 01 (MVP Agent) и 02 (Память и файловые входы), состояние кода фиксируется в `_board/sprints/01-mvp-agent.md` и `_board/sprints/02-memory-and-files.md`.
+Реализовано в спринтах 01 (MVP Agent), 02 (Память и файловые входы) и 03 (Баги и консольный режим), состояние кода фиксируется в `_board/sprints/01-mvp-agent.md`, `_board/sprints/02-memory-and-files.md` и `_board/sprints/03-bugs-and-console.md`.
 
 - **Агентный цикл** `thought → action → observation` со строгим JSON-форматом, лимитом `AGENT_MAX_STEPS` и лимитом размера output’а — [`app/agents/executor.py`](./app/agents/executor.py), [`app/agents/protocol.py`](./app/agents/protocol.py).
 - **Локальная LLM** через Ollama (`qwen3.5:4b` по умолчанию для чата, `nomic-embed-text` для эмбеддингов, `gemma3:4b` для описания изображений, см. `_docs/vision-models.md`), клиент с `chat` и `embed` — [`app/services/llm.py`](./app/services/llm.py).
-- **Tools (инструменты)**: `calculator`, `read_file`, `http_request`, `web_search` (DuckDuckGo `ddgs`), `memory_search`, `load_skill`, `read_document` — [`app/tools/`](./app/tools).
+- **Tools (инструменты)**: `calculator`, `read_file`, `http_request`, `web_search` (DuckDuckGo `ddgs`), `memory_search`, `load_skill`, `read_document`, `describe_image`, `weather` — [`app/tools/`](./app/tools).
 - **Telegram-интерфейс** на aiogram 3 (long polling), команды `/start`, `/help`, `/new`, `/reset`, `/models`, `/model`, `/prompt` + обработчик произвольного текста и файлов — [`app/adapters/telegram/handlers/`](./app/adapters/telegram/handlers).
 - **Файловые входы**: документы (PDF/TXT/MD), голосовые сообщения (Voice/Audio), фотографии (Photo) — [`app/adapters/telegram/files.py`](./app/adapters/telegram/files.py), [`app/services/transcribe.py`](./app/services/transcribe.py), [`app/services/vision.py`](./app/services/vision.py).
-- **Краткосрочная память** per-user (in-memory FIFO + in-session суммаризация + полный лог сессии) — [`app/services/conversation.py`](./app/services/conversation.py), [`app/services/summarizer.py`](./app/services/summarizer.py).
+- **Краткосрочная память** per-user (in-memory FIFO + in-session суммаризация + полный лог сессии + контекст файлов для reply) — [`app/services/conversation.py`](./app/services/conversation.py), [`app/services/summarizer.py`](./app/services/summarizer.py).
 - **Долгосрочная семантическая память** на `sqlite-vec`: `/new` суммирует сессию, режет на чанки, пишет с embedding'ом в `data/memory.db`; поиск через `memory_search` — [`app/services/memory.py`](./app/services/memory.py), [`app/services/archiver.py`](./app/services/archiver.py).
 - **Авто-подгрузка архива** при старте новой сессии через `SemanticMemory.search` — [`app/core/orchestrator.py`](./app/core/orchestrator.py).
 - **Skills** из [`_skills/`](./_skills): markdown с `Description:` в первой строке; описания инжектятся в системный промпт, полное тело — через tool `load_skill` — [`app/services/skills.py`](./app/services/skills.py).
@@ -67,11 +67,19 @@ pip install -r requirements.txt
 
 ## Запуск
 
+**Telegram-бот:**
+
 ```bash
-ollama serve &              # если Ollama ещё не запущена
-source .venv/bin/activate
-python -m app
+ollama serve & .venv/bin/python -m app
 ```
+
+**Консольный режим:**
+
+```bash
+ollama serve & .venv/bin/python -m app.console_main
+```
+
+Консольный режим — REPL-цикл с теми же командами (`/start`, `/help`, `/new`, `/reset`, `/models`, `/model`, `/prompt`, `/exit`), но без Telegram. См. `_docs/console-adapter.md`.
 
 ## Команды бота
 
@@ -123,10 +131,11 @@ pytest --cov=app --cov-report=term-missing
 - 📘 [`_docs/README.md`](./_docs/README.md) — индекс проектной документации.
 - 🏗️ [`_docs/architecture.md`](./_docs/architecture.md) — компоненты, агентный цикл, RAG, расширяемость.
 - 🔁 [`_docs/agent-loop.md`](./_docs/agent-loop.md) — формат JSON ответа, шаги цикла, лимиты.
-- 🧠 [`_docs/memory.md`](./_docs/memory.md) — краткосрочная и долгосрочная память.
+- 🧠 [`_docs/memory.md`](./_docs/memory.md) — краткосрочная и долгосрочная память, контекст файлов.
 - 🧰 [`_docs/tools.md`](./_docs/tools.md) — реестр инструментов и контракт нового tool.
 - 🪄 [`_docs/skills.md`](./_docs/skills.md) — формат `_skills/<name>/SKILL.md`.
 - 💬 [`_docs/commands.md`](./_docs/commands.md) — команды бота.
+- 🛠️ [`_docs/console-adapter.md`](./_docs/console-adapter.md) — консольный режим (REPL-цикл, запуск).
 - 🛠️ [`_docs/instructions.md`](./_docs/instructions.md) — правила разработки (включая обязательные тесты перед коммитом).
 - 📋 [`_board/README.md`](./_board/README.md) — процесс спринтов и задач.
 - 📌 [`_docs/current-state.md`](./_docs/current-state.md) — фактическое состояние кода (читать перед правками).

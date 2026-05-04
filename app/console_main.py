@@ -1,6 +1,6 @@
 """Точка входа консольного режима.
 
-Запуск через `python -m app.console`.
+Запуск через `python -m app.console_main`.
 
 См. `_docs/console-adapter.md`.
 """
@@ -32,6 +32,7 @@ from app.tools.read_document import ReadDocumentTool
 from app.tools.read_file import ReadFileTool
 from app.tools.registry import ToolRegistry
 from app.tools.web_search import WebSearchTool
+from app.tools.weather import WeatherTool
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,7 @@ async def _build_components(settings: Settings) -> tuple:
             MemorySearchTool(),
             LoadSkillTool(),
             DescribeImageTool(tmp_dir=settings.tmp_base_dir),
+            WeatherTool(),
         ]
     )
     archiver = Archiver(
@@ -190,7 +192,7 @@ async def main() -> None:
 
 
 def run() -> None:
-    """Синхронный wrapper для `python -m app.console`."""
+    """Синхронный wrapper для `python -m app.console_main`."""
     asyncio.run(main())
 
 

@@ -5,10 +5,10 @@
 ## 1. Запуск
 
 ```bash
-python -m app.console
+ollama serve & .venv/bin/python -m app.console_main
 ```
 
-Отдельная entry point, не `__main__.py` (который запускает Telegram-бота).
+Отдельная entry point через `app/console_main.py` (который запускает консольный адаптер, в отличие от `app/main.py` для Telegram-бота).
 
 ## 2. Поддерживаемые команды
 
@@ -75,7 +75,7 @@ app/adapters/console/
 └── adapter.py          # ConsoleAdapter класс
 
 app/
-└── console_main.py      # Точка входа python -m app.console
+└── console_main.py      # Точка входа python -m app.console_main
 ```
 
 ### 8.2 ConsoleAdapter
