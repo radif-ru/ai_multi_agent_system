@@ -162,8 +162,12 @@ async def cmd_new(ctx: "CommandContext", progress_callback: Any | None = None) -
     ctx.conversations.clear(ctx.user_id)
     ctx.conversations.rotate_conversation_id(ctx.user_id)
 
-    # Cleanup старых изображений в tmp/
-    _cleanup_tmp_images(ctx.settings.tmp_files_dir)
+    # Cleanup изображений пользователя перед очисткой контекста
+    _cleanup_user_images(
+        ctx.settings.tmp_base_dir,
+        ctx.conversations,
+        ctx.user_id,
+    )
 
     return CommandResult(text=f"Архивировано {inserted} чанков, новая сессия открыта.")
 
@@ -251,30 +255,25 @@ def _format_descriptions(descriptions: list[dict[str, Any]]) -> str:
     )
 
 
-def _cleanup_tmp_images(tmp_dir: str) -> None:
-    """Удалить старые изображения из tmp/.
+def _cleanup_user_images(
+    tmp_dir: str,
+    conversations: "ConversationStore",
+    user_id: int,
+) -> None:
+    """Удалить каталог пользователя из tmp/.
 
-    Удаляет файлы с расширениями изображений, старше 1 часа.
-    Используется при /new для очистки временных файлов.
+    Удаляет весь каталог пользователя со всеми файлами.
+    Используется при /new для очистки временных файлов пользователя.
     """
-    tmp_path = Path(tmp_dir)
+    tmp_path = Path(tmp_dir) / str(user_id)
     if not tmp_path.exists():
         return
 
-    now = time.time()
-    one_hour = 3600
-    image_extensions = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+    try:
+        # Удаляем весь каталог пользователя
+        import shutil
 
-    for file_path in tmp_path.iterdir():
-        if not file_path.is_file():
-            continue
-        if file_path.suffix.lower() not in image_extensions:
-            continue
-
-        try:
-            stat = file_path.stat()
-            if now - stat.st_mtime > one_hour:
-                file_path.unlink()
-                logger.info("cleanup: удалён старый файл %s", file_path)
-        except Exception:  # noqa: BLE001
-            logger.warning("cleanup: не удалось удалить %s", file_path)
+        shutil.rmtree(tmp_path)
+        logger.info("cleanup: удалён каталог пользователя %s", tmp_path)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("cleanup: не удалось удалить %s: %s", tmp_path, exc)

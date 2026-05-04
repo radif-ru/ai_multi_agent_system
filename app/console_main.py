@@ -71,12 +71,12 @@ async def _build_components(settings: Settings) -> tuple:
         [
             CalculatorTool(),
             ReadFileTool(),
-            ReadDocumentTool(tmp_files_dir=settings.tmp_files_dir),
+            ReadDocumentTool(tmp_files_dir=settings.tmp_base_dir),
             HttpRequestTool(),
             WebSearchTool(),
             MemorySearchTool(),
             LoadSkillTool(),
-            DescribeImageTool(tmp_dir=settings.tmp_files_dir),
+            DescribeImageTool(tmp_dir=settings.tmp_base_dir),
         ]
     )
     archiver = Archiver(
