@@ -208,10 +208,11 @@ class Executor:
 3. Router направляет в `messages.py:handle_text`.
 4. Handler:
    1. Проверяет длину ввода (`MAX_INPUT_LENGTH = 4000`); при превышении — подсказка и выход.
-   2. Берёт `model` и `system_prompt` из `UserSettingsRegistry` (per-user override).
-   3. Дописывает сообщение пользователя в `ConversationStore`.
-   4. Запускает `bot.send_chat_action(ChatAction.TYPING)`.
-   5. Вызывает `core.handle_user_task(text, user_id=..., chat_id=...)`.
+   2. **Reply-обработка:** если сообщение является ответом (`message.reply_to_message`), текст оригинального сообщения включается в контекст в формате `[В ответ на: <текст оригинала>]\n<текст ответа>`. Длинные оригиналы обрезаются до 500 символов. Это позволяет агенту понимать контекст ответа.
+   3. Берёт `model` и `system_prompt` из `UserSettingsRegistry` (per-user override).
+   4. Дописывает сообщение пользователя в `ConversationStore`.
+   5. Запускает `bot.send_chat_action(ChatAction.TYPING)`.
+   6. Вызывает `core.handle_user_task(text, user_id=..., chat_id=...)`.
 5. Core берёт `conversation_id` из `ConversationStore` и вызывает `Executor.run(...)`.
 6. Executor крутит цикл (см. §3.11) до финального ответа или лимита шагов.
 7. Core возвращает финальный текст в handler.

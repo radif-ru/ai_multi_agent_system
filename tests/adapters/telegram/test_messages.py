@@ -266,3 +266,66 @@ async def test_in_session_summary_failure_does_not_break_reply(
 
     answer.assert_awaited_once_with("ответ", parse_mode=None)
     assert any("суммаризация не удалась" in r.message for r in caplog.records)
+
+
+# ---------- Reply-обработка -------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_reply_to_text_message_includes_context(patch_handle_user_task) -> None:
+    """Reply на текстовое сообщение добавляет контекст оригинала."""
+    patch_handle_user_task("ответ на reply")
+    conversations = ConversationStore(max_messages=20)
+    handler = _make_handler(conversations=conversations)
+    msg, answer = _make_message(text="ответ пользователя")
+
+    # Мокаем reply_to_message
+    reply_msg = MagicMock()
+    reply_msg.text = "оригинальное сообщение"
+    msg.reply_to_message = reply_msg
+
+    await handler(msg)
+
+    # Проверяем что контекст добавлен
+    history = conversations.get_history(42)
+    assert len(history) == 2
+    assert "[В ответ на: оригинальное сообщение]" in history[0]["content"]
+    assert "ответ пользователя" in history[0]["content"]
+    answer.assert_awaited_once_with("ответ на reply", parse_mode=None)
+
+
+@pytest.mark.asyncio
+async def test_reply_to_long_message_is_truncated(patch_handle_user_task) -> None:
+    """Reply на длинное сообщение обрезается до 500 символов."""
+    patch_handle_user_task("ответ")
+    conversations = ConversationStore(max_messages=20)
+    handler = _make_handler(conversations=conversations)
+    msg, answer = _make_message(text="ответ")
+
+    reply_msg = MagicMock()
+    reply_msg.text = "x" * 600
+    msg.reply_to_message = reply_msg
+
+    await handler(msg)
+
+    history = conversations.get_history(42)
+    assert "[В ответ на: " in history[0]["content"]
+    assert "..." in history[0]["content"]
+    assert len(history[0]["content"]) < 600  # Должно быть обрезано
+
+
+@pytest.mark.asyncio
+async def test_no_reply_without_reply_to_message(patch_handle_user_task) -> None:
+    """Обычное сообщение без reply не добавляет контекст."""
+    patch_handle_user_task("ответ")
+    conversations = ConversationStore(max_messages=20)
+    handler = _make_handler(conversations=conversations)
+    msg, answer = _make_message(text="просто текст")
+
+    await handler(msg)
+
+    history = conversations.get_history(42)
+    assert len(history) == 2
+    assert "[В ответ на:" not in history[0]["content"]
+    answer.assert_awaited_once_with("ответ", parse_mode=None)
+
