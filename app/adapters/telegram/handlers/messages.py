@@ -154,7 +154,11 @@ def build_text_handler(
             return
         except LLMBadResponse as exc:
             logger.warning("LLM вернула некорректный ответ user=%s error=%s", user_id, exc)
-            error_msg = f"Модель ответила в неожиданном формате: {exc}. Попробуйте ещё раз."
+            # Если пустой ответ - это может быть из-за слишком большого контекста
+            if "empty" in str(exc):
+                error_msg = "Модель не смогла обработать такой большой запрос. Попробуйте отправить файл меньшего размера или задайте более конкретный вопрос."
+            else:
+                error_msg = f"Модель ответила в неожиданном формате: {exc}. Попробуйте ещё раз."
             formatted, parse_mode = format_for_telegram(error_msg)
             await _send_with_fallback(message, formatted, parse_mode)
             return
@@ -226,7 +230,7 @@ async def handle_document(
         return
 
     # Формируем обогащённый goal
-    goal = f"Пользователь прислал документ {file_path}. Caption: {caption}. Прочитай через read_document и ответь по сути. Важно: используй полный путь к файлу как указано выше, не меняй его."
+    goal = f"Пользователь прислал документ {file_path}. Caption: {caption}. Прочитай через read_document и ответь по сути. Важно: для read_document используй ТОЛЬКО путь {file_path} без изменений, не меняй его и не используй относительные пути."
 
     conversations.add_user_message(user_id, goal)
     # Сохраняем контекст файла по message_id для ответов на конкретный файл
