@@ -77,9 +77,22 @@ class Settings(BaseSettings):
     # --- Vision (image description) ---
     vision_model: str | None = None
 
+    # --- Web search ---
+    search_engine_default: str = "duckduckgo"
+    search_engines_available: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["duckduckgo"]
+    )
+
     @field_validator("ollama_available_models", mode="before")
     @classmethod
     def _parse_models_csv(cls, v):
+        if isinstance(v, str):
+            return [x.strip() for x in v.split(",") if x.strip()]
+        return v
+
+    @field_validator("search_engines_available", mode="before")
+    @classmethod
+    def _parse_search_engines_csv(cls, v):
         if isinstance(v, str):
             return [x.strip() for x in v.split(",") if x.strip()]
         return v

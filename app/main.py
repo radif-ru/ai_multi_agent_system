@@ -101,7 +101,10 @@ async def _build_components(settings: Settings) -> _Components:
     skills = SkillRegistry("_skills")
     skills.load()
     prompts = PromptLoader(settings.agent_system_prompt_path)
-    user_settings = UserSettingsRegistry(default_model=settings.ollama_default_model)
+    user_settings = UserSettingsRegistry(
+        default_model=settings.ollama_default_model,
+        default_search_engine=settings.search_engine_default,
+    )
 
     tools = ToolRegistry(
         [
