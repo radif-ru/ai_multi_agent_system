@@ -232,7 +232,7 @@ def build_commands_router(
     Тонкая обёртка над `build_command_handlers`, которая регистрирует функции
     под нужными `Command(...)`-фильтрами. Зависимости передаются явно —
     это упрощает unit-тесты и даёт жизненный цикл «один экземпляр на
-    приложение» (см. `_docs/instructions.md` §3).
+    приложение» (см. `_docs/instructions.md` §4).
     """
 
     handlers = build_command_handlers(

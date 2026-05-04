@@ -230,7 +230,7 @@ description: "..."
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** —
-- **Связанные документы:** `_docs/architecture.md` §8.4; `_docs/commands.md`; `_docs/instructions.md` §0.
+- **Связанные документы:** `_docs/architecture.md` §8.4; `_docs/commands.md`; `_docs/instructions.md` §1.
 - **Затрагиваемые файлы:** `_docs/console-adapter.md` (новый), `_docs/architecture.md`.
 
 #### Описание
@@ -533,7 +533,7 @@ Tool `web_search` читает активный поисковик из конт
 - **Приоритет:** medium
 - **Объём:** S
 - **Зависит от:** —
-- **Связанные документы:** `_docs/instructions.md` §0, §5.
+- **Связанные документы:** `_docs/instructions.md` §1, §6.
 - **Затрагиваемые файлы:** `app/services/vision.py`, `app/services/transcribe.py`, `app/adapters/telegram/handlers/messages.py`, `app/tools/read_document.py`, при необходимости — соответствующие тесты.
 
 #### Описание
@@ -566,7 +566,7 @@ Tool `web_search` читает активный поисковик из конт
 - **Приоритет:** low
 - **Объём:** XS
 - **Зависит от:** —
-- **Связанные документы:** `_docs/instructions.md` §2 (стиль), §3 (async).
+- **Связанные документы:** `_docs/instructions.md` §3 (стиль), §4 (async).
 - **Затрагиваемые файлы:** `app/services/archiver.py`, `app/adapters/telegram/files.py`.
 
 #### Описание
@@ -615,7 +615,7 @@ Tool `web_search` читает активный поисковик из конт
 
 - [ ] `_board/process.md` содержит: легенды (статусы задач, статусы спринтов, приоритеты, объём), правила работы со спринтами, правила работы с задачами, шаблоны (файл спринта, задача), процессы (подготовка к сессии, открытие спринта, выполнение задачи, обновление документации, обновление `progress.txt`, закрытие спринта), чек-лист и TL;DR. Нумерация начинается с §1.
 - [ ] `_board/plan.md` содержит только индекс спринтов (активные, закрытые, запланированные) и ссылки на `process.md` и `_docs/instructions.md`.
-- [ ] В `_docs/instructions.md` §1 и §9 нет прямых дублей правил из `process.md` — только ссылки; §-ссылки обновлены под новую нумерацию `process.md`.
+- [ ] В `_docs/instructions.md` §2 (Git-дисциплина) и §10 (Процесс добавления фичи) нет прямых дублей правил из `process.md` — только ссылки; §-ссылки обновлены под новую нумерацию `process.md`. Сам `instructions.md` перенумерован с §1 (было с §0).
 - [ ] В `_board/README.md` ссылки на `process.md` обновлены под новую нумерацию.
 - [ ] В `_docs/project-structure.md` описания `plan.md` и `process.md` обновлены под новую ответственность.
 - [ ] В `_docs/README.md` порядок чтения не сломан.
