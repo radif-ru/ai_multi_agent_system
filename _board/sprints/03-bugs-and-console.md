@@ -631,6 +631,47 @@ Tool `web_search` читает активный поисковик из конт
 
 ---
 
+### Задача 4.8. Изоляция файлов по пользователям
+
+- **Статус:** Progress
+- **Приоритет:** high
+- **Объём:** M
+- **Зависит от:** —
+- **Связанные документы:** `_docs/instructions.md` §2 (Git-дисциплина), `_docs/memory.md` §2 (краткосрочная память).
+- **Затрагиваемые файлы:** `app/config.py`, `app/services/conversation.py`, `app/adapters/telegram/files.py`, `app/adapters/telegram/handlers/messages.py`, `app/commands/registry.py`, `.env.example`.
+
+#### Описание
+
+Текущая проблема:
+1. Все временные файлы сохраняются в одну директорию `data/tmp`, нет изоляции по пользователям
+2. Контекст изображений сохраняется в `image_contexts.db`, но нужно сохранять контекст всех файлов (картинки, документы, голос)
+3. При `/new` удаляются файлы старше 1 часа, а не все файлы пользователя
+4. Некоторые пути захардкожены в коде вместо использования настроек из `.env`
+
+Цели:
+1. Создавать отдельный каталог для каждого пользователя в `data/tmp/{user_id}/`
+2. Переименовать `image_contexts.db` в `files_contexts.db` и сохранять контекст всех типов файлов
+3. При `/new` очищать весь каталог пользователя и контекст в БД
+4. Все настройки путей должны браться из `.env` (TMP_BASE_DIR вместо хардкода)
+
+#### Definition of Done
+
+- [ ] Добавить настройку `TMP_BASE_DIR` в `.env.example` (вместо `TMP_FILES_DIR`)
+- [ ] Изменить `config.py`: `tmp_files_dir` → `tmp_base_dir`, добавить метод `get_user_tmp_dir(user_id)`
+- [ ] Переименовать `image_contexts.db` → `files_contexts.db` в `ConversationStore`
+- [ ] Изменить схему БД: таблица `image_contexts` → `file_contexts`, добавить поле `file_type`
+- [] Обновить `download_telegram_file` для создания подкаталога по `user_id`
+- [ ] Обновить все вызовы `download_telegram_file` для передачи `user_id`
+- [ ] Сохранять контекст всех файлов (картинки, документы, голос) в БД
+- [ ] Обновить `cmd_new` для удаления каталога пользователя целиком
+- [ ] Обновить инструменты (`ReadDocumentTool`, `DescribeImageTool`) для использования `tmp_base_dir`
+- [ ] Обновить тесты для использования новой структуры
+- [ ] Обновить документацию (`_docs/memory.md`, `_docs/tools.md`)
+- [ ] Тесты: `pytest -q` зелёный.
+- [ ] `git status` чист.
+
+---
+
 ## 8. Риски и смягчение
 
 | # | Риск | Смягчение |
@@ -664,6 +705,7 @@ Tool `web_search` читает активный поисковик из конт
 | 4.5 | Русификация логов и ToolError | medium | S | Done | — |
 | 4.6 | Мелкие правки `archiver.py` и `files.py` | low | XS | Done | — |
 | 4.7 | Реорганизация документации `_board/` и `instructions.md` | medium | S | Done | — |
+| 4.8 | Изоляция файлов по пользователям | high | M | Progress | — |
 
 ---
 
@@ -687,3 +729,4 @@ Tool `web_search` читает активный поисковик из конт
 - **2026-05-04** — задача 2.1 Done: создана спецификация консольного адаптера в `_docs/console-adapter.md` (запуск, команды, REPL-цикл, архитектура); обновлён `_docs/architecture.md` §8.4 — добавлено упоминание консольного адаптера как примера реализации.
 - **2026-05-04** — задача 2.2 Done: создан общий модуль `app/commands/` с `CommandContext`, `CommandResult`, `CommandRegistry`; все команды вынесены из `telegram/handlers/commands.py` в `app/commands/registry.py`; Telegram handler рефакторен для использования общего модуля; обновлена документация `_docs/commands.md`; тесты проходят.
 - **2026-05-04** — задача 2.3 Done: реализован консольный адаптер (`app/adapters/console/adapter.py`, `app/console_main.py`, `app/console/`) с REPL-циклом, поддержкой команд через общий модуль `app/commands/`, обработкой текстовых сообщений через `core.handle_user_task`, graceful shutdown (Ctrl+C/Ctrl+D); добавлены тесты `tests/adapters/console/test_adapter.py`; обновлена документация `_docs/README.md` (навигация на консольный адаптер).
+- **2026-05-04** — задача 4.8 Progress: изоляция файлов по пользователям — отдельные каталоги для каждого пользователя, переименование image_contexts.db в files_contexts.db, сохранение контекста всех файлов.
