@@ -330,11 +330,12 @@ class Executor:
 3. Расширить `Core` (`orchestrator.py`): `task → planner → executor (per-step) → critic → final`. Вместо текущей прямой передачи в `Executor`.
 4. **Ничего не меняется** на уровнях tools / memory / skills / Telegram-адаптера. Это и есть точка изоляции NFR-10.
 
-### 8.4 Новый адаптер (web, MAX)
+### 8.4 Новый адаптер (console, web, MAX)
 
-1. Создать `app/adapters/<channel>/` с собственным «приёмником» (FastAPI handler / MAX webhook).
+1. Создать `app/adapters/<channel>/` с собственным «приёмником» (REPL-цикл для консоли, FastAPI handler / MAX webhook для web).
 2. Адаптер вызывает `core.handle_user_task(text, user_id=..., chat_id=...)` — тот же контракт, что у Telegram.
 3. **Ничего не меняется** в core / agents / tools / memory. Это NFR-11.
+4. Пример реализации — консольный адаптер (`app/adapters/console/`), см. `_docs/console-adapter.md`.
 
 ### 8.5 Webhook вместо polling
 
