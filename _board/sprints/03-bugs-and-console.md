@@ -191,7 +191,7 @@ description: "..."
 
 ### Задача 1.5. Сохранение контекста картинки для уточняющих вопросов
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** M
 - **Зависит от:** Задача 1.3
@@ -211,12 +211,12 @@ description: "..."
 
 #### Definition of Done
 
-- [ ] Tool `describe_image(image_path: str) -> str` — вызывает `Vision.describe()`.
-- [ ] Handler `handle_photo` передаёт в `goal` путь к файлу + описание.
-- [ ] Временные файлы картинок **не удаляются сразу** — живут 1 час (или до `/new`).
-- [ ] **Документация обновлена:** `_docs/architecture.md` §6.4, `_docs/tools.md`.
-- [ ] **Тесты добавлены:** tool `describe_image`, handler с путём.
-- [ ] `git status` чист, `pytest -q` зелёный.
+- [x] Tool `describe_image(image_path: str) -> str` — вызывает `Vision.describe()`.
+- [x] Handler `handle_photo` передаёт в `goal` путь к файлу + описание.
+- [x] Временные файлы картинок **не удаляются сразу** — живут 1 час (или до `/new`).
+- [x] **Документация обновлена:** `_docs/architecture.md` §6.4, `_docs/tools.md`.
+- [x] **Тесты добавлены:** tool `describe_image`, handler с путём.
+- [x] `git status` чист, `pytest -q` зелёный.
 
 ---
 
@@ -650,7 +650,7 @@ Tool `web_search` читает активный поисковик из конт
 | 1.2 | Проверка схемы SQLite | high | S | Done | — |
 | 1.3 | Рекомендации vision-моделей | high | XS | Done | — |
 | 1.4 | Поддержка YAML frontmatter | high | S | Done | — |
-| 1.5 | Контекст картинки для уточнений | high | M | Progress | 1.3 |
+| 1.5 | Контекст картинки для уточнений | high | M | Done | 1.3 |
 | 2.1 | Спецификация консольного режима | high | S | ToDo | — |
 | 2.2 | Вынос команд в общий модуль | high | M | ToDo | 2.1 |
 | 2.3 | Реализация консольного адаптера | high | M | ToDo | 2.2 |
@@ -683,3 +683,4 @@ Tool `web_search` читает активный поисковик из конт
 - **2026-05-03** — задача 4.6 Done: archiver.py — исправлена аннотация progress_callback (Callable из typing), убраны лишний import asyncio и осиротевший Any; files.py — import uuid поднят наверх.
 - **2026-05-04** — открыта задача 4.7 «Реорганизация документации `_board/` и `_docs/instructions.md`»: перенос правил/легенд/шаблонов из `plan.md` в `process.md`, перенумерация `process.md` с §1, чистка дублей в `instructions.md`, синхронизация кросс-ссылок.
 - **2026-05-04** — задача 4.7 Done: `plan.md` сведён к индексу спринтов (активные/закрытые/запланированные); `process.md` собран в 13 пронумерованных секций с §1 (легенды, правила спринтов/задач, шаблоны, подготовка, открытие, выполнение, доки, progress, закрытие, переход, чек-лист, TL;DR); добавлены легенды приоритетов и объёмов задач; `instructions.md` перенумерован с §1 (было с §0), дубли процесса в §2/§10 заменены ссылками на `process.md` §7; `_board/README.md` и `_docs/project-structure.md` обновлены под новую структуру. Живые §-ссылки на `instructions.md` синхронизированы в `_docs/links.md`, `app/adapters/telegram/handlers/commands.py` и в активных задачах спринта 03. Закрытые спринты 00/01/02 не тронуты. Дополнительно: в `process.md` §8 добавлены правила работы с `_docs/current-state.md` и `_docs/roadmap.md` (роли, когда читать/обновлять); `_docs/roadmap.md` перенумерован с §1 (Этап 0→1, …, 15→16), добавлены статусы этапов; `_docs/current-state.md` уточнён по роли; ссылки на номера этапов синхронизированы в `_docs/mvp.md`, `_docs/agent-loop.md`, `_docs/tools.md`, `_docs/requirements.md`, `_prompts/README.md`, `_skills/README.md`, `_skills/example-summary/SKILL.md`, `app/core/orchestrator.py`, `_board/plan.md`, спринте 03; корневой `README.md` синхронизирован с дефолтом `VISION_MODEL=gemma3:4b`.
+- **2026-05-04** — задача 1.5 Done: добавлен tool `describe_image` для повторного описания изображений по пути; `handle_photo` передаёт путь к файлу + описание в goal; временные файлы картинок не удаляются сразу — живут 1 час или до `/new` (cleanup в cmd_new); обновлена документация `tools.md` §4.7 и `architecture.md` §6.4; добавлены тесты для `describe_image`.
