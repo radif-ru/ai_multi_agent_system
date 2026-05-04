@@ -96,7 +96,7 @@ Telegram-адаптер принимает текст, оборачивает е
 - **Memory (долгосрочная)**: `MEMORY_DB_PATH`, `MEMORY_CHUNK_SIZE`, `MEMORY_CHUNK_OVERLAP`, `MEMORY_SEARCH_TOP_K`.
 - **Промпты**: `AGENT_SYSTEM_PROMPT_PATH`.
 - **Логирование**: `LOG_LEVEL`, `LOG_FILE`, `LOG_LLM_CONTEXT`.
-- **Временные файлы**: `TMP_FILES_DIR` (default `tmp`).
+- **Временные файлы**: `TMP_BASE_DIR` (default `data/tmp`). Для каждого пользователя создаётся отдельный подкаталог по `user_id`.
 - **Whisper (STT)**: `WHISPER_MODEL` (default `base`), `WHISPER_LANGUAGE` (default `ru`).
 - **Vision**: `VISION_MODEL` (default `gemma3:4b`). См. `_docs/vision-models.md` — сравнение лёгких моделей для локального запуска.
 
@@ -242,12 +242,12 @@ class Executor:
 
 ## 6. Поток обработки файлов (Document, Voice, Photo)
 
-Система поддерживает три типа файлов из Telegram: документы (PDF/TXT/MD), голосовые сообщения (Voice/Audio) и фотографии (Photo). Все файлы скачиваются во временную директорию (`Settings.tmp_files_dir`, default `tmp`), обрабатываются соответствующими сервисами, а результат передаётся в агентный цикл как обычный текст.
+Система поддерживает три типа файлов из Telegram: документы (PDF/TXT/MD), голосовые сообщения (Voice/Audio) и фотографии (Photo). Все файлы скачиваются во временную директорию (`Settings.tmp_base_dir`, default `data/tmp`), в подкаталог пользователя по `user_id`, обрабатываются соответствующими сервисами, а результат передаётся в агентный цикл как обычный текст.
 
 ### 6.1 Общие компоненты
 
 - **`download_telegram_file`** (`app/adapters/telegram/files.py`): async-утилита для скачивания файлов из Telegram. Проверяет размер файла до скачивания (`TELEGRAM_MAX_FILE_MB`, default 20), выбрасывает `FileTooLargeError` при превышении. Скачивает в `tempfile.NamedTemporaryFile` с авто-очисткой.
-- **`Settings.tmp_files_dir`**: директория для временных файлов (создаётся автоматически при старте). Все операции чтения файлов ограничены этой директорией для защиты от path traversal.
+- **`Settings.tmp_base_dir`**: базовая директория для временных файлов (создаётся автоматически при старте, default `data/tmp`). Для каждого пользователя создаётся отдельный подкаталог по `user_id`. Все операции чтения файлов ограничены этой директорией для защиты от path traversal.
 
 ### 6.2 Handler Document
 
@@ -289,7 +289,7 @@ class Executor:
 
 - **`ReadDocumentTool`** (`app/tools/read_document.py`): tool для чтения документов из временной директории.
 - Поддерживаемые форматы: PDF (через `pypdf`), TXT, MD.
-- Защита от path traversal: файлы читаются только из `Settings.tmp_files_dir`.
+- Защита от path traversal: файлы читаются только из `Settings.tmp_base_dir`.
 - Усечение вывода до `max_chars` (default 8000).
 
 ## 7. Обработка ошибок
