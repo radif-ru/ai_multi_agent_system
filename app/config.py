@@ -68,7 +68,7 @@ class Settings(BaseSettings):
     log_llm_context: bool = True
 
     # --- Temporary files ---
-    tmp_files_dir: Path = Path("tmp")
+    tmp_base_dir: Path = Path("data/tmp")
 
     # --- Whisper (speech-to-text) ---
     whisper_model: str = "base"
@@ -142,9 +142,13 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _create_tmp_dir(self) -> "Settings":
-        """Создать директорию для временных файлов при старте."""
-        self.tmp_files_dir.mkdir(parents=True, exist_ok=True)
+        """Создать базовую директорию для временных файлов при старте."""
+        self.tmp_base_dir.mkdir(parents=True, exist_ok=True)
         return self
+
+    def get_user_tmp_dir(self, user_id: int) -> Path:
+        """Получить директорию временных файлов для конкретного пользователя."""
+        return self.tmp_base_dir / str(user_id)
 
     @model_validator(mode="after")
     def _cross_validate(self) -> "Settings":
