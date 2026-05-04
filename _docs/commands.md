@@ -164,6 +164,7 @@
   4. Передаёт goal в `core.handle_user_task` (агент использует tool `read_document`).
   5. Удаляет временный файл после обработки.
 - **Поддерживаемые форматы:** PDF (через `pypdf`), TXT, MD.
+- **OCR (опционально):** если включён `READ_DOCUMENT_OCR_ENABLED` и установлен tesseract-ocr, для PDF с малым количеством текста (< 100 символов) извлекается текст из изображений через pytesseract. OCR текст кешируется в файл `.ocr.txt` рядом с PDF. Поддержка кириллицы через `tesseract-ocr-rus`. Установка: `sudo apt-get install tesseract-ocr tesseract-ocr-rus`.
 - **Ограничения:** файлы читаются только из временной директории (`TMP_BASE_DIR`), защита от path traversal.
 
 #### Голосовое сообщение (Voice/Audio)
@@ -219,11 +220,12 @@ await bot.set_my_commands([
 
 Ответы агента автоматически форматируются для Telegram:
 
-- **Кодовые блоки** (markdown ```` ```python\n...\n``` ````) преобразуются в HTML с подсветкой синтаксиса: `<pre><code class="language-python">...</code></pre>`. Используется `ParseMode.HTML`.
+- **Кодовые блоки** (markdown ```` ```python\n...\n``` ````) преобразуются в HTML с подсветкой синтаксиса: `<pre><code class="language-python">...</code></pre>`. Используется `ParseMode.HTML`. Текст вокруг кодовых блоков экранируется.
 - **Обычный текст** без кода отправляется с `ParseMode.MARKDOWN` (если есть markdown-разметка) или без парсинга (если разметки нет).
 - Утилита `format_for_telegram` в `app/adapters/telegram/utils.py` определяет режим парсинга и выполняет преобразование.
+- При ошибках парсинга Telegram используется fallback на `ParseMode.NONE` (без форматирования) чтобы гарантировать доставку сообщения.
 
-Это обеспечивает красивое отображение кода в Telegram-клиенте.
+Это обеспечивает красивое отображение кода в Telegram-клиенте с защитой от ошибок парсинга.
 
 ## Различие `/new` vs `/reset`
 

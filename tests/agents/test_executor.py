@@ -194,28 +194,32 @@ async def test_response_too_large_raises_llm_bad_response():
         await run_default(executor)
 
 
-async def test_unknown_tool_becomes_llm_bad_response():
+async def test_unknown_tool_becomes_observation():
+    """ToolNotFound теперь возвращает observation вместо исключения."""
     llm = FakeLLM([
         json.dumps({"thought": "t", "action": "unknown", "args": {}}),
+        json.dumps({"final_answer": "попробую другой tool"}),
     ])
     tools = FakeTools()
     tools.queue(ToolNotFound("unknown"))
     executor = make_executor(llm=llm, tools=tools)
 
-    with pytest.raises(LLMBadResponse):
-        await run_default(executor)
+    result = await run_default(executor)
+    assert result == "попробую другой tool"
 
 
-async def test_args_validation_error_becomes_llm_bad_response():
+async def test_args_validation_error_becomes_observation():
+    """ArgsValidationError теперь возвращает observation вместо исключения."""
     llm = FakeLLM([
         json.dumps({"thought": "t", "action": "calculator", "args": {"expression": 1}}),
+        json.dumps({"final_answer": "исправил"}),
     ])
     tools = FakeTools()
     tools.queue(ArgsValidationError("expression must be string"))
     executor = make_executor(llm=llm, tools=tools)
 
-    with pytest.raises(LLMBadResponse):
-        await run_default(executor)
+    result = await run_default(executor)
+    assert result == "исправил"
 
 
 async def test_system_prompt_built_with_tools_and_skills():

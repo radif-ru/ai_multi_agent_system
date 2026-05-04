@@ -7,11 +7,66 @@ ConsoleAdapter — REPL-цикл, который читает ввод поль�
 
 from __future__ import annotations
 
+import re
 import sys
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from app.commands.context import CommandContext, CommandResult
+
+
+# ANSI-цвета для консольного вывода
+class Colors:
+    """ANSI-цвета для консольного вывода."""
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+    GREEN = "\033[92m"
+    BLUE = "\033[94m"
+    YELLOW = "\033[93m"
+    GRAY = "\033[90m"
+    RED = "\033[91m"
+
+
+def format_console_output(text: str) -> str:
+    """Форматировать текст для консольного вывода с цветами.
+
+    - Кодовые блоки выделяются синим цветом
+    - Заголовки (начинающиеся с #) выделяются зелёным и жирным
+    - Списки выделяются серым цветом
+    """
+    lines = text.split("\n")
+    formatted_lines = []
+    in_code_block = False
+    code_lang = None
+
+    for line in lines:
+        # Проверка начала/конца кодового блока
+        code_match = re.match(r"^```(\w*)$", line)
+        if code_match:
+            if not in_code_block:
+                in_code_block = True
+                code_lang = code_match.group(1) or "code"
+                formatted_lines.append(f"{Colors.BLUE}{Colors.BOLD}--- {code_lang} ---{Colors.RESET}")
+            else:
+                in_code_block = False
+                code_lang = None
+                formatted_lines.append(f"{Colors.BLUE}{Colors.BOLD}--- end ---{Colors.RESET}")
+            continue
+
+        if in_code_block:
+            # Код внутри блока - синий цвет
+            formatted_lines.append(f"{Colors.BLUE}{line}{Colors.RESET}")
+        elif line.startswith("#"):
+            # Заголовки - зелёный жирный
+            formatted_lines.append(f"{Colors.GREEN}{Colors.BOLD}{line}{Colors.RESET}")
+        elif line.startswith(("-", "*", "+")) or re.match(r"^\d+\.", line):
+            # Списки - серый цвет
+            formatted_lines.append(f"{Colors.GRAY}{line}{Colors.RESET}")
+        else:
+            # Обычный текст - без форматирования
+            formatted_lines.append(line)
+
+    return "\n".join(formatted_lines)
 
 
 class ConsoleAdapter:
@@ -124,16 +179,16 @@ class ConsoleAdapter:
             if command_name == "new":
 
                 async def _progress_callback(text: str) -> None:
-                    print(f"⏳ {text}")
+                    print(f"{Colors.YELLOW}⏳ {text}{Colors.RESET}")
 
                 result = await self.command_registry.execute(
                     command_name, ctx, args=args, progress_callback=_progress_callback
                 )
             else:
                 result = await self.command_registry.execute(command_name, ctx, args=args)
-            print(result.text)
+            print(format_console_output(result.text))
         except Exception as exc:  # noqa: BLE001
-            print(f"Ошибка: {exc}")
+            print(f"{Colors.RED}Ошибка: {exc}{Colors.RESET}")
 
     async def _handle_text(self, text: str) -> None:
         """Обработать текстовое сообщение."""
@@ -151,7 +206,7 @@ class ConsoleAdapter:
                 model=self.user_settings.get_model(self.user_id),
                 system_prompt=self.user_settings.get_prompt(self.user_id),
             )
-            print(response)
+            print(format_console_output(response))
 
             # Дописываем ответ ассистента в историю
             self.conversations.add_assistant_message(self.user_id, response)
@@ -164,4 +219,27 @@ class ConsoleAdapter:
                 summarizer = Summarizer(llm=None)  # будет заполнен через DI
                 # TODO: реализовать суммаризацию для консоли
         except Exception as exc:  # noqa: BLE001
-            print(f"Ошибка: {exc}")
+            # Выводим детали ошибки для отладки
+            print(f"{Colors.RED}Ошибка: {exc}{Colors.RESET}")
+            # Если это LLMBadResponse и ошибка парсинга JSON, попробуем извлечь final_answer
+            if "LLMBadResponse" in str(type(exc)) and "invalid JSON" in str(exc):
+                # Попробуем извлечь final_answer из последнего сообщения модели
+                history = self.conversations.get_history(self.user_id)
+                if history:
+                    last_assistant = history[-1].get("content", "")
+                    if '"final_answer"' in last_assistant:
+                        # Извлекаем final_answer через regex
+                        import re
+                        match = re.search(r'"final_answer"\s*:\s*"([^"]*(?:\\.[^"]*)*)"', last_assistant, re.DOTALL)
+                        if match:
+                            final_answer = match.group(1)
+                            # Декодируем escape-последовательности
+                            try:
+                                import json
+                                final_answer = json.loads(f'"{final_answer}"')
+                                if isinstance(final_answer, str) and final_answer.strip():
+                                    print(f"{Colors.YELLOW}Извлечён final_answer из повреждённого JSON:{Colors.RESET}")
+                                    print(format_console_output(final_answer))
+                                    self.conversations.add_assistant_message(self.user_id, final_answer)
+                            except Exception:
+                                pass

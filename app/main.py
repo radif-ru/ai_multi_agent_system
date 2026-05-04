@@ -77,7 +77,9 @@ class _Components:
 
 async def _build_components(settings: Settings) -> _Components:
     llm = OllamaClient(
-        base_url=settings.ollama_base_url, timeout=settings.ollama_timeout
+        base_url=settings.ollama_base_url,
+        timeout=settings.ollama_timeout,
+        num_ctx=settings.ollama_num_ctx,
     )
     conversations = ConversationStore(
         max_messages=settings.history_max_messages,
@@ -110,7 +112,13 @@ async def _build_components(settings: Settings) -> _Components:
         [
             CalculatorTool(),
             ReadFileTool(),
-            ReadDocumentTool(tmp_files_dir=settings.tmp_base_dir),
+            ReadDocumentTool(
+                tmp_files_dir=settings.tmp_base_dir,
+                max_file_size_mb=settings.telegram_max_file_mb,
+                max_extracted_images=settings.read_document_max_extracted_images,
+                max_ocr_images=settings.read_document_max_ocr_images,
+                ocr_enabled=settings.read_document_ocr_enabled
+            ),
             HttpRequestTool(),
             WebSearchTool(),
             MemorySearchTool(),
@@ -136,6 +144,7 @@ async def _build_components(settings: Settings) -> _Components:
         prompts=prompts,
         skills=skills,
         semantic_memory=semantic_memory,
+        user_settings=user_settings,
     )
     return _Components(
         settings=settings,

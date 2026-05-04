@@ -30,6 +30,7 @@ Telegram-бот, работающий как **AI-агент** на локаль
 - **Python** 3.11+ (рекомендуется 3.12).
 - **Ollama** (`https://ollama.com`) с предзагруженными моделями `qwen3.5:4b`, `nomic-embed-text` и `gemma3:4b` (или другая vision-модель, см. `_docs/vision-models.md`).
 - **Telegram bot token** от [@BotFather](https://t.me/BotFather).
+- **tesseract-ocr** (опционально, для OCR в PDF): `sudo apt-get install tesseract-ocr tesseract-ocr-rus`
 - ОС: Linux / WSL2 / macOS. Windows нативно — не приоритет.
 
 ## Установка

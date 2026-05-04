@@ -63,7 +63,7 @@ def test_loads_defaults(base_env):
     assert s.embedding_dimensions == 768
     assert s.history_max_messages == 20
     assert s.history_summary_threshold == 10
-    assert s.agent_max_steps == 10
+    assert s.agent_max_steps == 15
     assert s.agent_system_prompt_path == DEFAULT_PROMPT
 
 

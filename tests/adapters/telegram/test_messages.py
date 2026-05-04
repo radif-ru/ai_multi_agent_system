@@ -207,7 +207,8 @@ async def test_llm_bad_response_replies_with_format_message(
 
     await handler(msg)
 
-    answer.assert_awaited_once_with(LLM_BAD_RESPONSE_REPLY, parse_mode=None)
+    expected_msg = "Модель ответила в неожиданном формате: not json. Попробуйте ещё раз."
+    answer.assert_awaited_once_with(expected_msg, parse_mode=None)
 
 
 @pytest.mark.asyncio

@@ -28,6 +28,7 @@ class _ToolContext:
     llm: Any
     semantic_memory: Any
     skills: Any
+    user_settings: Any
 
 
 class Executor:
@@ -42,6 +43,7 @@ class Executor:
         prompts: Any,
         skills: Any,
         semantic_memory: Any = None,
+        user_settings: Any = None,
     ) -> None:
         self._settings = settings
         self._llm = llm
@@ -49,6 +51,7 @@ class Executor:
         self._prompts = prompts
         self._skills = skills
         self._semantic_memory = semantic_memory
+        self._user_settings = user_settings
 
     async def run(
         self,
@@ -76,6 +79,7 @@ class Executor:
             llm=self._llm,
             semantic_memory=self._semantic_memory,
             skills=self._skills,
+            user_settings=self._user_settings,
         )
 
         history_msgs = list(history or [])
@@ -92,6 +96,7 @@ class Executor:
 
         for step in range(1, max_steps + 1):
             response_text = await self._llm.chat(messages, model=chat_model)
+            logger.info("Шаг %d: получен ответ от LLM, длина=%d", step, len(response_text))
             if len(response_text) > max_chars:
                 self._log_parse_error(step, user_id, conversation_id, response_text)
                 raise LLMBadResponse(
@@ -119,9 +124,8 @@ class Executor:
             except ToolError as exc:
                 observation = f"Tool error: {exc}"
             except (ToolNotFound, ArgsValidationError) as exc:
-                # Это ошибка модели, не tool'а: невалидный action/args.
-                self._log_parse_error(step, user_id, conversation_id, response_text)
-                raise LLMBadResponse(f"invalid tool call: {exc}") from exc
+                # Tool не найден или невалидные args - возвращаем observation вместо ошибки
+                observation = f"Error: {exc}. Проверь список доступных tools и их аргументы."
 
             messages.append({"role": "assistant", "content": response_text})
             messages.append(

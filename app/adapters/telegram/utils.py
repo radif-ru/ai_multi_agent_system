@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from html import escape as html_escape
 from typing import Literal
 
 from aiogram.enums import ParseMode
@@ -32,21 +33,37 @@ def format_for_telegram(text: str) -> tuple[str, ParseMode | None]:
         parse_mode = ParseMode.MARKDOWN if has_markdown else None
         return text, parse_mode
 
-    # Преобразуем markdown-блоки в HTML
-    formatted = text
-    # Заменяем в обратном порядке, чтобы сохранить позиции
-    for match in reversed(code_blocks):
+    # Разбиваем текст на части по кодовым блокам
+    parts = []
+    last_end = 0
+    for match in code_blocks:
+        start, end = match.span()
+        # Текст до блока
+        before = text[last_end:start]
+        if before:
+            parts.append(("text", before))
+        # Кодовый блок
         lang = match.group(1) or "text"
         code = match.group(2)
-        # Экранируем HTML-специальные символы в коде
-        code_escaped = code.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        html_block = f'<pre><code class="language-{lang}">{code_escaped}</code></pre>'
-        start, end = match.span()
-        formatted = formatted[:start] + html_block + formatted[end:]
-
-    # Для остального текста используем HTML-экранирование
-    # Но оставляем HTML-теги которые мы добавили (они уже экранированы)
-    # Простое решение: используем ParseMode.HTML и экранируем только специальные символы
-    # вне наших тегов
-
+        parts.append(("code", lang, code))
+        last_end = end
+    
+    # Текст после последнего блока
+    if last_end < len(text):
+        parts.append(("text", text[last_end:]))
+    
+    # Формируем результат
+    formatted_parts = []
+    for part in parts:
+        if part[0] == "text":
+            # Экранируем текст
+            formatted_parts.append(html_escape(part[1]))
+        else:
+            # Преобразуем кодовый блок в HTML
+            lang = part[1]
+            code = part[2]
+            code_escaped = html_escape(code)
+            formatted_parts.append(f'<pre><code class="language-{lang}">{code_escaped}</code></pre>')
+    
+    formatted = "".join(formatted_parts)
     return formatted, ParseMode.HTML

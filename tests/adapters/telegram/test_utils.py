@@ -29,7 +29,7 @@ def test_format_for_telegram_code_block():
     formatted, parse_mode = format_for_telegram(text)
     assert parse_mode == ParseMode.HTML
     assert '<pre><code class="language-python">' in formatted
-    assert "print('hello')" in formatted
+    assert "print(&#x27;hello&#x27;)" in formatted  # Экранированные кавычки
     assert "</code></pre>" in formatted
 
 
@@ -39,7 +39,7 @@ def test_format_for_telegram_code_block_with_language():
     formatted, parse_mode = format_for_telegram(text)
     assert parse_mode == ParseMode.HTML
     assert '<pre><code class="language-javascript">' in formatted
-    assert "console.log('hello');" in formatted
+    assert "console.log(&#x27;hello&#x27;);" in formatted  # Экранированные кавычки
 
 
 def test_format_for_telegram_code_block_no_language():
@@ -65,8 +65,6 @@ def test_format_for_telegram_code_with_special_chars():
     formatted, parse_mode = format_for_telegram(text)
     assert parse_mode == ParseMode.HTML
     assert "&lt;script&gt;" in formatted
-    assert "&lt;" not in formatted.replace("&lt;", "")
-    assert "&gt;" not in formatted.replace("&gt;", "")
 
 
 def test_format_for_telegram_code_with_ampersand():
@@ -75,3 +73,13 @@ def test_format_for_telegram_code_with_ampersand():
     formatted, parse_mode = format_for_telegram(text)
     assert parse_mode == ParseMode.HTML
     assert "&amp;" in formatted
+
+
+def test_format_for_telegram_text_around_code():
+    """Текст вокруг кодовых блоков экранируется."""
+    text = "Привет, вот код:\n```python\nprint('hello')\n```\nИ ещё текст"
+    formatted, parse_mode = format_for_telegram(text)
+    assert parse_mode == ParseMode.HTML
+    assert "&lt;pre&gt;" not in formatted  # Наши теги не экранированы
+    assert "Привет, вот код:" in formatted
+    assert "И ещё текст" in formatted

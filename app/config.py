@@ -31,6 +31,7 @@ class Settings(BaseSettings):
         default_factory=lambda: ["qwen3.5:4b"]
     )
     ollama_timeout: float = 120.0
+    ollama_num_ctx: int = 8192
 
     # --- Ollama (Embedding) ---
     embedding_model: str = "nomic-embed-text"
@@ -38,8 +39,8 @@ class Settings(BaseSettings):
     embedding_concurrency: int = 5
 
     # --- Agent loop ---
-    agent_max_steps: int = 10
-    agent_max_output_chars: int = 8000
+    agent_max_steps: int = 15
+    agent_max_output_chars: int = 12000
 
     # --- Memory (in-memory) ---
     history_max_messages: int = 20
@@ -64,11 +65,16 @@ class Settings(BaseSettings):
 
     # --- Logging ---
     log_level: str = "INFO"
+    log_level_console: str = "DEBUG"
+    log_level_file: str = "INFO"
     log_file: Path = Path("logs/agent.log")
     log_llm_context: bool = True
 
     # --- Temporary files ---
     tmp_base_dir: Path = Path("data/tmp")
+    read_document_max_extracted_images: int = 10
+    read_document_max_ocr_images: int = 20
+    read_document_ocr_enabled: bool = False
 
     # --- Whisper (speech-to-text) ---
     whisper_model: str = "base"

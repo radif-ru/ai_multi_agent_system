@@ -771,6 +771,99 @@ Tool `web_search` читает активный поисковик из конт
 
 ---
 
+### Задача 4.12. Добавление поддержки OCR для PDF
+
+- **Статус:** Done
+- **Приоритет:** high
+- **Объём:** M
+- **Зависит от:** —
+- **Связанные документы:** `_docs/tools.md` §4.5; `app/tools/read_document.py`.
+- **Затрагиваемые файлы:** `app/tools/read_document.py`, `app/config.py`, `.env.example`, `requirements.txt`, `app/main.py`, `app/console_main.py`.
+
+#### Описание
+
+Добавить поддержку OCR (Optical Character Recognition) для извлечения текста из изображений в PDF-документах. Текущая реализация извлекает только текстовый слой из PDF, что не работает для отсканированных документов.
+
+Решения:
+1. Добавить зависимость `pytesseract` и `Pillow` в requirements.txt
+2. Добавить настройку `READ_DOCUMENT_OCR_ENABLED` в .env.example и config.py
+3. Добавить настройку `READ_DOCUMENT_MAX_OCR_IMAGES` для отдельного лимита картинок при OCR (20 вместо 10)
+4. В `read_document.py` при включённом OCR:
+   - Извлекать текст из всех картинок через pytesseract
+   - Сохранять OCR текст в кеш (.ocr.txt) рядом с PDF
+   - При повторном чтении загружать из кеша
+   - Проверять доступные языки tesseract, использовать `rus+eng` если русский установлен, иначе только `eng`
+5. Передавать параметр ocr_enabled в конструктор ReadDocumentTool в main.py и console_main.py
+
+#### Definition of Done
+
+- [x] Добавлен `pytesseract` и `Pillow` в requirements.txt
+- [x] Добавлена настройка `READ_DOCUMENT_OCR_ENABLED` в .env.example (default false)
+- [x] Добавлена настройка `READ_DOCUMENT_MAX_OCR_IMAGES` в .env.example (default 20)
+- [x] Добавлены настройки в config.py (read_document_ocr_enabled, read_document_max_ocr_images)
+- [x] В read_document.py добавлена логика OCR с кешированием (.ocr.txt)
+- [x] Добавлена проверка на доступные языки tesseract, используется `rus+eng` или `eng`
+- [x] Параметр ocr_enabled передан в конструктор ReadDocumentTool в main.py и console_main.py
+- [x] **Документация обновлена:** `_docs/tools.md` с описанием OCR и установкой tesseract-ocr
+- [x] Тесты: `pytest -q` зелёный.
+- [x] `git status` чист.
+
+---
+
+### Задача 4.13. Улучшение сообщений об ошибках в Telegram адаптере
+
+- **Статус:** Done
+- **Приоритет:** high
+- **Объём:** XS
+- **Зависит от:** —
+- **Связанные документы:** `app/adapters/telegram/handlers/messages.py`.
+- **Затрагиваемые файлы:** `app/adapters/telegram/handlers/messages.py`, `tests/adapters/telegram/test_messages.py`.
+
+#### Описание
+
+Пользователь жалуется что при ошибках LLM возвращается общее сообщение "Модель ответила в неожиданном формате, попробуйте ещё раз" без конкретной информации о причине ошибки. Нужно улучшить сообщения об ошибках чтобы они были более информативными.
+
+Решения:
+1. В обработчике LLMBadResponse показывать деталь ошибки (exc) в сообщении пользователю
+2. Обновить тест чтобы он соответствовал новому формату сообщения
+
+#### Definition of Done
+
+- [x] В messages.py при LLMBadResponse показывается деталь ошибки в сообщении пользователю
+- [x] Тест test_llm_bad_response_replies_with_format_message обновлён под новый формат
+- [x] Тесты: `pytest -q` зелёный.
+- [x] `git status` чист.
+
+---
+
+### Задача 4.14. Настраиваемые уровни логирования для консоли и файлов
+
+- **Статус:** Done
+- **Приоритет:** medium
+- **Объём:** XS
+- **Зависит от:** —
+- **Связанные документы:** `app/logging_config.py`; `app/config.py`.
+- **Затрагиваемые файлы:** `app/logging_config.py`, `app/config.py`, `.env.example`.
+
+#### Описание
+
+Желательно иметь разные уровни логирования для консоли и файлов: в консоли видеть DEBUG для отладки, а в файлах только INFO чтобы не засорять логи.
+
+Решения:
+1. Добавить настройки `LOG_LEVEL_CONSOLE` и `LOG_LEVEL_FILE` в .env.example
+2. Добавить эти настройки в config.py
+3. Изменить logging_config.py чтобы использовать эти настройки вместо хардкода
+
+#### Definition of Done
+
+- [x] Добавлены настройки `LOG_LEVEL_CONSOLE=DEBUG` и `LOG_LEVEL_FILE=INFO` в .env.example
+- [x] Добавлены настройки в config.py (log_level_console, log_level_file)
+- [x] logging_config.py использует эти настройки для console и file handlers
+- [x] Тесты: `pytest -q` зелёный.
+- [x] `git status` чист.
+
+---
+
 ## 8. Риски и смягчение
 
 | # | Риск | Смягчение |
@@ -808,6 +901,9 @@ Tool `web_search` читает активный поисковик из конт
 | 4.9 | Сохранение файлов в рамках сессии | high | M | Done | 4.8 |
 | 4.10 | Инструмент weather для получения погоды | medium | S | Done | — |
 | 4.11 | Исправление формата final_answer в системном промпте | high | XS | Done | — |
+| 4.12 | Добавление поддержки OCR для PDF | high | M | Done | — |
+| 4.13 | Улучшение сообщений об ошибках в Telegram адаптере | high | XS | Done | — |
+| 4.14 | Настраиваемые уровни логирования для консоли и файлов | medium | XS | Done | — |
 
 ---
 
@@ -838,3 +934,6 @@ Tool `web_search` читает активный поисковик из конт
 - **2026-05-04** — задача 3.1 Done: выбор поисковика через команды — добавлены команды `/search_engines` и `/search_engine` в `app/commands/registry.py`, добавлена поддержка поисковиков в `UserSettingsRegistry` (get/set_search_engine), обновлен `WebSearchTool` для чтения поисковика из контекста, добавлены настройки в `config.py` (search_engine_default, search_engines_available), обновлены handler'ы в Telegram-адаптере, обновлена документация `_docs/commands.md` и `_docs/stack.md`, добавлены тесты.
 - **2026-05-04** — задача 3.2 Done: форматирование кода для Telegram — создана утилита `format_for_telegram` в `app/adapters/telegram/utils.py` для преобразования markdown-блоков кода в HTML с подсветкой синтаксиса, обновлены handler'ы `messages.py` и `errors.py` для использования утилиты, обновлена документация `_docs/commands.md` с разделом «Форматирование», добавлены тесты в `test_utils.py`, обновлены тесты для учета параметра `parse_mode`.
 - **2026-05-04** — задача 3.3 Done: обработка reply-сообщений в Telegram — функциональность уже реализована в `messages.py` (строки 98-116), добавлены тесты для reply-обработки (reply с текстом, reply с длинным текстом, без reply), обновлена документация `_docs/commands.md` (раздел «Произвольный текст») и `_docs/architecture.md` §4 с описанием reply-обработки.
+- **2026-05-04** — задача 4.12 Done: добавление поддержки OCR для PDF — добавлены зависимости `pytesseract` и `Pillow` в requirements.txt, добавлены настройки `READ_DOCUMENT_OCR_ENABLED` и `READ_DOCUMENT_MAX_OCR_IMAGES` в .env.example и config.py, добавлена логика OCR в read_document.py с кешированием (.ocr.txt) и проверкой доступных языков tesseract, параметр ocr_enabled передан в конструктор ReadDocumentTool в main.py и console_main.py.
+- **2026-05-04** — задача 4.13 Done: улучшение сообщений об ошибках в Telegram адаптере — при LLMBadResponse показывается деталь ошибки в сообщении пользователю, тест обновлён под новый формат.
+- **2026-05-04** — задача 4.14 Done: настраиваемые уровни логирования для консоли и файлов — добавлены настройки `LOG_LEVEL_CONSOLE` и `LOG_LEVEL_FILE` в .env.example и config.py, logging_config.py использует эти настройки для console и file handlers.
