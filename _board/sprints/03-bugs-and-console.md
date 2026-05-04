@@ -380,7 +380,7 @@ Tool `web_search` читает активный поисковик из конт
 
 ### Задача 3.3. Обработка reply-сообщений в Telegram
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** medium
 - **Объём:** S
 - **Зависит от:** —
@@ -796,7 +796,7 @@ Tool `web_search` читает активный поисковик из конт
 | 2.3 | Реализация консольного адаптера | high | M | Done | 2.2 |
 | 3.1 | Выбор поисковика | medium | S | Done | 2.2 |
 | 3.2 | Форматирование кода | medium | XS | Done | — |
-| 3.3 | Обработка reply | medium | S | ToDo | — |
+| 3.3 | Обработка reply | medium | S | Progress | — |
 | 4.1 | Перенумерация architecture.md и кросс-ссылки | high | S | Done | — |
 | 4.2 | Заполнить `_board/README.md` | medium | XS | Done | — |
 | 4.3 | Чистка ссылок на CLAUDE.md в instructions.md/process.md | medium | XS | Done | — |
