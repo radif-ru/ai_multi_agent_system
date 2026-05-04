@@ -1,6 +1,6 @@
 """Тесты глобального error handler'а Telegram-адаптера.
 
-См. `_docs/architecture.md` §6, `_docs/testing.md` §3.11.
+См. `_docs/architecture.md` §7, `_docs/testing.md` §3.11.
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ async def test_handler_sends_generic_reply_and_swallows_exception(
         result = await handler(event)
 
     assert result is True
-    event.update.message.answer.assert_awaited_once_with(GENERIC_ERROR_REPLY)
+    event.update.message.answer.assert_awaited_once_with(GENERIC_ERROR_REPLY, parse_mode=None)
     assert any("unhandled exception" in r.message for r in caplog.records)
 
 

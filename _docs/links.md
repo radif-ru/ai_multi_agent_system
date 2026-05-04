@@ -73,7 +73,7 @@
 
 | Что | Ссылка | Где в проекте |
 |-----|--------|---------------|
-| Conventional Commits | https://www.conventionalcommits.org/ | формат коммитов: `feat(scope): ...`, см. `_docs/instructions.md` §1 |
+| Conventional Commits | https://www.conventionalcommits.org/ | формат коммитов: `feat(scope): ...`, см. `_docs/instructions.md` §2 |
 | Python typing | https://docs.python.org/3/library/typing.html | type hints обязательны в публичном API |
 | PEP 8 | https://peps.python.org/pep-0008/ | базовый стиль кода, `ruff` его реализует |
 | `asyncio` | https://docs.python.org/3/library/asyncio.html | модель параллелизма для всего I/O |

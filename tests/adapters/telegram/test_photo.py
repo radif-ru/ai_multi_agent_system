@@ -97,7 +97,7 @@ async def test_handle_photo_vision_model_not_configured(
     )
 
     # Проверяем, что отправлено сообщение о недоступности
-    message.answer.assert_called_once_with(VISION_UNAVAILABLE_REPLY)
+    message.answer.assert_called_once_with(VISION_UNAVAILABLE_REPLY, parse_mode=None)
 
     # Проверяем, что executor не вызывался
     mock_conversations.add_user_message.assert_not_called()
@@ -128,7 +128,7 @@ async def test_handle_photo_success(
     # Мокаем download_telegram_file
     original_download = messages.download_telegram_file
 
-    async def mock_download(bot, file_id, *, max_size_mb, tmp_dir, mime_type=None):
+    async def mock_download(bot, file_id, *, max_size_mb, tmp_dir, user_id=None, mime_type=None):
         from pathlib import Path
         import tempfile
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:

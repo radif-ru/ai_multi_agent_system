@@ -32,12 +32,14 @@ AI-агент с локальной LLM (Ollama), работающий в цик
 
 ### Как этим пользоваться и как разрабатывать
 
+- [`console-adapter.md`](./console-adapter.md) — спецификация консольного режима (REPL-цикл, команды, запуск через `python -m app.console_main`).
 - [`commands.md`](./commands.md) — спецификация команд бота и поведения произвольного текста.
 - [`testing.md`](./testing.md) — стратегия и категории тестов, моки, покрытие, обязательность тестов перед коммитом.
 - [`instructions.md`](./instructions.md) — правила разработки: стиль, git, async, ошибки, секреты, тесты, документация.
 
 ### Справочное
 
+- [`vision-models.md`](./vision-models.md) — рекомендации по vision-моделям для Ollama (gemma3:4b, llava-phi3 и др.).
 - [`links.md`](./links.md) — каталог внешних ссылок: aiogram, Ollama, sqlite-vec, ddgs, pydantic-settings, pytest и др.
 
 ## Порядок чтения

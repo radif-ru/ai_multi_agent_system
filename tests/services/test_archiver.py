@@ -62,7 +62,7 @@ def summarizer(llm):
     return Summarizer(llm=llm, system_prompt="SYS")
 
 
-def make_archiver(llm, summarizer, memory, *, size=1500, overlap=150) -> Archiver:
+def make_archiver(llm, summarizer, memory, *, size=1500, overlap=150, concurrency=5) -> Archiver:
     return Archiver(
         llm=llm,
         summarizer=summarizer,
@@ -71,6 +71,7 @@ def make_archiver(llm, summarizer, memory, *, size=1500, overlap=150) -> Archive
         embedding_model="nomic-embed-text",
         chunk_size=size,
         chunk_overlap=overlap,
+        concurrency_limit=concurrency,
     )
 
 
@@ -123,22 +124,14 @@ async def test_archive_summarizer_failure_propagates_and_no_inserts(
     assert mem.inserted == [] and mem.deleted == []
 
 
-async def test_archive_embed_failure_on_second_chunk_rolls_back(
+async def test_archive_embed_failure_rolls_back(
     llm, summarizer, mocker
 ):
+    """При ошибке embed ничего не вставляется (откат не нужен - вставки не было)."""
     mem = FakeMemory()
     summary = "x" * 3000  # → 3 чанка
     mocker.patch.object(summarizer, "summarize", return_value=summary)
-
-    calls = {"n": 0}
-
-    async def fake_embed(text, *, model):
-        calls["n"] += 1
-        if calls["n"] == 2:
-            raise LLMUnavailable("embed down")
-        return [0.0, 0.1]
-
-    mocker.patch.object(llm, "embed", side_effect=fake_embed)
+    mocker.patch.object(llm, "embed", side_effect=LLMUnavailable("embed down"))
     archiver = make_archiver(llm, summarizer, mem)
 
     with pytest.raises(LLMUnavailable):
@@ -148,6 +141,83 @@ async def test_archive_embed_failure_on_second_chunk_rolls_back(
             user_id=1,
             chat_id=1,
         )
-    # первый чанк был вставлен и затем откачен
+    # Ничего не вставлено, т.к. embed упал до вставки
+    assert len(mem.inserted) == 0
+    assert len(mem.deleted) == 0
+
+
+async def test_archive_insert_failure_rolls_back(llm, summarizer, mocker):
+    """При ошибке insert после успешных embed — откат вставок."""
+    mem = FakeMemory()
+    summary = "x" * 3000  # → 3 чанка
+    mocker.patch.object(summarizer, "summarize", return_value=summary)
+    mocker.patch.object(llm, "embed", return_value=[0.1, 0.2])
+    mem.fail_insert_on(1)  # Упасть на втором чанке
+    archiver = make_archiver(llm, summarizer, mem)
+
+    with pytest.raises(RuntimeError, match="simulated insert failure"):
+        await archiver.archive(
+            [{"role": "user", "content": "hi"}],
+            conversation_id="c",
+            user_id=1,
+            chat_id=1,
+        )
+    # Первый чанк был вставлен и затем откачен
     assert len(mem.inserted) == 1
     assert mem.deleted == [mem.inserted[0][0]]
+
+
+async def test_archive_progress_callback_called(llm, summarizer, mocker):
+    """Проверяем, что progress_callback вызывается на каждом этапе."""
+    mem = FakeMemory()
+    summary = "x" * 3000
+    mocker.patch.object(summarizer, "summarize", return_value=summary)
+    mocker.patch.object(llm, "embed", return_value=[0.1, 0.2])
+    archiver = make_archiver(llm, summarizer, mem)
+
+    progress_calls = []
+
+    def progress_cb(text: str) -> None:
+        progress_calls.append(text)
+
+    await archiver.archive(
+        [{"role": "user", "content": "hi"}],
+        conversation_id="conv",
+        user_id=42,
+        chat_id=42,
+        progress_callback=progress_cb,
+    )
+
+    # Должны быть вызовы на каждом этапе
+    assert len(progress_calls) >= 2
+    assert any("Суммирую" in call for call in progress_calls)
+    assert any("эмбеддинги" in call for call in progress_calls)
+
+
+async def test_archive_parallel_embedding(llm, summarizer, mocker):
+    """Проверяем, что embedding вызывается параллельно с семафором."""
+    mem = FakeMemory()
+    summary = "x" * 6000  # → 4+ чанка
+    mocker.patch.object(summarizer, "summarize", return_value=summary)
+
+    embed_calls = []
+
+    async def fake_embed(text, *, model):
+        embed_calls.append(text)
+        return [0.1, 0.2]
+
+    mocker.patch.object(llm, "embed", side_effect=fake_embed)
+    # concurrency=2 для проверки ограничения
+    archiver = make_archiver(llm, summarizer, mem, concurrency=2)
+
+    await archiver.archive(
+        [{"role": "user", "content": "hi"}],
+        conversation_id="conv",
+        user_id=42,
+        chat_id=42,
+    )
+
+    # Все чанки должны быть обработаны
+    assert len(embed_calls) >= 4
+    # Проверяем, что concurrency_limit передан
+    assert archiver._concurrency_limit == 2

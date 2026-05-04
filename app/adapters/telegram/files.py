@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import tempfile
+import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -36,6 +37,7 @@ async def download_telegram_file(
     *,
     max_size_mb: int,
     tmp_dir: Path,
+    user_id: int | None = None,
     mime_type: str | None = None,
 ) -> Path:
     """Скачать файл из Telegram с проверкой размера.
@@ -44,7 +46,8 @@ async def download_telegram_file(
         bot: Экземпляр aiogram Bot.
         file_id: Идентификатор файла в Telegram.
         max_size_mb: Максимальный размер файла в мегабайтах.
-        tmp_dir: Директория для временных файлов (Settings.tmp_files_dir).
+        tmp_dir: Директория для временных файлов (Settings.tmp_base_dir).
+        user_id: ID пользователя для создания подкаталога.
         mime_type: MIME-type файла из Telegram (для определения расширения).
 
     Returns:
@@ -87,12 +90,12 @@ async def download_telegram_file(
 
     # Скачиваем во временный файл в указанной директории
     try:
-        # Создаём директорию, если она не существует
+        # Создаём директорию пользователя, если указан user_id
+        if user_id is not None:
+            tmp_dir = tmp_dir / str(user_id)
         tmp_dir.mkdir(parents=True, exist_ok=True)
 
         # Создаём уникальное имя файла с расширением
-        import uuid
-
         file_name = f"{file_id}_{uuid.uuid4().hex[:8]}{extension}"
         tmp_path = tmp_dir / file_name
 

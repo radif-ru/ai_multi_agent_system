@@ -47,8 +47,13 @@ class WebSearchTool(Tool):
         if top_k <= 0:
             top_k = self._default_top_k
 
+        # Читаем поисковик из настроек пользователя
+        search_engine = ctx.user_settings.get_search_engine(ctx.user_id)
+
         try:
-            raw = await asyncio.to_thread(self._search_sync, query, top_k)
+            raw = await asyncio.to_thread(
+                self._search_sync, query, top_k, search_engine
+            )
         except ToolError:
             raise
         except Exception as exc:  # noqa: BLE001
@@ -65,8 +70,23 @@ class WebSearchTool(Tool):
         return truncate_output(json.dumps(items, ensure_ascii=False), self._max_output_chars)
 
     @staticmethod
-    def _search_sync(query: str, top_k: int) -> list[dict[str, Any]]:
+    def _search_sync(
+        query: str, top_k: int, search_engine: str
+    ) -> list[dict[str, Any]]:
+        """Выполнить поиск через указанный поисковик.
+
+        Сейчас поддерживается только duckduckgo через ddgs.
+        В будущем можно добавить поддержку других поисковиков.
+        """
         from ddgs import DDGS  # импорт здесь — упрощает мок в тестах
+
+        # Fallback: если поисковик не duckduckgo, всё равно используем ddgs
+        # (в будущем здесь будет логика для разных поисковиков)
+        if search_engine != "duckduckgo":
+            # Пока только duckduckgo реализован, другие возвращают пустой результат
+            # В задаче 3.1 требуется только инфраструктура для выбора
+            # Реализация других поисковиков — будущая задача
+            return []
 
         with DDGS() as ddgs:
             return list(ddgs.text(query, max_results=top_k))

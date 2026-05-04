@@ -13,10 +13,13 @@
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
 from typing import Any, Literal
 
 from app.services.llm import LLMBadResponse
+
+logger = logging.getLogger(__name__)
 
 DecisionKind = Literal["action", "final"]
 
@@ -63,6 +66,29 @@ def parse_agent_response(text: str) -> AgentDecision:
     try:
         payload = json.loads(text)
     except json.JSONDecodeError as exc:
+        # Логируем полный raw ответ для отладки
+        logger.error("Ошибка парсинга JSON. Длина raw: %d, первые 500 символов: %r", len(text), text[:500])
+        # Если JSON не валидный, попробуем извлечь final_answer из текста
+        # Это может случиться если модель вернула очень длинный final_answer
+        if '"final_answer"' in text:
+            # Попробуем извлечь значение final_answer через regex
+            # Улучшенный regex который обрабатывает nested quotes и escape sequences
+            import re
+            # Ищем от "final_answer": до конца строки или конца JSON
+            match = re.search(r'"final_answer"\s*:\s*"((?:[^"\\]|\\.)*)"', text, re.DOTALL)
+            if not match:
+                # Если не сработало, попробуем более агрессивный подход
+                match = re.search(r'"final_answer"\s*:\s*"(.+?)"\s*}', text, re.DOTALL)
+            if match:
+                final_answer = match.group(1)
+                # Декодируем escape-последовательности
+                try:
+                    final_answer = json.loads(f'"{final_answer}"')
+                    if isinstance(final_answer, str) and final_answer.strip():
+                        logger.warning("Извлечён final_answer из повреждённого JSON")
+                        return AgentDecision(kind="final", final_answer=final_answer)
+                except Exception:
+                    pass
         raise LLMBadResponse(f"invalid JSON: {exc}") from exc
 
     if not isinstance(payload, dict):
@@ -71,7 +97,11 @@ def parse_agent_response(text: str) -> AgentDecision:
         )
 
     has_final = "final_answer" in payload
-    has_action_fields = any(k in payload for k in ("thought", "action", "args"))
+    # Проверяем наличие action-полей, игнорируя null значения
+    has_action_fields = any(
+        k in payload and payload[k] is not None
+        for k in ("thought", "action", "args")
+    )
 
     if has_final and has_action_fields:
         raise LLMBadResponse(
@@ -80,6 +110,21 @@ def parse_agent_response(text: str) -> AgentDecision:
 
     if has_final:
         return _parse_final(payload)
+    
+    # Если action: null, считаем что это попытка вернуть final_answer
+    if "action" in payload and payload["action"] is None:
+        if "thought" in payload and payload["thought"]:
+            logger.warning("LLM вернул action: null, используем thought как final_answer")
+            return AgentDecision(kind="final", final_answer=payload["thought"])
+        raise LLMBadResponse("action: null without thought")
+    
+    # Если есть только thought без action/args, но thought содержит final_answer - попробуем извлечь
+    if "thought" in payload and "action" not in payload and "args" not in payload:
+        thought = payload["thought"]
+        if isinstance(thought, str) and "final_answer" in thought.lower():
+            logger.warning("LLM вернул thought с final_answer без action, пробуем извлечь")
+            return _parse_final(payload)
+    
     return _parse_action(payload)
 
 
@@ -110,5 +155,13 @@ def _parse_action(payload: dict[str, Any]) -> AgentDecision:
         raise LLMBadResponse(
             f"'args' must be an object, got {type(args).__name__}"
         )
+
+    # Обработка случая, когда LLM использует final_answer как действие
+    if action == "final_answer":
+        # Преобразуем в правильный формат final_answer
+        logger.warning(
+            "LLM использует final_answer как действие, преобразуем в правильный формат"
+        )
+        return AgentDecision(kind="final", final_answer=thought)
 
     return AgentDecision(kind="action", thought=thought, action=action, args=args)

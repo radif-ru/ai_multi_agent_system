@@ -89,7 +89,7 @@ async def test_path_traversal_protection(tool: ReadDocumentTool, tmp_dir: Path) 
     # Попытка выйти за пределы tmp_dir через ..
     malicious_path = str(tmp_dir / ".." / "etc" / "passwd")
 
-    with pytest.raises(ToolError, match="path not allowed"):
+    with pytest.raises(ToolError, match="путь вне разрешённой"):
         await tool.run({"path": malicious_path}, MagicMock())
 
 
@@ -100,7 +100,7 @@ async def test_path_outside_tmp_dir(tool: ReadDocumentTool, tmp_dir: Path) -> No
     other_file = tmp_dir.parent / "outside.txt"
     other_file.write_text("secret", encoding="utf-8")
 
-    with pytest.raises(ToolError, match="path not allowed"):
+    with pytest.raises(ToolError, match="путь вне разрешённой"):
         await tool.run({"path": str(other_file)}, MagicMock())
 
 
@@ -110,7 +110,7 @@ async def test_unsupported_file_type(tool: ReadDocumentTool, tmp_dir: Path) -> N
     test_file = tmp_dir / "test.xyz"
     test_file.write_text("content", encoding="utf-8")
 
-    with pytest.raises(ToolError, match="unsupported file type"):
+    with pytest.raises(ToolError, match="неподдерживаемый тип"):
         await tool.run({"path": str(test_file)}, MagicMock())
 
 
@@ -118,12 +118,12 @@ async def test_unsupported_file_type(tool: ReadDocumentTool, tmp_dir: Path) -> N
 async def test_file_not_found(tool: ReadDocumentTool, tmp_dir: Path) -> None:
     """Файл не существует."""
     nonexistent = tmp_dir / "nonexistent.txt"
-    with pytest.raises(ToolError, match="file not found"):
+    with pytest.raises(ToolError, match="файл не найден"):
         await tool.run({"path": str(nonexistent)}, MagicMock())
 
 
 @pytest.mark.asyncio
 async def test_not_a_file(tool: ReadDocumentTool, tmp_dir: Path) -> None:
     """Путь указывает на директорию, не на файл."""
-    with pytest.raises(ToolError, match="not a regular file"):
+    with pytest.raises(ToolError, match="не является обычным файлом"):
         await tool.run({"path": str(tmp_dir)}, MagicMock())

@@ -26,6 +26,11 @@ class _FakeSettings:
     ollama_available_models: list[str] = field(
         default_factory=lambda: ["qwen3.5:4b", "llama3:8b"]
     )
+    tmp_base_dir: str = "tmp"
+    search_engine_default: str = "duckduckgo"
+    search_engines_available: list[str] = field(
+        default_factory=lambda: ["duckduckgo", "bing"]
+    )
 
 
 class _FakePrompts:
@@ -54,6 +59,7 @@ class _FakeArchiver:
         conversation_id: str,
         user_id: int,
         chat_id: int,
+        progress_callback: Any | None = None,
     ) -> int:
         self.calls.append(
             {
@@ -90,7 +96,10 @@ def _make_handlers(
 ) -> dict[str, Any]:
     return build_command_handlers(
         settings=settings or _FakeSettings(),
-        user_settings=user_settings or UserSettingsRegistry(default_model="qwen3.5:4b"),
+        user_settings=user_settings
+        or UserSettingsRegistry(
+            default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+        ),
         prompts=prompts or _FakePrompts(),
         tools=tools
         or _FakeRegistry(
@@ -141,7 +150,9 @@ async def test_start_sends_greeting() -> None:
 
 @pytest.mark.asyncio
 async def test_help_includes_model_prompt_tools_skills() -> None:
-    user_settings = UserSettingsRegistry(default_model="qwen3.5:4b")
+    user_settings = UserSettingsRegistry(
+        default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+    )
     user_settings.set_model(42, "llama3:8b")
     handlers = _make_handlers(
         user_settings=user_settings,
@@ -171,7 +182,9 @@ async def test_help_includes_model_prompt_tools_skills() -> None:
 
 @pytest.mark.asyncio
 async def test_help_shows_user_prompt_override() -> None:
-    user_settings = UserSettingsRegistry(default_model="qwen3.5:4b")
+    user_settings = UserSettingsRegistry(
+        default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+    )
     user_settings.set_prompt(42, "мой кастомный промпт")
     handlers = _make_handlers(user_settings=user_settings)
     msg, answer = _make_message()
@@ -186,7 +199,9 @@ async def test_help_shows_user_prompt_override() -> None:
 
 @pytest.mark.asyncio
 async def test_models_lists_with_active_marker() -> None:
-    user_settings = UserSettingsRegistry(default_model="qwen3.5:4b")
+    user_settings = UserSettingsRegistry(
+        default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+    )
     user_settings.set_model(42, "llama3:8b")
     handlers = _make_handlers(user_settings=user_settings)
     msg, answer = _make_message()
@@ -208,7 +223,9 @@ async def test_models_lists_with_active_marker() -> None:
 
 @pytest.mark.asyncio
 async def test_model_known_calls_set_model() -> None:
-    user_settings = UserSettingsRegistry(default_model="qwen3.5:4b")
+    user_settings = UserSettingsRegistry(
+        default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+    )
     handlers = _make_handlers(user_settings=user_settings)
     msg, answer = _make_message()
     await handlers["model"](msg, _command("llama3:8b"))
@@ -219,7 +236,11 @@ async def test_model_known_calls_set_model() -> None:
 
 @pytest.mark.asyncio
 async def test_model_unknown_does_not_call_set_model() -> None:
-    user_settings = MagicMock(wraps=UserSettingsRegistry(default_model="qwen3.5:4b"))
+    user_settings = MagicMock(
+        wraps=UserSettingsRegistry(
+            default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+        )
+    )
     handlers = _make_handlers(user_settings=user_settings)
     msg, answer = _make_message()
     await handlers["model"](msg, _command("ghost-model"))
@@ -230,7 +251,11 @@ async def test_model_unknown_does_not_call_set_model() -> None:
 
 @pytest.mark.asyncio
 async def test_model_no_arg_shows_usage() -> None:
-    user_settings = MagicMock(wraps=UserSettingsRegistry(default_model="qwen3.5:4b"))
+    user_settings = MagicMock(
+        wraps=UserSettingsRegistry(
+            default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+        )
+    )
     handlers = _make_handlers(user_settings=user_settings)
     msg, answer = _make_message()
     await handlers["model"](msg, _command(None))
@@ -243,7 +268,9 @@ async def test_model_no_arg_shows_usage() -> None:
 
 @pytest.mark.asyncio
 async def test_prompt_with_text_calls_set_prompt() -> None:
-    user_settings = UserSettingsRegistry(default_model="qwen3.5:4b")
+    user_settings = UserSettingsRegistry(
+        default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+    )
     handlers = _make_handlers(user_settings=user_settings)
     msg, answer = _make_message()
     await handlers["prompt"](msg, _command("ты — лаконичный ассистент"))
@@ -253,7 +280,9 @@ async def test_prompt_with_text_calls_set_prompt() -> None:
 
 @pytest.mark.asyncio
 async def test_prompt_no_arg_calls_reset_prompt() -> None:
-    user_settings = UserSettingsRegistry(default_model="qwen3.5:4b")
+    user_settings = UserSettingsRegistry(
+        default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+    )
     user_settings.set_prompt(42, "старый")
     handlers = _make_handlers(user_settings=user_settings)
     msg, answer = _make_message()
@@ -271,7 +300,9 @@ async def test_reset_clears_conversation_and_settings() -> None:
     conversations.add_user_message(42, "привет")
     cid_before = conversations.current_conversation_id(42)
 
-    user_settings = UserSettingsRegistry(default_model="qwen3.5:4b")
+    user_settings = UserSettingsRegistry(
+        default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+    )
     user_settings.set_model(42, "llama3:8b")
     user_settings.set_prompt(42, "custom")
 
@@ -287,6 +318,75 @@ async def test_reset_clears_conversation_and_settings() -> None:
     cid_after = conversations.current_conversation_id(42)
     assert cid_after != cid_before
     assert "очищен" in answer.await_args.args[0]
+
+
+# ---------- /search_engines -------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_search_engines_lists_with_active_marker() -> None:
+    user_settings = UserSettingsRegistry(
+        default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+    )
+    user_settings.set_search_engine(42, "bing")
+    handlers = _make_handlers(user_settings=user_settings)
+    msg, answer = _make_message()
+    await handlers["search_engines"](msg)
+
+    text = answer.await_args.args[0]
+    assert "duckduckgo" in text and "bing" in text
+    # Активной должна быть bing — у её строки маркер.
+    active_line = next(line for line in text.splitlines() if "bing" in line)
+    assert "активный" in active_line
+    other_line = next(
+        line for line in text.splitlines() if "duckduckgo" in line
+    )
+    assert "активный" not in other_line
+
+
+# ---------- /search_engine --------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_search_engine_known_calls_set_search_engine() -> None:
+    user_settings = UserSettingsRegistry(
+        default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+    )
+    handlers = _make_handlers(user_settings=user_settings)
+    msg, answer = _make_message()
+    await handlers["search_engine"](msg, _command("bing"))
+    assert user_settings.get_search_engine(42) == "bing"
+    answer.assert_awaited_once()
+    assert "bing" in answer.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_search_engine_unknown_does_not_call_set_search_engine() -> None:
+    user_settings = MagicMock(
+        wraps=UserSettingsRegistry(
+            default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+        )
+    )
+    handlers = _make_handlers(user_settings=user_settings)
+    msg, answer = _make_message()
+    await handlers["search_engine"](msg, _command("ghost-engine"))
+    user_settings.set_search_engine.assert_not_called()
+    text = answer.await_args.args[0]
+    assert "не найден" in text
+
+
+@pytest.mark.asyncio
+async def test_search_engine_no_arg_shows_usage() -> None:
+    user_settings = MagicMock(
+        wraps=UserSettingsRegistry(
+            default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+        )
+    )
+    handlers = _make_handlers(user_settings=user_settings)
+    msg, answer = _make_message()
+    await handlers["search_engine"](msg, _command(None))
+    user_settings.set_search_engine.assert_not_called()
+    assert "/search_engine" in answer.await_args.args[0]
 
 
 # ---------- /new -------------------------------------------------------------

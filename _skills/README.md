@@ -14,15 +14,25 @@
 _skills/
 ├── README.md                     # этот файл (правила, шаблон)
 ├── example-summary/
-│   └── SKILL.md                  # первая строка `Description: ...`, далее markdown-инструкция
-├── <other-skill>/
+│   └── SKILL.md                  # legacy формат: Description: ...
+├── bash-linux/
+│   └── SKILL.md                  # YAML frontmatter формат
+├── bash-pro/
+│   └── SKILL.md
+├── weather/
 │   └── SKILL.md
 └── ...
 ```
 
 Имя подпапки — **это имя скилла** (kebab-case), по которому агент его вызывает: `load_skill("example-summary")`.
 
+Поддерживаются два формата `SKILL.md`:
+1. **Legacy:** `Description: <текст>` в первой строке
+2. **YAML frontmatter:** `---\ndescription: ...\n---`
+
 ## Шаблон `SKILL.md`
+
+### Legacy формат
 
 ```markdown
 Description: <одна короткая фраза, ≤ 200 символов, с триггером срабатывания>
@@ -53,10 +63,29 @@ Description: <одна короткая фраза, ≤ 200 символов, с
 - <Антипаттерн 2>
 ```
 
+### YAML frontmatter формат
+
+```yaml
+---
+name: <имя в kebab-case>
+description: "<одна короткая фраза, ≤ 200 символов>"
+risk: <low|medium|high|unknown>  # опционально
+source: <community|official|internal>  # опционально
+date_added: "YYYY-MM-DD"  # опционально
+---
+
+# Skill: <имя>
+
+## When to Use
+...
+```
+
+Поля `risk`, `source`, `date_added` — для документации, агент их не использует.
+
 ### Обязательные элементы
 
-- **Первая строка** — `Description: ...` (без `#`, без markdown-форматирования). Идёт в системный промпт через `{{SKILLS_DESCRIPTION}}`.
-- **Заголовок** `# Skill: <name>` второй строкой (после пустой) — для человекочитаемости.
+- **Описание** — `Description: ...` (legacy) или YAML `description: ...` (frontmatter). Идёт в системный промпт через `{{SKILLS_DESCRIPTION}}`.
+- **Заголовок** `# Skill: <name>` — для человекочитаемости.
 - **Раздел «Когда использовать»** — критерии срабатывания.
 - **Раздел «Алгоритм»** — пошаговая инструкция.
 
@@ -87,7 +116,7 @@ Description: <одна короткая фраза, ≤ 200 символов, с
 3. Описание попадёт в системный промпт автоматически.
 4. Агент сам решит, нужен ли этот скилл; если да — вызовет `load_skill("<name>")`.
 
-> Hot-reload (правка без рестарта) — будущая фича, см. `_docs/roadmap.md` Этап 14.
+> Hot-reload (правка без рестарта) — будущая фича, см. `_docs/roadmap.md` Этап 15.
 
 ## Связанные документы
 

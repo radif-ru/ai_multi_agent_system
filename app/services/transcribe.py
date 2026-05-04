@@ -53,7 +53,12 @@ class Transcriber:
         Raises:
             Exception: При ошибке транскрипции.
         """
-        logger.info("Transcribing %s with model=%s language=%s", audio_path, self._model, self._language)
+        logger.info(
+            "transcribe: распознаю %s model=%s language=%s",
+            audio_path,
+            self._model,
+            self._language,
+        )
 
         segments, info = self._whisper_model.transcribe(
             audio_path, language=self._language
@@ -64,7 +69,7 @@ class Transcriber:
             text_parts.append(segment.text)
 
         text = "".join(text_parts).strip()
-        logger.info("Transcription complete: %d chars", len(text))
+        logger.info("transcribe: распознавание завершено len=%d chars", len(text))
         return text
 
 

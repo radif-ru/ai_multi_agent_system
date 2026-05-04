@@ -67,7 +67,9 @@ def _make_handler(
     return build_text_handler(
         settings=settings or _FakeSettings(),
         user_settings=user_settings
-        or UserSettingsRegistry(default_model="qwen3.5:4b"),
+        or UserSettingsRegistry(
+            default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+        ),
         conversations=conversations or ConversationStore(max_messages=20),
         summarizer=summarizer or _FakeSummarizer(),
         executor=executor or _FakeExecutor(),
@@ -115,7 +117,9 @@ async def test_success_path_calls_orchestrator_and_replies(
 ) -> None:
     calls = patch_handle_user_task("ответ")
     conversations = ConversationStore(max_messages=20)
-    user_settings = UserSettingsRegistry(default_model="qwen3.5:4b")
+    user_settings = UserSettingsRegistry(
+        default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+    )
     user_settings.set_model(42, "llama3:8b")
     handler = _make_handler(
         conversations=conversations, user_settings=user_settings
@@ -138,7 +142,7 @@ async def test_success_path_calls_orchestrator_and_replies(
         {"role": "assistant", "content": "ответ"},
     ]
     # Ответ отправлен пользователю.
-    answer.assert_awaited_once_with("ответ")
+    answer.assert_awaited_once_with("ответ", parse_mode=None)
 
 
 @pytest.mark.asyncio
@@ -150,7 +154,7 @@ async def test_too_long_input_skips_orchestrator(patch_handle_user_task) -> None
     await handler(msg)
 
     assert calls == []
-    answer.assert_awaited_once_with(TOO_LONG_INPUT_REPLY)
+    answer.assert_awaited_once_with(TOO_LONG_INPUT_REPLY, parse_mode=None)
 
 
 @pytest.mark.asyncio
@@ -162,7 +166,7 @@ async def test_non_text_message_is_rejected(patch_handle_user_task) -> None:
     await handler(msg)
 
     assert calls == []
-    answer.assert_awaited_once_with(NON_TEXT_REPLY)
+    answer.assert_awaited_once_with(NON_TEXT_REPLY, parse_mode=None)
 
 
 @pytest.mark.asyncio
@@ -176,8 +180,8 @@ async def test_llm_unavailable_replies_and_logs_error(
     with caplog.at_level(logging.ERROR, logger="app.adapters.telegram.handlers.messages"):
         await handler(msg)
 
-    answer.assert_awaited_once_with(LLM_UNAVAILABLE_REPLY)
-    assert any("LLM unavailable" in r.message for r in caplog.records)
+    answer.assert_awaited_once_with(LLM_UNAVAILABLE_REPLY, parse_mode=None)
+    assert any("LLM недоступна" in r.message for r in caplog.records)
 
 
 @pytest.mark.asyncio
@@ -190,7 +194,7 @@ async def test_llm_timeout_replies_with_timeout_message(
 
     await handler(msg)
 
-    answer.assert_awaited_once_with(LLM_TIMEOUT_REPLY)
+    answer.assert_awaited_once_with(LLM_TIMEOUT_REPLY, parse_mode=None)
 
 
 @pytest.mark.asyncio
@@ -203,7 +207,8 @@ async def test_llm_bad_response_replies_with_format_message(
 
     await handler(msg)
 
-    answer.assert_awaited_once_with(LLM_BAD_RESPONSE_REPLY)
+    expected_msg = "Модель ответила в неожиданном формате: not json. Попробуйте ещё раз."
+    answer.assert_awaited_once_with(expected_msg, parse_mode=None)
 
 
 @pytest.mark.asyncio
@@ -260,5 +265,68 @@ async def test_in_session_summary_failure_does_not_break_reply(
     with caplog.at_level(logging.WARNING, logger="app.adapters.telegram.handlers.messages"):
         await handler(msg)
 
-    answer.assert_awaited_once_with("ответ")
-    assert any("summary failed" in r.message for r in caplog.records)
+    answer.assert_awaited_once_with("ответ", parse_mode=None)
+    assert any("суммаризация не удалась" in r.message for r in caplog.records)
+
+
+# ---------- Reply-обработка -------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_reply_to_text_message_includes_context(patch_handle_user_task) -> None:
+    """Reply на текстовое сообщение добавляет контекст оригинала."""
+    patch_handle_user_task("ответ на reply")
+    conversations = ConversationStore(max_messages=20)
+    handler = _make_handler(conversations=conversations)
+    msg, answer = _make_message(text="ответ пользователя")
+
+    # Мокаем reply_to_message
+    reply_msg = MagicMock()
+    reply_msg.text = "оригинальное сообщение"
+    msg.reply_to_message = reply_msg
+
+    await handler(msg)
+
+    # Проверяем что контекст добавлен
+    history = conversations.get_history(42)
+    assert len(history) == 2
+    assert "[В ответ на: оригинальное сообщение]" in history[0]["content"]
+    assert "ответ пользователя" in history[0]["content"]
+    answer.assert_awaited_once_with("ответ на reply", parse_mode=None)
+
+
+@pytest.mark.asyncio
+async def test_reply_to_long_message_is_truncated(patch_handle_user_task) -> None:
+    """Reply на длинное сообщение обрезается до 500 символов."""
+    patch_handle_user_task("ответ")
+    conversations = ConversationStore(max_messages=20)
+    handler = _make_handler(conversations=conversations)
+    msg, answer = _make_message(text="ответ")
+
+    reply_msg = MagicMock()
+    reply_msg.text = "x" * 600
+    msg.reply_to_message = reply_msg
+
+    await handler(msg)
+
+    history = conversations.get_history(42)
+    assert "[В ответ на: " in history[0]["content"]
+    assert "..." in history[0]["content"]
+    assert len(history[0]["content"]) < 600  # Должно быть обрезано
+
+
+@pytest.mark.asyncio
+async def test_no_reply_without_reply_to_message(patch_handle_user_task) -> None:
+    """Обычное сообщение без reply не добавляет контекст."""
+    patch_handle_user_task("ответ")
+    conversations = ConversationStore(max_messages=20)
+    handler = _make_handler(conversations=conversations)
+    msg, answer = _make_message(text="просто текст")
+
+    await handler(msg)
+
+    history = conversations.get_history(42)
+    assert len(history) == 2
+    assert "[В ответ на:" not in history[0]["content"]
+    answer.assert_awaited_once_with("ответ", parse_mode=None)
+

@@ -2,7 +2,7 @@
 
 См. `_docs/architecture.md` §3.10. В MVP — тонкая прослойка-функция, которая
 читает `conversation_id` из `ConversationStore` и делегирует выполнение
-`Executor`. В будущем (Этап 4 roadmap) сюда добавится `Planner`/`Critic`,
+`Executor`. В будущем (Этап 5 roadmap) сюда добавится `Planner`/`Critic`,
 адаптеры менять не понадобится — это и есть точка изоляции NFR-10/11.
 """
 

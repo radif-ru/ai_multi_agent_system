@@ -16,17 +16,19 @@ from dataclasses import dataclass
 class _UserState:
     model: str | None = None
     prompt: str | None = None
+    search_engine: str | None = None
 
 
 class UserSettingsRegistry:
-    """Реестр per-user override'ов модели и системного промпта.
+    """Реестр per-user override'ов модели, системного промпта и поисковика.
 
-    Валидация имени модели в этот класс **не входит** — это ответственность
-    handler'а команды `/model` (он знает список `OLLAMA_AVAILABLE_MODELS`).
+    Валидация имени модели и поисковика в этот класс **не входит** — это ответственность
+    handler'ов команд `/model` и `/search_engine` (они знают списки доступных значений).
     """
 
-    def __init__(self, default_model: str) -> None:
+    def __init__(self, default_model: str, default_search_engine: str) -> None:
         self._default_model = default_model
+        self._default_search_engine = default_search_engine
         self._states: dict[int, _UserState] = {}
 
     def get_model(self, user_id: int) -> str:
@@ -52,5 +54,16 @@ class UserSettingsRegistry:
             state.prompt = None
 
     def reset(self, user_id: int) -> None:
-        """Полный сброс per-user настроек (модель и промпт → default)."""
+        """Полный сброс per-user настроек (модель, промпт, поисковик → default)."""
         self._states.pop(user_id, None)
+
+    def get_search_engine(self, user_id: int) -> str:
+        """Возвращает выбранный поисковик пользователя или дефолтный."""
+        state = self._states.get(user_id)
+        if state is None or state.search_engine is None:
+            return self._default_search_engine
+        return state.search_engine
+
+    def set_search_engine(self, user_id: int, engine_name: str) -> None:
+        """Устанавливает поисковик для пользователя."""
+        self._states.setdefault(user_id, _UserState()).search_engine = engine_name

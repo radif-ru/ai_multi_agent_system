@@ -33,6 +33,7 @@ from app.services.prompts import PromptLoader
 from app.services.skills import SkillRegistry
 from app.services.summarizer import Summarizer
 from app.tools.calculator import CalculatorTool
+from app.tools.describe_image import DescribeImageTool
 from app.tools.http_request import HttpRequestTool
 from app.tools.load_skill import LoadSkillTool
 from app.tools.memory_search import MemorySearchTool
@@ -40,6 +41,7 @@ from app.tools.read_document import ReadDocumentTool
 from app.tools.read_file import ReadFileTool
 from app.tools.registry import ToolRegistry
 from app.tools.web_search import WebSearchTool
+from app.tools.weather import WeatherTool
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +77,9 @@ class _Components:
 
 async def _build_components(settings: Settings) -> _Components:
     llm = OllamaClient(
-        base_url=settings.ollama_base_url, timeout=settings.ollama_timeout
+        base_url=settings.ollama_base_url,
+        timeout=settings.ollama_timeout,
+        num_ctx=settings.ollama_num_ctx,
     )
     conversations = ConversationStore(
         max_messages=settings.history_max_messages,
@@ -99,17 +103,28 @@ async def _build_components(settings: Settings) -> _Components:
     skills = SkillRegistry("_skills")
     skills.load()
     prompts = PromptLoader(settings.agent_system_prompt_path)
-    user_settings = UserSettingsRegistry(default_model=settings.ollama_default_model)
+    user_settings = UserSettingsRegistry(
+        default_model=settings.ollama_default_model,
+        default_search_engine=settings.search_engine_default,
+    )
 
     tools = ToolRegistry(
         [
             CalculatorTool(),
             ReadFileTool(),
-            ReadDocumentTool(tmp_files_dir=settings.tmp_files_dir),
+            ReadDocumentTool(
+                tmp_files_dir=settings.tmp_base_dir,
+                max_file_size_mb=settings.telegram_max_file_mb,
+                max_extracted_images=settings.read_document_max_extracted_images,
+                max_ocr_images=settings.read_document_max_ocr_images,
+                ocr_enabled=settings.read_document_ocr_enabled
+            ),
             HttpRequestTool(),
             WebSearchTool(),
             MemorySearchTool(),
             LoadSkillTool(),
+            DescribeImageTool(tmp_dir=settings.tmp_base_dir),
+            WeatherTool(),
         ]
     )
     archiver = Archiver(
@@ -120,6 +135,7 @@ async def _build_components(settings: Settings) -> _Components:
         embedding_model=settings.embedding_model,
         chunk_size=settings.memory_chunk_size,
         chunk_overlap=settings.memory_chunk_overlap,
+        concurrency_limit=settings.embedding_concurrency,
     )
     executor = Executor(
         settings=settings,
@@ -128,6 +144,8 @@ async def _build_components(settings: Settings) -> _Components:
         prompts=prompts,
         skills=skills,
         semantic_memory=semantic_memory,
+        user_settings=user_settings,
+        summarizer=summarizer,
     )
     return _Components(
         settings=settings,

@@ -12,6 +12,7 @@ import pytest
 
 from app.adapters.telegram.files import FileTooLargeError
 from app.adapters.telegram.handlers.messages import (
+    FILE_TOO_LARGE_REPLY,
     VOICE_TRANSCRIPTION_UNAVAILABLE_REPLY,
     handle_voice,
 )
@@ -110,8 +111,7 @@ async def test_handle_voice_success(
         )
 
         # При недоступности transcriber должно быть отправлено сообщение
-        message.answer.assert_called_once()
-        assert "недоступно" in message.answer.call_args[0][0].lower()
+        message.answer.assert_called_once_with(VOICE_TRANSCRIPTION_UNAVAILABLE_REPLY, parse_mode=None)
 
         # Executor не должен вызываться
         mock_conversations.add_user_message.assert_not_called()
@@ -158,7 +158,7 @@ async def test_handle_voice_transcriber_unavailable(
         )
 
         # Проверяем, что отправлено сообщение о недоступности
-        message.answer.assert_called_once_with(VOICE_TRANSCRIPTION_UNAVAILABLE_REPLY)
+        message.answer.assert_called_once_with(VOICE_TRANSCRIPTION_UNAVAILABLE_REPLY, parse_mode=None)
 
         # Проверяем, что executor не вызывался
         mock_conversations.add_user_message.assert_not_called()
@@ -186,7 +186,7 @@ async def test_handle_voice_too_large(
     # Мокаем download_telegram_file
     original_download = messages.download_telegram_file
 
-    async def mock_download(bot, file_id, *, max_size_mb):
+    async def mock_download(bot, file_id, *, max_size_mb, tmp_dir=None, user_id=None, mime_type=None):
         raise FileTooLargeError(file_size_mb=25, max_size_mb=20)
 
     messages.download_telegram_file = mock_download
@@ -213,7 +213,7 @@ async def test_handle_voice_too_large(
         )
 
         # Проверяем, что отправлено сообщение о превышении
-        message.answer.assert_called_once()
+        message.answer.assert_called_once_with(FILE_TOO_LARGE_REPLY, parse_mode=None)
 
         # Проверяем, что executor не вызывался
         mock_conversations.add_user_message.assert_not_called()

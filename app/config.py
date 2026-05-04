@@ -31,14 +31,17 @@ class Settings(BaseSettings):
         default_factory=lambda: ["qwen3.5:4b"]
     )
     ollama_timeout: float = 120.0
+    ollama_num_ctx: int = 8192
 
     # --- Ollama (Embedding) ---
     embedding_model: str = "nomic-embed-text"
     embedding_dimensions: int = 768
+    embedding_concurrency: int = 5
 
     # --- Agent loop ---
-    agent_max_steps: int = 10
-    agent_max_output_chars: int = 8000
+    agent_max_steps: int = 15
+    agent_max_output_chars: int = 12000
+    agent_max_context_chars: int = 8000
 
     # --- Memory (in-memory) ---
     history_max_messages: int = 20
@@ -63,11 +66,16 @@ class Settings(BaseSettings):
 
     # --- Logging ---
     log_level: str = "INFO"
+    log_level_console: str = "DEBUG"
+    log_level_file: str = "INFO"
     log_file: Path = Path("logs/agent.log")
     log_llm_context: bool = True
 
     # --- Temporary files ---
-    tmp_files_dir: Path = Path("tmp")
+    tmp_base_dir: Path = Path("data/tmp")
+    read_document_max_extracted_images: int = 10
+    read_document_max_ocr_images: int = 20
+    read_document_ocr_enabled: bool = False
 
     # --- Whisper (speech-to-text) ---
     whisper_model: str = "base"
@@ -76,9 +84,22 @@ class Settings(BaseSettings):
     # --- Vision (image description) ---
     vision_model: str | None = None
 
+    # --- Web search ---
+    search_engine_default: str = "duckduckgo"
+    search_engines_available: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["duckduckgo"]
+    )
+
     @field_validator("ollama_available_models", mode="before")
     @classmethod
     def _parse_models_csv(cls, v):
+        if isinstance(v, str):
+            return [x.strip() for x in v.split(",") if x.strip()]
+        return v
+
+    @field_validator("search_engines_available", mode="before")
+    @classmethod
+    def _parse_search_engines_csv(cls, v):
         if isinstance(v, str):
             return [x.strip() for x in v.split(",") if x.strip()]
         return v
@@ -132,11 +153,22 @@ class Settings(BaseSettings):
             raise ValueError("SUMMARIZER_CHUNK_MESSAGES must be > 0")
         return v
 
+    @field_validator("embedding_concurrency")
+    @classmethod
+    def _check_embedding_concurrency(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("EMBEDDING_CONCURRENCY must be > 0")
+        return v
+
     @model_validator(mode="after")
     def _create_tmp_dir(self) -> "Settings":
-        """Создать директорию для временных файлов при старте."""
-        self.tmp_files_dir.mkdir(parents=True, exist_ok=True)
+        """Создать базовую директорию для временных файлов при старте."""
+        self.tmp_base_dir.mkdir(parents=True, exist_ok=True)
         return self
+
+    def get_user_tmp_dir(self, user_id: int) -> Path:
+        """Получить директорию временных файлов для конкретного пользователя."""
+        return self.tmp_base_dir / str(user_id)
 
     @model_validator(mode="after")
     def _cross_validate(self) -> "Settings":

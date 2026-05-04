@@ -1,19 +1,28 @@
 """Handler'ы команд Telegram-адаптера.
 
-Покрытые команды: `/start`, `/help`, `/models`, `/model`, `/prompt`, `/new`, `/reset`.
+Покрытые команды: `/start`, `/help`, `/models`, `/model`, `/search_engines`,
+`/search_engine`, `/prompt`, `/new`, `/reset`.
+
+Логика команд вынесена в общий модуль `app/commands/` для переиспользования
+в других адаптерах (консоль, web, MAX). Telegram-адаптер — тонкая обёртка,
+которая вызывает общие команды и отправляет результат через `message.answer()`.
 
 См. `_docs/commands.md` (контракт), `_docs/architecture.md` §3.12 (адаптер
-не знает про executor / tools напрямую — только про прослойки сервисов).
+не знает про executor / tools напрямую — только про прослойки сервисов),
+`_docs/console-adapter.md` §8 (пример использования общих команд).
 """
 
 from __future__ import annotations
 
 import logging
+import time
 from typing import TYPE_CHECKING, Any
 
 from aiogram import Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
+
+from app.commands import CommandContext, CommandRegistry
 
 if TYPE_CHECKING:
     from app.config import Settings
@@ -23,24 +32,6 @@ if TYPE_CHECKING:
     from app.services.prompts import PromptLoader
 
 logger = logging.getLogger(__name__)
-
-PROMPT_PREVIEW_CHARS = 200
-
-
-_START_TEXT = (
-    "Привет! Я — AI-агент на локальной LLM.\n"
-    "\n"
-    "Я не просто отвечаю — я решаю задачи: думаю, выбираю инструмент, "
-    "смотрю результат и так до финального ответа.\n"
-    "\n"
-    "Команды:\n"
-    "/help — подробная справка\n"
-    "/models — список моделей\n"
-    "/model <имя> — выбрать модель\n"
-    "/prompt <текст> — задать системный промпт (без текста — сброс)\n"
-    "/new — закрыть текущую сессию (с архивированием) и начать новую\n"
-    "/reset — очистить контекст и сбросить настройки"
-)
 
 
 def build_command_handlers(
@@ -58,131 +49,200 @@ def build_command_handlers(
     Возвращает `dict[command_name, async callable]`. Используется как
     `build_commands_router`, так и тестами (которые вызывают функции напрямую,
     минуя aiogram-диспетчеризацию).
+
+    Логика команд вынесена в `app.commands.CommandRegistry`, здесь только
+    Telegram-специфичная обёртка (получение user_id/chat_id, отправка ответа).
     """
+    registry = CommandRegistry()
 
     async def cmd_start(message: Message) -> None:
-        await message.answer(_START_TEXT)
+        user_id = _user_id(message)
+        chat_id = message.chat.id if message.chat is not None else user_id
+        ctx = _build_context(
+            user_id=user_id,
+            chat_id=chat_id,
+            settings=settings,
+            user_settings=user_settings,
+            prompts=prompts,
+            tools=tools,
+            skills=skills,
+            conversations=conversations,
+            archiver=archiver,
+        )
+        result = await registry.execute("start", ctx)
+        await message.answer(result.text)
 
     async def cmd_help(message: Message) -> None:
         user_id = _user_id(message)
-        active_model = user_settings.get_model(user_id)
-
-        prompt_override = user_settings.get_prompt(user_id)
-        if prompt_override is None:
-            prompt_text = prompts.agent_system_template
-            prompt_origin = "по умолчанию"
-        else:
-            prompt_text = prompt_override
-            prompt_origin = "пользовательский"
-        prompt_preview = _truncate(prompt_text, PROMPT_PREVIEW_CHARS)
-
-        tools_block = _format_descriptions(tools.list_descriptions())
-        skills_block = _format_descriptions(skills.list_descriptions())
-
-        text = (
-            "Команды:\n"
-            "/start — приветствие\n"
-            "/help — эта справка\n"
-            "/models — список моделей\n"
-            "/model <имя> — выбрать модель\n"
-            "/prompt <текст> — задать системный промпт (без текста — сброс)\n"
-            "/new — архивировать сессию и начать новую\n"
-            "/reset — очистить контекст и сбросить настройки\n"
-            "\n"
-            f"Текущая модель: {active_model}\n"
-            f"Системный промпт ({prompt_origin}):\n{prompt_preview}\n"
-            "\n"
-            f"Доступные инструменты:\n{tools_block}\n"
-            "\n"
-            f"Доступные скиллы:\n{skills_block}"
+        chat_id = message.chat.id if message.chat is not None else user_id
+        ctx = _build_context(
+            user_id=user_id,
+            chat_id=chat_id,
+            settings=settings,
+            user_settings=user_settings,
+            prompts=prompts,
+            tools=tools,
+            skills=skills,
+            conversations=conversations,
+            archiver=archiver,
         )
-        await message.answer(text)
+        result = await registry.execute("help", ctx)
+        await message.answer(result.text)
 
     async def cmd_models(message: Message) -> None:
         user_id = _user_id(message)
-        active = user_settings.get_model(user_id)
-        lines = ["Доступные модели:"]
-        for name in settings.ollama_available_models:
-            mark = " ← активная" if name == active else ""
-            lines.append(f"• {name}{mark}")
-        lines.append("")
-        lines.append("Смени командой: /model <имя>")
-        await message.answer("\n".join(lines))
+        chat_id = message.chat.id if message.chat is not None else user_id
+        ctx = _build_context(
+            user_id=user_id,
+            chat_id=chat_id,
+            settings=settings,
+            user_settings=user_settings,
+            prompts=prompts,
+            tools=tools,
+            skills=skills,
+            conversations=conversations,
+            archiver=archiver,
+        )
+        result = await registry.execute("models", ctx)
+        await message.answer(result.text)
 
     async def cmd_model(message: Message, command: CommandObject) -> None:
         user_id = _user_id(message)
+        chat_id = message.chat.id if message.chat is not None else user_id
+        ctx = _build_context(
+            user_id=user_id,
+            chat_id=chat_id,
+            settings=settings,
+            user_settings=user_settings,
+            prompts=prompts,
+            tools=tools,
+            skills=skills,
+            conversations=conversations,
+            archiver=archiver,
+        )
         arg = (command.args or "").strip()
-        if not arg:
-            await message.answer("Использование: /model <имя>, список: /models")
-            return
-        if arg not in settings.ollama_available_models:
-            available = ", ".join(settings.ollama_available_models)
-            await message.answer(f"Модель не найдена. Доступно: {available}")
-            return
-        user_settings.set_model(user_id, arg)
-        await message.answer(f"Модель переключена на {arg}.")
+        result = await registry.execute("model", ctx, args=arg)
+        await message.answer(result.text)
+
+    async def cmd_search_engines(message: Message) -> None:
+        user_id = _user_id(message)
+        chat_id = message.chat.id if message.chat is not None else user_id
+        ctx = _build_context(
+            user_id=user_id,
+            chat_id=chat_id,
+            settings=settings,
+            user_settings=user_settings,
+            prompts=prompts,
+            tools=tools,
+            skills=skills,
+            conversations=conversations,
+            archiver=archiver,
+        )
+        result = await registry.execute("search_engines", ctx)
+        await message.answer(result.text)
+
+    async def cmd_search_engine(message: Message, command: CommandObject) -> None:
+        user_id = _user_id(message)
+        chat_id = message.chat.id if message.chat is not None else user_id
+        ctx = _build_context(
+            user_id=user_id,
+            chat_id=chat_id,
+            settings=settings,
+            user_settings=user_settings,
+            prompts=prompts,
+            tools=tools,
+            skills=skills,
+            conversations=conversations,
+            archiver=archiver,
+        )
+        arg = (command.args or "").strip()
+        result = await registry.execute("search_engine", ctx, args=arg)
+        await message.answer(result.text)
 
     async def cmd_prompt(message: Message, command: CommandObject) -> None:
         user_id = _user_id(message)
+        chat_id = message.chat.id if message.chat is not None else user_id
+        ctx = _build_context(
+            user_id=user_id,
+            chat_id=chat_id,
+            settings=settings,
+            user_settings=user_settings,
+            prompts=prompts,
+            tools=tools,
+            skills=skills,
+            conversations=conversations,
+            archiver=archiver,
+        )
         arg = (command.args or "").strip()
-        if not arg:
-            user_settings.reset_prompt(user_id)
-            await message.answer(
-                "Системный промпт сброшен к значению по умолчанию."
-            )
-            return
-        user_settings.set_prompt(user_id, arg)
-        await message.answer("Системный промпт обновлён.")
+        result = await registry.execute("prompt", ctx, args=arg)
+        await message.answer(result.text)
 
     async def cmd_new(message: Message) -> None:
         user_id = _user_id(message)
         chat_id = message.chat.id if message.chat is not None else user_id
-        # Архивируем ПОЛНЫЙ лог сессии (см. _docs/memory.md §2.5):
-        # in-session `replace_with_summary` мог разрушить get_history(),
-        # но `_session_log` хранит исходный диалог целиком.
-        history = conversations.get_session_log(user_id)
-        if not history:
-            conversations.rotate_conversation_id(user_id)
-            await message.answer("Сессия пустая, новая открыта.")
-            return
-        conversation_id = conversations.current_conversation_id(user_id)
-        try:
-            inserted = await archiver.archive(
-                history,
-                conversation_id=conversation_id,
-                user_id=user_id,
-                chat_id=chat_id,
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.exception(
-                "/new archive failed user=%s conv=%s", user_id, conversation_id
-            )
-            await message.answer(
-                f"Архивирование не удалось: {exc}. "
-                "Сессия сохранена, попробуйте /new ещё раз позже."
-            )
-            return
-        conversations.clear(user_id)
-        conversations.rotate_conversation_id(user_id)
-        await message.answer(
-            f"Архивировано {inserted} чанков, новая сессия открыта."
+        ctx = _build_context(
+            user_id=user_id,
+            chat_id=chat_id,
+            settings=settings,
+            user_settings=user_settings,
+            prompts=prompts,
+            tools=tools,
+            skills=skills,
+            conversations=conversations,
+            archiver=archiver,
         )
+
+        # Показываем прогресс для долгих операций
+        progress_msg = None
+        last_update = 0.0
+
+        async def _progress_callback(text: str) -> None:
+            nonlocal progress_msg, last_update
+            now = time.monotonic()
+            # Обновляем не чаще чем раз в 3 секунды
+            if now - last_update < 3.0 and progress_msg is not None:
+                return
+            if progress_msg is None:
+                progress_msg = await message.answer(f"⏳ {text}")
+            else:
+                await progress_msg.edit_text(f"⏳ {text}")
+            last_update = now
+
+        result = await registry.execute("new", ctx, progress_callback=_progress_callback)
+
+        # Удаляем сообщение о прогрессе, если было
+        if progress_msg is not None:
+            try:
+                await progress_msg.delete()
+            except Exception:  # noqa: BLE001
+                pass  # Игнорируем ошибки удаления
+
+        await message.answer(result.text)
 
     async def cmd_reset(message: Message) -> None:
         user_id = _user_id(message)
-        conversations.clear(user_id)
-        user_settings.reset(user_id)
-        conversations.rotate_conversation_id(user_id)
-        await message.answer(
-            "Контекст диалога очищен, модель и системный промпт "
-            "сброшены к значениям по умолчанию."
+        chat_id = message.chat.id if message.chat is not None else user_id
+        ctx = _build_context(
+            user_id=user_id,
+            chat_id=chat_id,
+            settings=settings,
+            user_settings=user_settings,
+            prompts=prompts,
+            tools=tools,
+            skills=skills,
+            conversations=conversations,
+            archiver=archiver,
         )
+        result = await registry.execute("reset", ctx)
+        await message.answer(result.text)
 
     return {
         "start": cmd_start,
         "help": cmd_help,
         "models": cmd_models,
         "model": cmd_model,
+        "search_engines": cmd_search_engines,
+        "search_engine": cmd_search_engine,
         "prompt": cmd_prompt,
         "new": cmd_new,
         "reset": cmd_reset,
@@ -204,7 +264,7 @@ def build_commands_router(
     Тонкая обёртка над `build_command_handlers`, которая регистрирует функции
     под нужными `Command(...)`-фильтрами. Зависимости передаются явно —
     это упрощает unit-тесты и даёт жизненный цикл «один экземпляр на
-    приложение» (см. `_docs/instructions.md` §3).
+    приложение» (см. `_docs/instructions.md` §4).
     """
 
     handlers = build_command_handlers(
@@ -221,10 +281,38 @@ def build_commands_router(
     router.message.register(handlers["help"], Command("help"))
     router.message.register(handlers["models"], Command("models"))
     router.message.register(handlers["model"], Command("model"))
+    router.message.register(handlers["search_engines"], Command("search_engines"))
+    router.message.register(handlers["search_engine"], Command("search_engine"))
     router.message.register(handlers["prompt"], Command("prompt"))
     router.message.register(handlers["new"], Command("new"))
     router.message.register(handlers["reset"], Command("reset"))
     return router
+
+
+def _build_context(
+    *,
+    user_id: int,
+    chat_id: int,
+    settings: "Settings",
+    user_settings: "UserSettingsRegistry",
+    prompts: "PromptLoader",
+    tools: Any,
+    skills: Any,
+    conversations: "ConversationStore",
+    archiver: "Archiver",
+) -> CommandContext:
+    """Построить контекст команды для Telegram."""
+    return CommandContext(
+        user_id=user_id,
+        chat_id=chat_id,
+        settings=settings,
+        user_settings=user_settings,
+        prompts=prompts,
+        tools=tools,
+        skills=skills,
+        conversations=conversations,
+        archiver=archiver,
+    )
 
 
 def _user_id(message: Message) -> int:
@@ -235,18 +323,3 @@ def _user_id(message: Message) -> int:
         # но контракт aiogram допускает None — лучше явный сбой, чем тихий 0.
         raise RuntimeError("message.from_user is None — невозможно определить user_id")
     return message.from_user.id
-
-
-def _truncate(text: str, limit: int) -> str:
-    if len(text) <= limit:
-        return text
-    return text[:limit].rstrip() + "…"
-
-
-def _format_descriptions(descriptions: list[dict[str, Any]]) -> str:
-    if not descriptions:
-        return "(нет)"
-    return "\n".join(
-        f"• {d['name']} — {d.get('description', '')}".rstrip(" —")
-        for d in descriptions
-    )

@@ -1,6 +1,6 @@
 """Глобальный error handler Telegram-адаптера.
 
-См. `_docs/architecture.md` §6 (таблица обработки ошибок) и
+См. `_docs/architecture.md` §7 (таблица обработки ошибок) и
 `_docs/testing.md` §3.11.
 
 Ловит **любое необработанное исключение** в handler'ах команд и текста,
@@ -15,6 +15,8 @@ from typing import Awaitable, Callable
 
 from aiogram import Router
 from aiogram.types import ErrorEvent
+
+from app.adapters.telegram.utils import format_for_telegram
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +35,8 @@ def build_error_handler() -> Callable[[ErrorEvent], Awaitable[bool]]:
         message = event.update.message if event.update is not None else None
         if message is not None:
             try:
-                await message.answer(GENERIC_ERROR_REPLY)
+                formatted, parse_mode = format_for_telegram(GENERIC_ERROR_REPLY)
+                await message.answer(formatted, parse_mode=parse_mode)
             except Exception:  # noqa: BLE001
                 logger.exception("failed to send error reply to user")
         # True → исключение помечено как обработанное, polling продолжается.

@@ -22,9 +22,11 @@ import logging
 from typing import TYPE_CHECKING, Awaitable, Callable
 
 from aiogram import Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import Message
 
 from app.adapters.telegram.files import FileTooLargeError, download_telegram_file
+from app.adapters.telegram.utils import format_for_telegram
 from app.core.orchestrator import handle_user_task
 from app.services.llm import LLMBadResponse, LLMTimeout, LLMUnavailable
 from app.services.transcribe import (
@@ -48,6 +50,15 @@ logger = logging.getLogger(__name__)
 
 MAX_INPUT_LENGTH = 4000
 TELEGRAM_MAX_MESSAGE_LENGTH = 4096
+
+
+async def _send_with_fallback(message: Message, text: str, parse_mode) -> None:
+    """Отправить сообщение с fallback на ParseMode.NONE при ошибке парсинга."""
+    try:
+        await message.answer(text, parse_mode=parse_mode)
+    except TelegramBadRequest:
+        logger.warning("Ошибка парсинга Telegram, fallback на ParseMode.NONE")
+        await message.answer(text, parse_mode=None)
 
 NON_TEXT_REPLY = "В MVP я понимаю только текст."
 TOO_LONG_INPUT_REPLY = "Слишком длинный запрос, сократите формулировку."
@@ -79,7 +90,8 @@ def build_text_handler(
     async def handle_text(message: Message) -> None:
         text = message.text
         if not text:
-            await message.answer(NON_TEXT_REPLY)
+            formatted, parse_mode = format_for_telegram(NON_TEXT_REPLY)
+            await _send_with_fallback(message, formatted, parse_mode)
             return
 
         if message.from_user is None:
@@ -89,8 +101,31 @@ def build_text_handler(
         chat_id = message.chat.id if message.chat is not None else user_id
 
         if len(text) > MAX_INPUT_LENGTH:
-            await message.answer(TOO_LONG_INPUT_REPLY)
+            formatted, parse_mode = format_for_telegram(TOO_LONG_INPUT_REPLY)
+            await _send_with_fallback(message, formatted, parse_mode)
             return
+
+        # Если это ответ на сообщение, добавляем контекст оригинала
+        reply_msg = getattr(message, "reply_to_message", None)
+        if reply_msg is not None:
+            reply_text = getattr(reply_msg, "text", None) or getattr(reply_msg, "caption", None) or ""
+            if reply_text:
+                # Обрезаем длинный контекст до 500 символов
+                if len(reply_text) > 500:
+                    reply_text = reply_text[:500] + "..."
+                text = f"[В ответ на: {reply_text}]\n{text}"
+            # Если ответ на файл (фото, документ или голосовой), добавляем контекст конкретного файла по message_id
+            if getattr(reply_msg, "photo", None) is not None or getattr(reply_msg, "document", None) is not None or getattr(reply_msg, "voice", None) is not None:
+                reply_msg_id = getattr(reply_msg, "message_id", None)
+                logger.info("reply на файл user=%s reply_msg_id=%s", user_id, reply_msg_id)
+                if reply_msg_id is not None:
+                    file_context = conversations.get_file_context(user_id, reply_msg_id)
+                    logger.info("file_context найден=%s для reply_msg_id=%s", file_context is not None, reply_msg_id)
+                    if file_context:
+                        # Добавляем контекст конкретного файла
+                        text = f"{file_context}\n\n{text}"
+                    else:
+                        logger.warning("контекст файла не найден для reply_msg_id=%s", reply_msg_id)
 
         conversations.add_user_message(user_id, text)
         model = user_settings.get_model(user_id)
@@ -109,15 +144,23 @@ def build_text_handler(
             )
         except LLMTimeout:
             logger.warning("LLM timeout user=%s", user_id)
-            await message.answer(LLM_TIMEOUT_REPLY)
+            formatted, parse_mode = format_for_telegram(LLM_TIMEOUT_REPLY)
+            await _send_with_fallback(message, formatted, parse_mode)
             return
         except LLMUnavailable:
-            logger.error("LLM unavailable user=%s", user_id)
-            await message.answer(LLM_UNAVAILABLE_REPLY)
+            logger.error("LLM недоступна user=%s", user_id)
+            formatted, parse_mode = format_for_telegram(LLM_UNAVAILABLE_REPLY)
+            await _send_with_fallback(message, formatted, parse_mode)
             return
-        except LLMBadResponse:
-            logger.warning("LLM bad response user=%s", user_id)
-            await message.answer(LLM_BAD_RESPONSE_REPLY)
+        except LLMBadResponse as exc:
+            logger.warning("LLM вернула некорректный ответ user=%s error=%s", user_id, exc)
+            # Если пустой ответ - это может быть из-за слишком большого контекста
+            if "empty" in str(exc):
+                error_msg = "Модель не смогла обработать такой большой запрос. Попробуйте отправить файл меньшего размера или задайте более конкретный вопрос."
+            else:
+                error_msg = f"Модель ответила в неожиданном формате: {exc}. Попробуйте ещё раз."
+            formatted, parse_mode = format_for_telegram(error_msg)
+            await _send_with_fallback(message, formatted, parse_mode)
             return
 
         conversations.add_assistant_message(user_id, reply)
@@ -133,13 +176,14 @@ def build_text_handler(
                 )
             except Exception:  # noqa: BLE001
                 logger.warning(
-                    "in-session summary failed user=%s",
+                    "in-session суммаризация не удалась user=%s",
                     user_id,
                     exc_info=True,
                 )
 
         for part in split_long_message(reply, TELEGRAM_MAX_MESSAGE_LENGTH):
-            await message.answer(part)
+            formatted, parse_mode = format_for_telegram(part)
+            await _send_with_fallback(message, formatted, parse_mode)
 
     return handle_text
 
@@ -170,22 +214,27 @@ async def handle_document(
             message.bot,
             document.file_id,
             max_size_mb=settings.telegram_max_file_mb,
-            tmp_dir=settings.tmp_files_dir,
+            tmp_dir=settings.tmp_base_dir,
+            user_id=user_id,
             mime_type=document.mime_type,
         )
     except FileTooLargeError as exc:
-        logger.warning("File too large user=%s size=%d", user_id, exc.file_size_mb)
-        await message.answer(FILE_TOO_LARGE_REPLY)
+        logger.warning("файл слишком большой user=%s size=%d", user_id, exc.file_size_mb)
+        formatted, parse_mode = format_for_telegram(FILE_TOO_LARGE_REPLY)
+        await _send_with_fallback(message, formatted, parse_mode)
         return
     except Exception as exc:
-        logger.error("Download failed user=%s: %s", user_id, exc)
-        await message.answer(GENERIC_ERROR_REPLY)
+        logger.error("ошибка загрузки файла user=%s: %s", user_id, exc)
+        formatted, parse_mode = format_for_telegram(GENERIC_ERROR_REPLY)
+        await _send_with_fallback(message, formatted, parse_mode)
         return
 
     # Формируем обогащённый goal
-    goal = f"Пользователь прислал документ {file_path}. Caption: {caption}. Прочитай через read_document и ответь по сути."
+    goal = f"Пользователь прислал документ {file_path}. Caption: {caption}. Прочитай через read_document и ответь по сути. Важно: для read_document используй ТОЛЬКО путь {file_path} без изменений, не меняй его и не используй относительные пути."
 
     conversations.add_user_message(user_id, goal)
+    # Сохраняем контекст файла по message_id для ответов на конкретный файл
+    conversations.save_file_context(user_id, message.message_id, "document", goal)
     model = user_settings.get_model(user_id)
 
     try:
@@ -202,15 +251,18 @@ async def handle_document(
         )
     except LLMTimeout:
         logger.warning("LLM timeout user=%s", user_id)
-        await message.answer(LLM_TIMEOUT_REPLY)
+        formatted, parse_mode = format_for_telegram(LLM_TIMEOUT_REPLY)
+        await _send_with_fallback(message, formatted, parse_mode)
         return
     except LLMUnavailable:
-        logger.error("LLM unavailable user=%s", user_id)
-        await message.answer(LLM_UNAVAILABLE_REPLY)
+        logger.error("LLM недоступна user=%s", user_id)
+        formatted, parse_mode = format_for_telegram(LLM_UNAVAILABLE_REPLY)
+        await _send_with_fallback(message, formatted, parse_mode)
         return
     except LLMBadResponse:
-        logger.warning("LLM bad response user=%s", user_id)
-        await message.answer(LLM_BAD_RESPONSE_REPLY)
+        logger.warning("LLM вернула некорректный ответ user=%s", user_id)
+        formatted, parse_mode = format_for_telegram(LLM_BAD_RESPONSE_REPLY)
+        await _send_with_fallback(message, formatted, parse_mode)
         return
 
     conversations.add_assistant_message(user_id, reply)
@@ -221,16 +273,13 @@ async def handle_document(
             summary = await summarizer.summarize(history[:-2], model=model)
             conversations.replace_with_summary(user_id, summary, kept_tail=2)
         except Exception:  # noqa: BLE001
-            logger.warning("in-session summary failed user=%s", user_id, exc_info=True)
+            logger.warning("in-session суммаризация не удалась user=%s", user_id, exc_info=True)
 
     for part in split_long_message(reply, TELEGRAM_MAX_MESSAGE_LENGTH):
-        await message.answer(part)
+        formatted, parse_mode = format_for_telegram(part)
+        await _send_with_fallback(message, formatted, parse_mode)
 
-    # Удаляем временный файл
-    try:
-        file_path.unlink()
-    except Exception:  # noqa: BLE001
-        logger.warning("Failed to delete tmp file %s", file_path)
+    # Файл не удаляем сразу - он живёт до /new или TTL cleanup (как и изображения)
 
 
 async def handle_voice(
@@ -254,8 +303,9 @@ async def handle_voice(
 
     # Проверяем доступность transcriber
     if not is_transcriber_available():
-        logger.warning("Transcriber unavailable user=%s", user_id)
-        await message.answer(VOICE_TRANSCRIPTION_UNAVAILABLE_REPLY)
+        logger.warning("transcriber недоступен user=%s", user_id)
+        formatted, parse_mode = format_for_telegram(VOICE_TRANSCRIPTION_UNAVAILABLE_REPLY)
+        await _send_with_fallback(message, formatted, parse_mode)
         return
 
     # Скачиваем файл
@@ -264,16 +314,19 @@ async def handle_voice(
             message.bot,
             voice.file_id,
             max_size_mb=settings.telegram_max_file_mb,
-            tmp_dir=settings.tmp_files_dir,
+            tmp_dir=settings.tmp_base_dir,
+            user_id=user_id,
             mime_type=voice.mime_type,
         )
     except FileTooLargeError as exc:
-        logger.warning("Voice too large user=%s size=%d", user_id, exc.file_size_mb)
-        await message.answer(FILE_TOO_LARGE_REPLY)
+        logger.warning("голосовое слишком большое user=%s size=%d", user_id, exc.file_size_mb)
+        formatted, parse_mode = format_for_telegram(FILE_TOO_LARGE_REPLY)
+        await _send_with_fallback(message, formatted, parse_mode)
         return
     except Exception as exc:
-        logger.error("Download failed user=%s: %s", user_id, exc)
-        await message.answer(GENERIC_ERROR_REPLY)
+        logger.error("ошибка загрузки файла user=%s: %s", user_id, exc)
+        formatted, parse_mode = format_for_telegram(GENERIC_ERROR_REPLY)
+        await _send_with_fallback(message, formatted, parse_mode)
         return
 
     # Транскрибируем
@@ -283,32 +336,34 @@ async def handle_voice(
         )
         text = transcriber.transcribe(file_path)
     except TranscriberUnavailableError:
-        logger.warning("Transcriber initialization failed user=%s", user_id)
-        await message.answer(VOICE_TRANSCRIPTION_UNAVAILABLE_REPLY)
+        logger.warning("transcriber: инициализация не удалась user=%s", user_id)
+        formatted, parse_mode = format_for_telegram(VOICE_TRANSCRIPTION_UNAVAILABLE_REPLY)
+        await _send_with_fallback(message, formatted, parse_mode)
         return
     except Exception as exc:
-        logger.error("Transcription failed user=%s: %s", user_id, exc)
-        await message.answer(GENERIC_ERROR_REPLY)
+        logger.error("transcribe: ошибка распознавания user=%s: %s", user_id, exc)
+        formatted, parse_mode = format_for_telegram(GENERIC_ERROR_REPLY)
+        await _send_with_fallback(message, formatted, parse_mode)
         return
-    finally:
-        # Удаляем временный файл
-        try:
-            file_path.unlink()
-        except Exception:  # noqa: BLE001
-            logger.warning("Failed to delete tmp voice file %s", file_path)
 
     # Если транскрипция пуста
     if not text:
-        await message.answer("Не удалось распознать речь.")
+        formatted, parse_mode = format_for_telegram("Не удалось распознать речь.")
+        await _send_with_fallback(message, formatted, parse_mode)
         return
 
-    # Передаём распознанный текст как обычное сообщение
-    conversations.add_user_message(user_id, text)
+    # Формируем обогащённый goal с путём к файлу и транскрипцией
+    goal = f"Голосовое сообщение: {file_path}\nТранскрипция: {text}"
+    
+    # Передаём goal в историю и для обработки
+    conversations.add_user_message(user_id, goal)
+    # Сохраняем контекст голосового файла по message_id для ответов на конкретный файл
+    conversations.save_file_context(user_id, message.message_id, "voice", goal)
     model = user_settings.get_model(user_id)
 
     try:
         reply = await handle_user_task(
-            text,
+            goal,
             user_id=user_id,
             chat_id=chat_id,
             conversations=conversations,
@@ -320,15 +375,18 @@ async def handle_voice(
         )
     except LLMTimeout:
         logger.warning("LLM timeout user=%s", user_id)
-        await message.answer(LLM_TIMEOUT_REPLY)
+        formatted, parse_mode = format_for_telegram(LLM_TIMEOUT_REPLY)
+        await _send_with_fallback(message, formatted, parse_mode)
         return
     except LLMUnavailable:
-        logger.error("LLM unavailable user=%s", user_id)
-        await message.answer(LLM_UNAVAILABLE_REPLY)
+        logger.error("LLM недоступна user=%s", user_id)
+        formatted, parse_mode = format_for_telegram(LLM_UNAVAILABLE_REPLY)
+        await _send_with_fallback(message, formatted, parse_mode)
         return
     except LLMBadResponse:
-        logger.warning("LLM bad response user=%s", user_id)
-        await message.answer(LLM_BAD_RESPONSE_REPLY)
+        logger.warning("LLM вернула некорректный ответ user=%s", user_id)
+        formatted, parse_mode = format_for_telegram(LLM_BAD_RESPONSE_REPLY)
+        await _send_with_fallback(message, formatted, parse_mode)
         return
 
     conversations.add_assistant_message(user_id, reply)
@@ -339,10 +397,11 @@ async def handle_voice(
             summary = await summarizer.summarize(history[:-2], model=model)
             conversations.replace_with_summary(user_id, summary, kept_tail=2)
         except Exception:  # noqa: BLE001
-            logger.warning("in-session summary failed user=%s", user_id, exc_info=True)
+            logger.warning("in-session суммаризация не удалась user=%s", user_id, exc_info=True)
 
     for part in split_long_message(reply, TELEGRAM_MAX_MESSAGE_LENGTH):
-        await message.answer(part)
+        formatted, parse_mode = format_for_telegram(part)
+        await _send_with_fallback(message, formatted, parse_mode)
 
 
 async def handle_photo(
@@ -367,13 +426,15 @@ async def handle_photo(
 
     # Проверяем доступность vision-модели
     if not settings.vision_model:
-        logger.warning("Vision model not configured user=%s", user_id)
-        await message.answer(VISION_UNAVAILABLE_REPLY)
+        logger.warning("vision-модель не настроена user=%s", user_id)
+        formatted, parse_mode = format_for_telegram(VISION_UNAVAILABLE_REPLY)
+        await _send_with_fallback(message, formatted, parse_mode)
         return
 
     if llm is None:
-        logger.warning("LLM not available for vision user=%s", user_id)
-        await message.answer(LLM_UNAVAILABLE_REPLY)
+        logger.warning("LLM недоступна для vision user=%s", user_id)
+        formatted, parse_mode = format_for_telegram(LLM_UNAVAILABLE_REPLY)
+        await _send_with_fallback(message, formatted, parse_mode)
         return
 
     # Скачиваем файл
@@ -382,16 +443,19 @@ async def handle_photo(
             message.bot,
             photo.file_id,
             max_size_mb=settings.telegram_max_file_mb,
-            tmp_dir=settings.tmp_files_dir,
+            tmp_dir=settings.tmp_base_dir,
+            user_id=user_id,
             mime_type="image/jpeg",  # Telegram photos всегда JPEG
         )
     except FileTooLargeError as exc:
-        logger.warning("Photo too large user=%s size=%d", user_id, exc.file_size_mb)
-        await message.answer(FILE_TOO_LARGE_REPLY)
+        logger.warning("фото слишком большое user=%s size=%d", user_id, exc.file_size_mb)
+        formatted, parse_mode = format_for_telegram(FILE_TOO_LARGE_REPLY)
+        await _send_with_fallback(message, formatted, parse_mode)
         return
     except Exception as exc:
-        logger.error("Download failed user=%s: %s", user_id, exc)
-        await message.answer(GENERIC_ERROR_REPLY)
+        logger.error("ошибка загрузки файла user=%s: %s", user_id, exc)
+        formatted, parse_mode = format_for_telegram(GENERIC_ERROR_REPLY)
+        await _send_with_fallback(message, formatted, parse_mode)
         return
 
     # Описываем изображение
@@ -399,28 +463,38 @@ async def handle_photo(
         vision = Vision(ollama=llm, model=settings.vision_model)
         description = await vision.describe(file_path, caption=caption)
     except Exception as exc:
-        logger.error("Vision description failed user=%s: %s", user_id, exc)
-        await message.answer(GENERIC_ERROR_REPLY)
-        return
-    finally:
-        # Удаляем временный файл
+        logger.error("vision: описание не удалось user=%s: %s", user_id, exc)
+        formatted, parse_mode = format_for_telegram(GENERIC_ERROR_REPLY)
+        await _send_with_fallback(message, formatted, parse_mode)
+        # Удаляем файл при ошибке
         try:
             file_path.unlink()
         except Exception:  # noqa: BLE001
-            logger.warning("Failed to delete tmp photo file %s", file_path)
+            logger.warning("не удалось удалить временный photo-файл %s", file_path)
+        return
 
     # Если описание пусто
     if not description:
-        await message.answer("Не удалось описать изображение.")
+        formatted, parse_mode = format_for_telegram("Не удалось описать изображение.")
+        await _send_with_fallback(message, formatted, parse_mode)
+        # Удаляем файл при ошибке
+        try:
+            file_path.unlink()
+        except Exception:  # noqa: BLE001
+            logger.warning("не удалось удалить временный photo-файл %s", file_path)
         return
 
-    # Передаём описание как обычное сообщение
-    conversations.add_user_message(user_id, description)
+    # Передаём описание с путём к файлу для уточняющих вопросов
+    # Файл не удаляем сразу - он живёт до /new или TTL cleanup
+    goal = f"Изображение: {file_path}\nОписание: {description}"
+    conversations.add_user_message(user_id, goal)
+    # Сохраняем контекст файла по message_id для ответов на конкретный файл
+    conversations.save_file_context(user_id, message.message_id, "image", goal)
     model = user_settings.get_model(user_id)
 
     try:
         reply = await handle_user_task(
-            description,
+            goal,
             user_id=user_id,
             chat_id=chat_id,
             conversations=conversations,
@@ -432,15 +506,18 @@ async def handle_photo(
         )
     except LLMTimeout:
         logger.warning("LLM timeout user=%s", user_id)
-        await message.answer(LLM_TIMEOUT_REPLY)
+        formatted, parse_mode = format_for_telegram(LLM_TIMEOUT_REPLY)
+        await _send_with_fallback(message, formatted, parse_mode)
         return
     except LLMUnavailable:
-        logger.error("LLM unavailable user=%s", user_id)
-        await message.answer(LLM_UNAVAILABLE_REPLY)
+        logger.error("LLM недоступна user=%s", user_id)
+        formatted, parse_mode = format_for_telegram(LLM_UNAVAILABLE_REPLY)
+        await _send_with_fallback(message, formatted, parse_mode)
         return
     except LLMBadResponse:
-        logger.warning("LLM bad response user=%s", user_id)
-        await message.answer(LLM_BAD_RESPONSE_REPLY)
+        logger.warning("LLM вернула некорректный ответ user=%s", user_id)
+        formatted, parse_mode = format_for_telegram(LLM_BAD_RESPONSE_REPLY)
+        await _send_with_fallback(message, formatted, parse_mode)
         return
 
     conversations.add_assistant_message(user_id, reply)
@@ -451,10 +528,11 @@ async def handle_photo(
             summary = await summarizer.summarize(history[:-2], model=model)
             conversations.replace_with_summary(user_id, summary, kept_tail=2)
         except Exception:  # noqa: BLE001
-            logger.warning("in-session summary failed user=%s", user_id, exc_info=True)
+            logger.warning("in-session суммаризация не удалась user=%s", user_id, exc_info=True)
 
     for part in split_long_message(reply, TELEGRAM_MAX_MESSAGE_LENGTH):
-        await message.answer(part)
+        formatted, parse_mode = format_for_telegram(part)
+        await _send_with_fallback(message, formatted, parse_mode)
 
 
 def build_document_handler(

@@ -4,16 +4,21 @@ from __future__ import annotations
 
 import json
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 
+from app.services.model_registry import UserSettingsRegistry
 from app.tools.errors import ToolError
 from app.tools.web_search import WebSearchTool
 
 
 @pytest.fixture
 def ctx() -> SimpleNamespace:
-    return SimpleNamespace()
+    user_settings = UserSettingsRegistry(
+        default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+    )
+    return SimpleNamespace(user_id=42, user_settings=user_settings)
 
 
 async def test_success_returns_json(mocker, ctx):
@@ -66,4 +71,4 @@ async def test_top_k_passed_through(mocker, ctx):
     )
     tool = WebSearchTool()
     await tool.run({"query": "x", "top_k": 3}, ctx)
-    spy.assert_called_once_with("x", 3)
+    spy.assert_called_once_with("x", 3, "duckduckgo")
