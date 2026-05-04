@@ -401,26 +401,32 @@ async def handle_photo(
     except Exception as exc:
         logger.error("vision: описание не удалось user=%s: %s", user_id, exc)
         await message.answer(GENERIC_ERROR_REPLY)
-        return
-    finally:
-        # Удаляем временный файл
+        # Удаляем файл при ошибке
         try:
             file_path.unlink()
         except Exception:  # noqa: BLE001
             logger.warning("не удалось удалить временный photo-файл %s", file_path)
+        return
 
     # Если описание пусто
     if not description:
         await message.answer("Не удалось описать изображение.")
+        # Удаляем файл при ошибке
+        try:
+            file_path.unlink()
+        except Exception:  # noqa: BLE001
+            logger.warning("не удалось удалить временный photo-файл %s", file_path)
         return
 
-    # Передаём описание как обычное сообщение
-    conversations.add_user_message(user_id, description)
+    # Передаём описание с путём к файлу для уточняющих вопросов
+    # Файл не удаляем сразу - он живёт до /new или TTL cleanup
+    goal = f"Изображение: {file_path}\nОписание: {description}"
+    conversations.add_user_message(user_id, goal)
     model = user_settings.get_model(user_id)
 
     try:
         reply = await handle_user_task(
-            description,
+            goal,
             user_id=user_id,
             chat_id=chat_id,
             conversations=conversations,

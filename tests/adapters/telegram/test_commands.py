@@ -26,6 +26,7 @@ class _FakeSettings:
     ollama_available_models: list[str] = field(
         default_factory=lambda: ["qwen3.5:4b", "llama3:8b"]
     )
+    tmp_files_dir: str = "tmp"
 
 
 class _FakePrompts:

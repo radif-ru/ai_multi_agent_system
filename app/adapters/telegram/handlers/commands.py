@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from aiogram import Router
@@ -185,6 +186,9 @@ def build_command_handlers(
         conversations.clear(user_id)
         conversations.rotate_conversation_id(user_id)
 
+        # Cleanup старых изображений в tmp/
+        _cleanup_tmp_images(settings.tmp_files_dir)
+
         # Удаляем сообщение о прогрессе, если было
         if progress_msg is not None:
             try:
@@ -278,3 +282,34 @@ def _format_descriptions(descriptions: list[dict[str, Any]]) -> str:
         f"• {d['name']} — {d.get('description', '')}".rstrip(" —")
         for d in descriptions
     )
+
+
+def _cleanup_tmp_images(tmp_dir: str) -> None:
+    """Удалить старые изображения из tmp/.
+
+    Удаляет файлы с расширениями изображений, старше 1 часа.
+    Используется при /new для очистки временных файлов.
+    """
+    import time
+
+    tmp_path = Path(tmp_dir)
+    if not tmp_path.exists():
+        return
+
+    now = time.time()
+    one_hour = 3600
+    image_extensions = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+
+    for file_path in tmp_path.iterdir():
+        if not file_path.is_file():
+            continue
+        if file_path.suffix.lower() not in image_extensions:
+            continue
+
+        try:
+            stat = file_path.stat()
+            if now - stat.st_mtime > one_hour:
+                file_path.unlink()
+                logger.info("cleanup: удалён старый файл %s", file_path)
+        except Exception:  # noqa: BLE001
+            logger.warning("cleanup: не удалось удалить %s", file_path)

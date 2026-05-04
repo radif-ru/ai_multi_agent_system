@@ -33,6 +33,7 @@ from app.services.prompts import PromptLoader
 from app.services.skills import SkillRegistry
 from app.services.summarizer import Summarizer
 from app.tools.calculator import CalculatorTool
+from app.tools.describe_image import DescribeImageTool
 from app.tools.http_request import HttpRequestTool
 from app.tools.load_skill import LoadSkillTool
 from app.tools.memory_search import MemorySearchTool
@@ -110,6 +111,7 @@ async def _build_components(settings: Settings) -> _Components:
             WebSearchTool(),
             MemorySearchTool(),
             LoadSkillTool(),
+            DescribeImageTool(tmp_dir=settings.tmp_files_dir),
         ]
     )
     archiver = Archiver(
