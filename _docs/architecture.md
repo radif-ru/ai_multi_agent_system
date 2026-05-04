@@ -182,11 +182,11 @@ class Executor:
             parsed = parse_agent_response(response_text)  # JSON or LLMBadResponse
             if parsed.is_final:
                 return parsed.final_answer
-            observation = await self.tools.execute(parsed.action, parsed.args, ctx=...)
-            messages.append({"role": "assistant", "content": response_text})
-            messages.append({"role": "tool", "content": observation})
-        return self._max_steps_message()
+            # action → observation → messages.append(...)
 ```
+
+- **Автоматическая суммаризация контекста:** перед отправкой в LLM проверяется размер контекста (суммарно). Если превышает `AGENT_MAX_CONTEXT_CHARS` (default 8000), история автоматически суммаризируется через `Summarizer`. Это предотвращает пустые ответы LLM при больших контекстах (например, при обработке PDF с OCR текстом).
+- **Логирование аргументов tools:** при вызове любого tool логируются все переданные аргументы для отладки.
 
 ### 3.12 Telegram-адаптер (`app/adapters/telegram/`)
 
@@ -305,6 +305,7 @@ class Executor:
 | Битый JSON ответа модели                    | Лог WARNING + сырой ответ; цикл прерывается, пользователь — «Модель ответила в неожиданном формате, попробуйте ещё раз». |
 | Tool вернул ошибку                          | `observation = "Tool error: <msg>"`; цикл продолжается.                    |
 | Превышен `AGENT_MAX_STEPS`                  | Лог INFO, сообщение «Агент не смог решить задачу за N шагов, попробуйте переформулировать». |
+| Пустой ответ LLM (chat empty response)       | Лог WARNING, сообщение «Модель не смогла обработать такой большой запрос. Попробуйте отправить файл меньшего размера или задайте более конкретный вопрос.» |
 | Sqlite-vec не загружается / БД повреждена  | Лог ERROR при старте; долгосрочная память отключается, агент работает без `memory_search` (он возвращает «Долгосрочная память недоступна»). |
 | Пустой / слишком длинный ввод               | Сообщение-подсказка пользователю.                                          |
 | Необработанное исключение handler           | Перехват в глобальном `errors.py`, лог, нейтральный ответ.                 |

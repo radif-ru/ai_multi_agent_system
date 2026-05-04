@@ -8,7 +8,6 @@
 
 | ID | Название | Файл | Ветка | Статус | Открыт | Закрыт |
 |:--:|----------|------|-------|:------:|:------:|:------:|
-| 03 | Исправление багов и консольный режим | [`sprints/03-bugs-and-console.md`](./sprints/03-bugs-and-console.md) | `feature/03-bugs-and-console` | Active | 2026-04-30 | — |
 
 ### Закрытые
 
@@ -17,6 +16,7 @@
 | 00 | Bootstrap | [`sprints/00-bootstrap.md`](./sprints/00-bootstrap.md) | `main` (инфраструктурный) | Closed | 2026-04-28 | 2026-04-28 |
 | 01 | MVP Agent | [`sprints/01-mvp-agent.md`](./sprints/01-mvp-agent.md) | `feature/mvp-agent` | Closed | 2026-04-28 | 2026-04-28 |
 | 02 | Память и файловые входы | [`sprints/02-memory-and-files.md`](./sprints/02-memory-and-files.md) | `feature/02-memory-and-files` | Closed | 2026-04-29 | 2026-04-29 |
+| 03 | Исправление багов и консольный режим | [`sprints/03-bugs-and-console.md`](./sprints/03-bugs-and-console.md) | `feature/03-bugs-and-console` | Closed | 2026-04-30 | 2026-05-04 |
 
 ### Запланированные
 
@@ -34,7 +34,7 @@
 | 00. Bootstrap | Closed | 0 / 0 / 5 | `sprints/00-bootstrap.md` |
 | 01. MVP Agent | Closed | 0 / 0 / 28 | `sprints/01-mvp-agent.md` |
 | 02. Память и файловые входы | Closed | 0 / 0 / 19 | `sprints/02-memory-and-files.md` |
-| 03. Исправление багов и консольный режим | Active | 7 / 0 / 11 | `sprints/03-bugs-and-console.md` |
+| 03. Исправление багов и консольный режим | Closed | 0 / 0 / 30 | `sprints/03-bugs-and-console.md` |
 
 > Таблицу обновлять одновременно с переходами статусов в файлах спринтов (см. `process.md` §7.3 и §7.9).
 
