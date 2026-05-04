@@ -30,6 +30,8 @@ _START_TEXT = (
     "/help — подробная справка\n"
     "/models — список моделей\n"
     "/model <имя> — выбрать модель\n"
+    "/search_engines — список поисковиков\n"
+    "/search_engine <имя> — выбрать поисковик\n"
     "/prompt <текст> — задать системный промпт (без текста — сброс)\n"
     "/new — закрыть текущую сессию (с архивированием) и начать новую\n"
     "/reset — очистить контекст и сбросить настройки"
@@ -181,10 +183,37 @@ async def cmd_reset(ctx: "CommandContext") -> "CommandResult":
     ctx.conversations.rotate_conversation_id(ctx.user_id)
     return CommandResult(
         text=(
-            "Контекст диалога очищен, модель и системный промпт "
+            "Контекст диалога очищен, модель, системный промпт и поисковик "
             "сброшены к значениям по умолчанию."
         )
     )
+
+
+async def cmd_search_engines(ctx: "CommandContext") -> "CommandResult":
+    """Команда /search_engines — список доступных поисковиков."""
+    from app.commands.context import CommandResult
+
+    active = ctx.user_settings.get_search_engine(ctx.user_id)
+    lines = ["Доступные поисковики:"]
+    for name in ctx.settings.search_engines_available:
+        mark = " ← активный" if name == active else ""
+        lines.append(f"• {name}{mark}")
+    lines.append("")
+    lines.append("Смени командой: /search_engine <имя>")
+    return CommandResult(text="\n".join(lines))
+
+
+async def cmd_search_engine(ctx: "CommandContext", arg: str) -> "CommandResult":
+    """Команда /search_engine <name> — переключить активный поисковик."""
+    from app.commands.context import CommandResult
+
+    if not arg:
+        return CommandResult(text="Использование: /search_engine <имя>, список: /search_engines")
+    if arg not in ctx.settings.search_engines_available:
+        available = ", ".join(ctx.settings.search_engines_available)
+        return CommandResult(text=f"Поисковик не найден. Доступно: {available}")
+    ctx.user_settings.set_search_engine(ctx.user_id, arg)
+    return CommandResult(text=f"Поисковик переключён на {arg}.")
 
 
 class CommandRegistry:
@@ -196,6 +225,8 @@ class CommandRegistry:
             "help": cmd_help,
             "models": cmd_models,
             "model": cmd_model,
+            "search_engines": cmd_search_engines,
+            "search_engine": cmd_search_engine,
             "prompt": cmd_prompt,
             "new": cmd_new,
             "reset": cmd_reset,
@@ -227,7 +258,7 @@ class CommandRegistry:
         cmd_func = self._commands[command_name]
 
         # Команды с аргументами
-        if command_name in ("model", "prompt"):
+        if command_name in ("model", "prompt", "search_engine"):
             return await cmd_func(ctx, args)
         # Команда /new с progress_callback
         if command_name == "new":
