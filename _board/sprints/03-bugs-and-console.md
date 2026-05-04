@@ -352,7 +352,7 @@ Tool `web_search` читает активный поисковик из конт
 
 ### Задача 3.2. Форматирование кода для Telegram
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** medium
 - **Объём:** XS
 - **Зависит от:** —
@@ -369,12 +369,12 @@ Tool `web_search` читает активный поисковик из конт
 
 #### Definition of Done
 
-- [ ] Утилита `format_for_telegram` в `app/adapters/telegram/utils.py`.
-- [ ] Handler `messages.py` использует утилиту для выбора `ParseMode`.
-- [ ] Код в ответах отображается с подсветкой синтаксиса в Telegram.
-- [ ] **Документация обновлена:** `_docs/commands.md` (раздел «Форматирование»).
-- [ ] **Тесты добавлены:** `tests/adapters/telegram/test_utils.py`.
-- [ ] `git status` чист, `pytest -q` зелёный.
+- [x] Утилита `format_for_telegram` в `app/adapters/telegram/utils.py`.
+- [x] Handler `messages.py` использует утилиту для выбора `ParseMode`.
+- [x] Код в ответах отображается с подсветкой синтаксиса в Telegram.
+- [x] **Документация обновлена:** `_docs/commands.md` (раздел «Форматирование»).
+- [x] **Тесты добавлены:** `tests/adapters/telegram/test_utils.py`.
+- [x] `git status` чист, `pytest -q` зелёный.
 
 ---
 
@@ -795,7 +795,7 @@ Tool `web_search` читает активный поисковик из конт
 | 2.2 | Вынос команд в общий модуль | high | M | Done | 2.1 |
 | 2.3 | Реализация консольного адаптера | high | M | Done | 2.2 |
 | 3.1 | Выбор поисковика | medium | S | Done | 2.2 |
-| 3.2 | Форматирование кода | medium | XS | Progress | — |
+| 3.2 | Форматирование кода | medium | XS | Done | — |
 | 3.3 | Обработка reply | medium | S | ToDo | — |
 | 4.1 | Перенумерация architecture.md и кросс-ссылки | high | S | Done | — |
 | 4.2 | Заполнить `_board/README.md` | medium | XS | Done | — |
@@ -836,3 +836,4 @@ Tool `web_search` читает активный поисковик из конт
 - **2026-05-04** — задача 4.10 Done: инструмент weather для получения погоды — создан WeatherTool для получения погоды через wttr.in с curl, добавлен fallback на WebSearchTool при ошибках сети, инструмент зарегистрирован в ToolRegistry в main.py и console_main.py, добавлены тесты.
 - **2026-05-04** — задача 4.11 Done: исправление формата final_answer в системном промпте — добавлено явное предупреждение в `_prompts/agent_system.md` что final_answer НЕ инструмент, добавлено предупреждение "Никогда не используй final_answer как значение поля action", добавлена обработка случая когда LLM использует final_answer как действие в protocol.py (преобразование в правильный формат).
 - **2026-05-04** — задача 3.1 Done: выбор поисковика через команды — добавлены команды `/search_engines` и `/search_engine` в `app/commands/registry.py`, добавлена поддержка поисковиков в `UserSettingsRegistry` (get/set_search_engine), обновлен `WebSearchTool` для чтения поисковика из контекста, добавлены настройки в `config.py` (search_engine_default, search_engines_available), обновлены handler'ы в Telegram-адаптере, обновлена документация `_docs/commands.md` и `_docs/stack.md`, добавлены тесты.
+- **2026-05-04** — задача 3.2 Done: форматирование кода для Telegram — создана утилита `format_for_telegram` в `app/adapters/telegram/utils.py` для преобразования markdown-блоков кода в HTML с подсветкой синтаксиса, обновлены handler'ы `messages.py` и `errors.py` для использования утилиты, обновлена документация `_docs/commands.md` с разделом «Форматирование», добавлены тесты в `test_utils.py`, обновлены тесты для учета параметра `parse_mode`.
