@@ -85,7 +85,7 @@ async def test_handle_document_success(
 
     original_download = messages.download_telegram_file
 
-    async def mock_download(bot, file_id, *, max_size_mb, tmp_dir, mime_type=None):
+    async def mock_download(bot, file_id, *, max_size_mb, tmp_dir, user_id=None, mime_type=None):
         return test_file
 
     messages.download_telegram_file = mock_download
@@ -149,7 +149,7 @@ async def test_handle_document_too_large(
 
     original_download = messages.download_telegram_file
 
-    async def mock_download(bot, file_id, *, max_size_mb, tmp_dir, mime_type=None):
+    async def mock_download(bot, file_id, *, max_size_mb, tmp_dir, user_id=None, mime_type=None):
         raise FileTooLargeError(file_size_mb=25, max_size_mb=20)
 
     messages.download_telegram_file = mock_download
@@ -200,7 +200,7 @@ async def test_handle_document_download_error(
 
     original_download = messages.download_telegram_file
 
-    async def mock_download(bot, file_id, *, max_size_mb):
+    async def mock_download(bot, file_id, *, max_size_mb, tmp_dir=None, user_id=None):
         raise Exception("Network error")
 
     messages.download_telegram_file = mock_download

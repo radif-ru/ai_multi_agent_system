@@ -128,7 +128,7 @@ async def test_handle_photo_success(
     # Мокаем download_telegram_file
     original_download = messages.download_telegram_file
 
-    async def mock_download(bot, file_id, *, max_size_mb, tmp_dir, mime_type=None):
+    async def mock_download(bot, file_id, *, max_size_mb, tmp_dir, user_id=None, mime_type=None):
         from pathlib import Path
         import tempfile
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:

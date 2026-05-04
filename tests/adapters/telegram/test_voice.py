@@ -186,7 +186,7 @@ async def test_handle_voice_too_large(
     # Мокаем download_telegram_file
     original_download = messages.download_telegram_file
 
-    async def mock_download(bot, file_id, *, max_size_mb):
+    async def mock_download(bot, file_id, *, max_size_mb, tmp_dir=None, user_id=None):
         raise FileTooLargeError(file_size_mb=25, max_size_mb=20)
 
     messages.download_telegram_file = mock_download
