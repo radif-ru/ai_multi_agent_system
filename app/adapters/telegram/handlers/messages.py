@@ -92,6 +92,28 @@ def build_text_handler(
             await message.answer(TOO_LONG_INPUT_REPLY)
             return
 
+        # Если это ответ на сообщение, добавляем контекст оригинала
+        reply_msg = getattr(message, "reply_to_message", None)
+        if reply_msg is not None:
+            reply_text = getattr(reply_msg, "text", None) or getattr(reply_msg, "caption", None) or ""
+            if reply_text:
+                # Обрезаем длинный контекст до 500 символов
+                if len(reply_text) > 500:
+                    reply_text = reply_text[:500] + "..."
+                text = f"[В ответ на: {reply_text}]\n{text}"
+            # Если ответ на файл (фото или документ), добавляем контекст конкретного файла по message_id
+            if getattr(reply_msg, "photo", None) is not None or getattr(reply_msg, "document", None) is not None:
+                reply_msg_id = getattr(reply_msg, "message_id", None)
+                logger.info("reply на файл user=%s reply_msg_id=%s", user_id, reply_msg_id)
+                if reply_msg_id is not None:
+                    file_context = conversations.get_file_context(user_id, reply_msg_id)
+                    logger.info("file_context найден=%s для reply_msg_id=%s", file_context is not None, reply_msg_id)
+                    if file_context:
+                        # Добавляем контекст конкретного файла
+                        text = f"{file_context}\n\n{text}"
+                    else:
+                        logger.warning("контекст файла не найден для reply_msg_id=%s", reply_msg_id)
+
         conversations.add_user_message(user_id, text)
         model = user_settings.get_model(user_id)
 
@@ -187,6 +209,8 @@ async def handle_document(
     goal = f"Пользователь прислал документ {file_path}. Caption: {caption}. Прочитай через read_document и ответь по сути."
 
     conversations.add_user_message(user_id, goal)
+    # Сохраняем контекст файла по message_id для ответов на конкретный файл
+    conversations.save_file_context(user_id, message.message_id, "document", goal)
     model = user_settings.get_model(user_id)
 
     try:
@@ -425,6 +449,8 @@ async def handle_photo(
     # Файл не удаляем сразу - он живёт до /new или TTL cleanup
     goal = f"Изображение: {file_path}\nОписание: {description}"
     conversations.add_user_message(user_id, goal)
+    # Сохраняем контекст файла по message_id для ответов на конкретный файл
+    conversations.save_file_context(user_id, message.message_id, "image", goal)
     model = user_settings.get_model(user_id)
 
     try:
