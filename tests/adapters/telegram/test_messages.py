@@ -67,7 +67,9 @@ def _make_handler(
     return build_text_handler(
         settings=settings or _FakeSettings(),
         user_settings=user_settings
-        or UserSettingsRegistry(default_model="qwen3.5:4b"),
+        or UserSettingsRegistry(
+            default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+        ),
         conversations=conversations or ConversationStore(max_messages=20),
         summarizer=summarizer or _FakeSummarizer(),
         executor=executor or _FakeExecutor(),
@@ -115,7 +117,9 @@ async def test_success_path_calls_orchestrator_and_replies(
 ) -> None:
     calls = patch_handle_user_task("ответ")
     conversations = ConversationStore(max_messages=20)
-    user_settings = UserSettingsRegistry(default_model="qwen3.5:4b")
+    user_settings = UserSettingsRegistry(
+        default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+    )
     user_settings.set_model(42, "llama3:8b")
     handler = _make_handler(
         conversations=conversations, user_settings=user_settings

@@ -9,7 +9,9 @@ from app.services.model_registry import UserSettingsRegistry
 
 @pytest.fixture
 def reg() -> UserSettingsRegistry:
-    return UserSettingsRegistry(default_model="qwen3.5:4b")
+    return UserSettingsRegistry(
+        default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+    )
 
 
 def test_get_model_default_for_unknown_user(reg: UserSettingsRegistry) -> None:
@@ -49,6 +51,7 @@ def test_reset_full_clears_model_and_prompt(reg: UserSettingsRegistry) -> None:
     reg.reset(42)
     assert reg.get_model(42) == "qwen3.5:4b"
     assert reg.get_prompt(42) is None
+    assert reg.get_search_engine(42) == "duckduckgo"
 
 
 def test_reset_for_unknown_user_is_noop(reg: UserSettingsRegistry) -> None:
@@ -68,3 +71,20 @@ def test_users_are_isolated(reg: UserSettingsRegistry) -> None:
     reg.reset(1)
     assert reg.get_model(2) == "b:2"
     assert reg.get_prompt(2) == "p2"
+
+
+def test_get_search_engine_default_for_unknown_user(reg: UserSettingsRegistry) -> None:
+    assert reg.get_search_engine(42) == "duckduckgo"
+
+
+def test_set_and_get_search_engine(reg: UserSettingsRegistry) -> None:
+    reg.set_search_engine(42, "bing")
+    assert reg.get_search_engine(42) == "bing"
+    # Другой пользователь по-прежнему получает default.
+    assert reg.get_search_engine(7) == "duckduckgo"
+
+
+def test_reset_clears_search_engine(reg: UserSettingsRegistry) -> None:
+    reg.set_search_engine(42, "brave")
+    reg.reset(42)
+    assert reg.get_search_engine(42) == "duckduckgo"
