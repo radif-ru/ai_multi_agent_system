@@ -145,11 +145,16 @@ Telegram-адаптер принимает текст, оборачивает е
 - API: `list_descriptions() -> list[{name, description}]` (для инжекции в системный промпт), `get_body(name) -> str` (для tool `load_skill`).
 - Перезагрузка не требуется в MVP — скиллы читаются один раз при старте процесса. Hot-reload — кандидат на отдельный спринт.
 
-### 3.9 Prompts (`app/services/prompts.py`, `_prompts/`)
+### 3.9 Пользователи (`app/users/`)
+
+- **`User`** — dataclass с полями `id: int` (внутренний автоинкремент), `channel: str` ("telegram" или "console"), `external_id: str` (внешний идентификатор в канале), `display_name: str | None`, `created_at: datetime`.
+- **`UserRepository`** — in-memory репозиторий, единственная точка «получить или создать» пользователя по внешнему ключу. API: `async get_or_create(channel, external_id, display_name) -> tuple[User, bool]`, `async get(user_id) -> User | None`, `async get_by_external(channel, external_id) -> User | None`. Потокобезопасность через `asyncio.Lock`. В будущем будет использоваться для публикации события `UserCreated` и для идентификации пользователей в адаптерах.
+
+### 3.10 Prompts (`app/services/prompts.py`, `_prompts/`)
 
 - **`PromptLoader`** при старте процесса читает `AGENT_SYSTEM_PROMPT_PATH` (`_prompts/agent_system.md`) и `_prompts/summarizer.md`. Хранит их как строки. Plug-точки `{{TOOLS_DESCRIPTION}}` и `{{SKILLS_DESCRIPTION}}` подставляются в момент сборки промпта (при инициализации Executor) — см. `prompts.md` §3.
 
-### 3.10 Core (`app/core/orchestrator.py`)
+### 3.11 Core (`app/core/orchestrator.py`)
 
 В MVP — тонкая прослойка-функция `async def handle_user_task(text: str, *, user_id: int, chat_id: int, conversations, executor, model=None) -> str`, которая:
 
@@ -161,7 +166,7 @@ Telegram-адаптер принимает текст, оборачивает е
 
 В архитектурном смысле это **единственная точка входа от любого адаптера** (Telegram сейчас, web/MAX в будущем). Адаптер не знает про Executor напрямую.
 
-### 3.11 Executor (`app/agents/executor.py`)
+### 3.12 Executor (`app/agents/executor.py`)
 
 Реализует агентный цикл `thought → action → observation`. Контракт — в `agent-loop.md`. Кратко:
 
@@ -188,7 +193,7 @@ class Executor:
 - **Автоматическая суммаризация контекста:** перед отправкой в LLM проверяется размер контекста (суммарно). Если превышает `AGENT_MAX_CONTEXT_CHARS` (default 8000), история автоматически суммаризируется через `Summarizer`. Это предотвращает пустые ответы LLM при больших контекстах (например, при обработке PDF с OCR текстом).
 - **Логирование аргументов tools:** при вызове любого tool логируются все переданные аргументы для отладки.
 
-### 3.12 Telegram-адаптер (`app/adapters/telegram/`)
+### 3.13 Telegram-адаптер (`app/adapters/telegram/`)
 
 - `handlers/commands.py`: `/start`, `/help`, `/models`, `/model`, `/prompt`, `/new`, `/reset`.
 - `handlers/messages.py`: обработчик произвольного текста и файлов — вызывает `core.handle_user_task` и отдаёт результат. Поддерживает три типа файлов:
