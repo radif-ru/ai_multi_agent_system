@@ -307,7 +307,7 @@ In-memory шина с async pub/sub. Фундаментальное событи
 | 1.1 | Создать `app/users/` с `User` и `UserRepository`                       | high      | S     | Done    | —          |
 | 1.2 | Интеграция `UserRepository` в адаптеры и DI                            | high      | S     | Done    | 1.1        |
 | 2.1 | Реализовать `EventBus` и базовый `Event`                               | high      | S     | Done    | —          |
-| 2.2 | События `MessageReceived` / `ResponseGenerated` / `UserCreated`        | high      | S     | ToDo   | 2.1, 1.2   |
+| 2.2 | События `MessageReceived` / `ResponseGenerated` / `UserCreated`        | high      | S     | Progress | 2.1, 1.2   |
 | 2.3 | Перенести запись в `ConversationStore` на подписчик                    | high      | S     | ToDo   | 2.2        |
 | 2.4 | Перенести in-session суммаризацию на подписчик                         | medium    | S     | ToDo   | 2.3        |
 | 3.1 | `Archiver` публикует `ConversationArchived`                            | medium    | XS    | ToDo   | 2.1        |
