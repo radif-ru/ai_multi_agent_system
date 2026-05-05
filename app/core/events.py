@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, ClassVar, Callable
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable
+    from app.users.models import User
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,46 @@ class Event:
     """
 
     event_type: ClassVar[str] = "base"
+
+
+@dataclass
+class UserCreated(Event):
+    """Событие создания пользователя.
+
+    Публикуется UserRepository при создании нового пользователя.
+    """
+
+    event_type: ClassVar[str] = "user_created"
+    user: "User"
+
+
+@dataclass
+class MessageReceived(Event):
+    """Событие получения сообщения от пользователя.
+
+    Публикуется хендлером при входящем тексте или файле после получения user.
+    """
+
+    event_type: ClassVar[str] = "message_received"
+    user: "User"
+    text: str
+    conversation_id: str
+    channel: str
+
+
+@dataclass
+class ResponseGenerated(Event):
+    """Событие генерации ответа от LLM.
+
+    Публикуется хендлером после получения ответа от core.handle_user_task,
+    перед отправкой пользователю.
+    """
+
+    event_type: ClassVar[str] = "response_generated"
+    user: "User"
+    text: str
+    conversation_id: str
+    channel: str
 
 
 class EventBus:
