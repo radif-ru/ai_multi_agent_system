@@ -131,16 +131,6 @@ async def _build_components(settings: Settings) -> _Components:
             WeatherTool(),
         ]
     )
-    archiver = Archiver(
-        llm=llm,
-        summarizer=summarizer,
-        semantic_memory=semantic_memory,  # type: ignore[arg-type]
-        summarizer_model=settings.ollama_default_model,
-        embedding_model=settings.embedding_model,
-        chunk_size=settings.memory_chunk_size,
-        chunk_overlap=settings.memory_chunk_overlap,
-        concurrency_limit=settings.embedding_concurrency,
-    )
     executor = Executor(
         settings=settings,
         llm=llm,
@@ -153,6 +143,17 @@ async def _build_components(settings: Settings) -> _Components:
     )
     event_bus = EventBus()
     users = UserRepository(event_bus=event_bus)
+    archiver = Archiver(
+        llm=llm,
+        summarizer=summarizer,
+        semantic_memory=semantic_memory,  # type: ignore[arg-type]
+        summarizer_model=settings.ollama_default_model,
+        embedding_model=settings.embedding_model,
+        chunk_size=settings.memory_chunk_size,
+        chunk_overlap=settings.memory_chunk_overlap,
+        concurrency_limit=settings.embedding_concurrency,
+        event_bus=event_bus,
+    )
 
     # Регистрируем подписчиков для записи в ConversationStore
     from app.services.conversation_subscriber import on_message_received, on_response_generated

@@ -188,6 +188,14 @@ def build_command_handlers(
     async def cmd_new(message: Message) -> None:
         user_id = _user_id(message)
         chat_id = message.chat.id if message.chat is not None else user_id
+        # Получаем user для публикации события ConversationArchived
+        user_obj = None
+        if users is not None:
+            user_obj, _ = await users.get_or_create(
+                channel="telegram",
+                external_id=str(user_id),
+                display_name=message.from_user.full_name if message.from_user else None,
+            )
         ctx = _build_context(
             user_id=user_id,
             chat_id=chat_id,
@@ -199,6 +207,8 @@ def build_command_handlers(
             conversations=conversations,
             archiver=archiver,
             users=users,
+            user=user_obj,
+            channel="telegram",
         )
 
         # Показываем прогресс для долгих операций
@@ -313,6 +323,8 @@ def _build_context(
     conversations: "ConversationStore",
     archiver: "Archiver",
     users: Any = None,
+    user: Any = None,
+    channel: str = "telegram",
 ) -> CommandContext:
     """Построить контекст команды для Telegram."""
     return CommandContext(
@@ -326,6 +338,8 @@ def _build_context(
         conversations=conversations,
         archiver=archiver,
         users=users,
+        user=user,
+        channel=channel,
     )
 
 

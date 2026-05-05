@@ -42,6 +42,7 @@ def mock_components():
     core_handle_user_task = MagicMock(return_value="test response")
 
     users = MagicMock()
+    users.get_or_create.return_value = (MagicMock(id=1), False)
 
     event_bus = EventBus()
     # Регистрируем подписчиков для теста

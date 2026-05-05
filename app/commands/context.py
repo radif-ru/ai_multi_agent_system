@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from app.services.conversation import ConversationStore
     from app.services.model_registry import UserSettingsRegistry
     from app.services.prompts import PromptLoader
+    from app.users.models import User
     from app.users.repository import UserRepository
 
 
@@ -31,6 +32,8 @@ class CommandContext:
     - conversations: хранилище диалогов
     - archiver: архиватор сессий
     - users: репозиторий пользователей (опционально для обратной совместимости с тестами)
+    - user: объект пользователя (опционально, для публикации событий)
+    - channel: канал адаптера ("telegram" или "console", опционально)
     """
 
     user_id: int
@@ -43,6 +46,8 @@ class CommandContext:
     conversations: "ConversationStore"
     archiver: "Archiver"
     users: "UserRepository" = None
+    user: "User | None" = None
+    channel: str | None = None
 
 
 @dataclass

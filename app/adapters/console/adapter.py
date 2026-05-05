@@ -130,6 +130,15 @@ class ConsoleAdapter:
         """Построить контекст команды."""
         from app.commands.context import CommandContext
 
+        # Получаем user для публикации событий
+        user_obj = None
+        if self.users is not None:
+            user_obj, _ = self.users.get_or_create(
+                channel="console",
+                external_id=str(self.user_id),
+                display_name="Console User",
+            )
+
         return CommandContext(
             user_id=self.user_id,
             chat_id=self.chat_id,
@@ -141,6 +150,8 @@ class ConsoleAdapter:
             conversations=self.conversations,
             archiver=self.archiver,
             users=self.users,
+            user=user_obj,
+            channel="console",
         )
 
     async def run(self) -> None:

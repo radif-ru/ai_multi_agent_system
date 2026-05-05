@@ -67,6 +67,21 @@ class ResponseGenerated(Event):
     channel: str
 
 
+@dataclass
+class ConversationArchived(Event):
+    """Событие завершения архивирования сессии.
+
+    Публикуется Archiver после успешного завершения архивирования.
+    При неуспехе архивирования событие не публикуется.
+    """
+
+    event_type: ClassVar[str] = "conversation_archived"
+    user: "User"
+    conversation_id: str
+    chunks: int
+    channel: str
+
+
 class EventBus:
     """In-memory событийная шина с async pub/sub.
 

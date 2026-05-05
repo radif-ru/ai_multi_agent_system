@@ -149,6 +149,8 @@ async def cmd_new(ctx: "CommandContext", progress_callback: Any | None = None) -
             user_id=ctx.user_id,
             chat_id=ctx.chat_id,
             progress_callback=progress_callback,
+            user=ctx.user,
+            channel=ctx.channel,
         )
     except Exception as exc:  # noqa: BLE001
         logger.exception(

@@ -153,6 +153,8 @@ ConversationStore                       Executor.run
 
 На вход `Archiver.archive(history, ...)` подаётся именно **полный лог сессии** (`ConversationStore.get_session_log(user_id)`, см. §2.5), а не in-session `get_history()` — иначе суммаризатор увидит уже усечённую `replace_with_summary` верхушку и ранние факты будут потеряны.
 
+После успешного завершения архивирования `Archiver` публикует событие `ConversationArchived` (см. `events.md`), на которое могут подписываться побочные эффекты (например, очистка временных файлов). При неуспехе архивирования событие не публикуется.
+
 ```
 история сессии        +- Summarizer.summarize ----------+
 [{role,content}, ...] |  (Ollama chat с системным       |  -> резюме (одна строка)

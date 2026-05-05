@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 import pytest
 
+from app.core.events import ConversationArchived, EventBus
 from app.services.archiver import Archiver, chunk_text
 from app.services.llm import LLMUnavailable, OllamaClient
 from app.services.summarizer import Summarizer
+from app.users.models import User
 
 
 def test_chunk_text_basic():
@@ -62,7 +66,7 @@ def summarizer(llm):
     return Summarizer(llm=llm, system_prompt="SYS")
 
 
-def make_archiver(llm, summarizer, memory, *, size=1500, overlap=150, concurrency=5) -> Archiver:
+def make_archiver(llm, summarizer, memory, *, size=1500, overlap=150, concurrency=5, event_bus=None) -> Archiver:
     return Archiver(
         llm=llm,
         summarizer=summarizer,
@@ -72,6 +76,7 @@ def make_archiver(llm, summarizer, memory, *, size=1500, overlap=150, concurrenc
         chunk_size=size,
         chunk_overlap=overlap,
         concurrency_limit=concurrency,
+        event_bus=event_bus,
     )
 
 
@@ -221,3 +226,98 @@ async def test_archive_parallel_embedding(llm, summarizer, mocker):
     assert len(embed_calls) >= 4
     # Проверяем, что concurrency_limit передан
     assert archiver._concurrency_limit == 2
+
+
+@pytest.fixture
+def user():
+    return User(
+        id=1,
+        channel="telegram",
+        external_id="12345",
+        display_name="Test User",
+        created_at=datetime.now(),
+    )
+
+
+async def test_archive_publishes_event_on_success(llm, summarizer, mocker, user):
+    """Успешное архивирование публикует событие ConversationArchived."""
+    mem = FakeMemory()
+    summary = "x" * 3000
+    mocker.patch.object(summarizer, "summarize", return_value=summary)
+    mocker.patch.object(llm, "embed", return_value=[0.1, 0.2])
+    
+    event_bus = EventBus()
+    published_events = []
+    
+    async def capture_event(event):
+        published_events.append(event)
+    
+    event_bus.subscribe(ConversationArchived, capture_event)
+    
+    archiver = make_archiver(llm, summarizer, mem, event_bus=event_bus)
+    
+    await archiver.archive(
+        [{"role": "user", "content": "hi"}],
+        conversation_id="conv",
+        user_id=42,
+        chat_id=42,
+        user=user,
+        channel="telegram",
+    )
+    
+    assert len(published_events) == 1
+    event = published_events[0]
+    assert isinstance(event, ConversationArchived)
+    assert event.user == user
+    assert event.conversation_id == "conv"
+    assert event.chunks == 3
+    assert event.channel == "telegram"
+
+
+async def test_archive_does_not_publish_event_on_failure(llm, summarizer, mocker, user):
+    """При неудачном архивировании событие не публикуется."""
+    mem = FakeMemory()
+    mocker.patch.object(summarizer, "summarize", side_effect=LLMUnavailable("down"))
+    
+    event_bus = EventBus()
+    published_events = []
+    
+    async def capture_event(event):
+        published_events.append(event)
+    
+    event_bus.subscribe(ConversationArchived, capture_event)
+    
+    archiver = make_archiver(llm, summarizer, mem, event_bus=event_bus)
+    
+    with pytest.raises(LLMUnavailable):
+        await archiver.archive(
+            [{"role": "user", "content": "hi"}],
+            conversation_id="conv",
+            user_id=42,
+            chat_id=42,
+            user=user,
+            channel="telegram",
+        )
+    
+    assert len(published_events) == 0
+
+
+async def test_archive_does_not_publish_event_without_event_bus(llm, summarizer, mocker, user):
+    """Если event_bus не передан, событие не публикуется (обратная совместимость)."""
+    mem = FakeMemory()
+    summary = "x" * 3000
+    mocker.patch.object(summarizer, "summarize", return_value=summary)
+    mocker.patch.object(llm, "embed", return_value=[0.1, 0.2])
+    
+    archiver = make_archiver(llm, summarizer, mem, event_bus=None)
+    
+    await archiver.archive(
+        [{"role": "user", "content": "hi"}],
+        conversation_id="conv",
+        user_id=42,
+        chat_id=42,
+        user=user,
+        channel="telegram",
+    )
+    
+    # Не должно падать, событие просто не публикуется
