@@ -76,7 +76,7 @@
 
 ### Задача 1.2. Интеграция `UserRepository` в адаптеры и DI
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 1.1
@@ -305,7 +305,7 @@ In-memory шина с async pub/sub. Фундаментальное событи
 | #   | Задача                                                                 | Приоритет | Объём | Статус | Зависит от |
 |-----|------------------------------------------------------------------------|:---------:|:-----:|:------:|:----------:|
 | 1.1 | Создать `app/users/` с `User` и `UserRepository`                       | high      | S     | Done    | —          |
-| 1.2 | Интеграция `UserRepository` в адаптеры и DI                            | high      | S     | ToDo    | 1.1        |
+| 1.2 | Интеграция `UserRepository` в адаптеры и DI                            | high      | S     | Progress | 1.1        |
 | 2.1 | Реализовать `EventBus` и базовый `Event`                               | high      | S     | ToDo   | —          |
 | 2.2 | События `MessageReceived` / `ResponseGenerated` / `UserCreated`        | high      | S     | ToDo   | 2.1, 1.2   |
 | 2.3 | Перенести запись в `ConversationStore` на подписчик                    | high      | S     | ToDo   | 2.2        |
