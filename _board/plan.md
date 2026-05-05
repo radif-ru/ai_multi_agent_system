@@ -36,7 +36,7 @@
 | 01. MVP Agent | Closed | 0 / 0 / 28 | `sprints/01-mvp-agent.md` |
 | 02. Память и файловые входы | Closed | 0 / 0 / 19 | `sprints/02-memory-and-files.md` |
 | 03. Исправление багов и консольный режим | Closed | 0 / 0 / 30 | `sprints/03-bugs-and-console.md` |
-| 04. Событийная модель и модуль Users | Active | 0 / 1 / 7 | `sprints/04-events-and-users.md` |
+| 04. Событийная модель и модуль Users | Active | 0 / 0 / 8 | `sprints/04-events-and-users.md` |
 
 > Таблицу обновлять одновременно с переходами статусов в файлах спринтов (см. `process.md` §7.3 и §7.9).
 
