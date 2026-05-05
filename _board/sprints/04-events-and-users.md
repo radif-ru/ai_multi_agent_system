@@ -241,7 +241,7 @@ In-memory шина с async pub/sub. Фундаментальное событи
 
 ### Задача 3.2. Вынести `_cleanup_tmp_images` в подписчика `ConversationArchived`
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** medium
 - **Объём:** XS
 - **Зависит от:** Задача 3.1
@@ -254,12 +254,12 @@ In-memory шина с async pub/sub. Фундаментальное событи
 
 #### Definition of Done
 
-- [ ] В хендлере `/new` нет вызова `_cleanup_tmp_images`; соответствующий код удалён.
-- [ ] Unit-тест: публикация `ConversationArchived` триггерит cleanup (с учётом TTL 1 час — как сейчас); при успешном `archive` без реального вызова хендлера — cleanup всё равно отработает, если явно опубликовать событие.
-- [ ] Smoke-проверка в консольном/Telegram-режиме: после `/new` старые изображения удаляются (если воспроизводимо в тестовом прогоне — автотест; иначе — ручной чек, отмеченный в `_board/progress.txt`).
-- [ ] **Документация обновлена**: `_docs/architecture.md` §6.4 и `_docs/commands.md` — уточнить, что cleanup — подписчик на событие, не часть хендлера.
-- [ ] **Тесты добавлены / обновлены**: см. выше.
-- [ ] `git status` чист.
+- [x] В хендлере `/new` нет вызова `_cleanup_tmp_images`; соответствующий код удалён.
+- [x] Unit-тест: публикация `ConversationArchived` триггерит cleanup (с учётом TTL 1 час — как сейчас); при успешном `archive` без реального вызова хендлера — cleanup всё равно отработает, если явно опубликовать событие.
+- [x] Smoke-проверка в консольном/Telegram-режиме: после `/new` старые изображения удаляются (если воспроизводимо в тестовом прогоне — автотест; иначе — ручной чек, отмеченный в `_board/progress.txt`).
+- [x] **Документация обновлена**: `_docs/architecture.md` §6.4 и `_docs/commands.md` — уточнить, что cleanup — подписчик на событие, не часть хендлера.
+- [x] **Тесты добавлены / обновлены**: см. выше.
+- [x] `git status` чист.
 
 ## 7. Этап 4. Документация и закрытие
 
@@ -311,7 +311,7 @@ In-memory шина с async pub/sub. Фундаментальное событи
 | 2.3 | Перенести запись в `ConversationStore` на подписчик                    | high      | S     | Done   | 2.2        |
 | 2.4 | Перенести in-session суммаризацию на подписчик                         | medium    | S     | Done   | 2.3        |
 | 3.1 | `Archiver` публикует `ConversationArchived`                            | medium    | XS    | Done   | 2.1        |
-| 3.2 | Вынести `_cleanup_tmp_images` в подписчика `ConversationArchived`      | medium    | XS    | Progress   | 3.1        |
+| 3.2 | Вынести `_cleanup_tmp_images` в подписчика `ConversationArchived`      | medium    | XS    | Done   | 3.1        |
 | 4.1 | Финальная ревизия документации и `current-state.md` / `roadmap.md`     | medium    | XS    | ToDo   | 3.2        |
 
 > Обновляется при каждом переходе статуса и при добавлении/удалении задач.
@@ -326,3 +326,4 @@ In-memory шина с async pub/sub. Фундаментальное событи
 - **2026-05-05** — закрыта задача 2.3: создан conversation_subscriber.py с подписчиками MessageReceived и ResponseGenerated для записи в ConversationStore, подписчики зарегистрированы в main.py и console_main.py, удалены прямые вызовы add_user_message/add_assistant_message из хендлеров Telegram и консоли, обновлена документация _docs/events.md, обновлены тесты для работы с новой архитектурой.
 - **2026-05-05** — закрыта задача 2.4: создан summarizer_subscriber.py с подписчиком on_response_generated_summarize для in-session суммаризации, подписчик зарегистрирован в main.py и console_main.py после conversation_subscriber, удалены прямые вызовы summarizer.summarize из хендлеров Telegram и консоли, добавлены unit-тесты, обновлена документация _docs/memory.md §2.5.
 - **2026-05-05** — закрыта задача 3.1: добавлено событие ConversationArchived в events.py, Archiver принимает EventBus опциональным параметром и публикует событие при успешном архивировании, добавлены поля user и channel в CommandContext, обновлены точки входа (main.py, console_main.py) и хендлеры для передачи user/channel в archiver.archive(), добавлены unit-тесты для проверки публикации события, обновлена документация _docs/memory.md.
+- **2026-05-05** — закрыта задача 3.2: создан tmp_cleanup.py с функцией _cleanup_tmp_images и подписчиком on_conversation_archived_cleanup для очистки старых изображений при успешном архивировании, подписчик зарегистрирован в main.py и console_main.py, добавлены unit-тесты, обновлена документация _docs/events.md с информацией о подписчике.
