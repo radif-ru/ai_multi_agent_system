@@ -31,15 +31,15 @@
 - Замена `UserSettingsRegistry` на БД или вытеснение его целиком — только переключение ключа с `telegram_id` на внутренний `user.id` там, где уместно (и то — опционально, см. задачу 1.2).
 - Изменение агентного цикла и контракта tools.
 
-## 3. Acceptance Criteria спринта
+ ## 3. Acceptance Criteria спринта
 
-- [ ] В коде есть модуль `app/users/` с `User` и `UserRepository`; на каждый входящий апдейт (Telegram, консоль) пользователь гарантированно получен/создан через репозиторий, публикуется `UserCreated` при первой встрече.
-- [ ] В коде есть `app/core/events.py` с `EventBus` (async `subscribe` / `publish`), покрытый unit-тестами (порядок вызова подписчиков, изоляция ошибок подписчика, отсутствие блокировок при отсутствии подписчиков).
-- [ ] Хендлер текстовых сообщений (`app/adapters/telegram/handlers/messages.py` и его консольный аналог) **не вызывает** напрямую `ConversationStore.add_*` и `Summarizer.summarize` для in-session суммаризации — эти действия выполняются подписчиками событий `MessageReceived` / `ResponseGenerated`.
-- [ ] `Archiver.archive` возвращает результат синхронно (как сейчас), **и дополнительно** публикует `ConversationArchived` в конце успешного прогона; `_cleanup_tmp_images` вызывается из подписчика на это событие, а не из хендлера `/new`.
-- [ ] `pytest -q` зелёный; добавлены тесты на `EventBus`, `UserRepository`, на подписчиков истории/суммаризатора/cleanup.
-- [ ] `_docs/events.md` создан, `_docs/architecture.md` обновлён (описание шины и модуля Users), `_docs/roadmap.md` и `_docs/current-state.md` актуализированы.
-- [ ] Все задачи спринта — `Done`, сводная таблица актуальна.
+- [x] В коде есть модуль `app/users/` с `User` и `UserRepository`; на каждый входящий апдейт (Telegram, консоль) пользователь гарантированно получен/создан через репозиторий, публикуется `UserCreated` при первой встрече.
+- [x] В коде есть `app/core/events.py` с `EventBus` (async `subscribe` / `publish`), покрытый unit-тестами (порядок вызова подписчиков, изоляция ошибок подписчика, отсутствие блокировок при отсутствии подписчиков).
+- [x] Хендлер текстовых сообщений (`app/adapters/telegram/handlers/messages.py` и его консольный аналог) **не вызывает** напрямую `ConversationStore.add_*` и `Summarizer.summarize` для in-session суммаризации — эти действия выполняются подписчиками событий `MessageReceived` / `ResponseGenerated`.
+- [x] `Archiver.archive` возвращает результат синхронно (как сейчас), **и дополнительно** публикует `ConversationArchived` в конце успешного прогона; `_cleanup_tmp_images` вызывается из подписчика на это событие, а не из хендлера `/new`.
+- [x] `pytest -q` зелёный; добавлены тесты на `EventBus`, `UserRepository`, на подписчиков истории/суммаризатора/cleanup.
+- [x] `_docs/events.md` создан, `_docs/architecture.md` обновлён (описание шины и модуля Users), `_docs/roadmap.md` и `_docs/current-state.md` актуализированы.
+- [x] Все задачи спринта — `Done`, сводная таблица актуальна.
 
 ## 4. Этап 1. Модуль Users
 
@@ -265,7 +265,7 @@ In-memory шина с async pub/sub. Фундаментальное событи
 
 ### Задача 4.1. Финальная ревизия документации и `current-state.md` / `roadmap.md`
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** medium
 - **Объём:** XS
 - **Зависит от:** Задача 3.2
@@ -284,11 +284,11 @@ In-memory шина с async pub/sub. Фундаментальное событи
 
 #### Definition of Done
 
-- [ ] Все упомянутые документы актуализированы единым `docs(...)`-коммитом (или серией).
-- [ ] `grep -rn "add_user_message\|add_assistant_message" _docs/` не возвращает устаревших упоминаний о прямом вызове из хендлеров.
-- [ ] **Документация обновлена**: см. выше (задача чисто-документационная; тесты — `n/a`).
-- [ ] **Тесты добавлены / обновлены**: `n/a` — чисто-документационная задача.
-- [ ] `git status` чист.
+- [x] Все упомянутые документы актуализированы единым `docs(...)`-коммитом (или серией).
+- [x] `grep -rn "add_user_message\|add_assistant_message" _docs/` не возвращает устаревших упоминаний о прямом вызове из хендлеров.
+- [x] **Документация обновлена**: см. выше (задача чисто-документационная; тесты — `n/a`).
+- [x] **Тесты добавлены / обновлены**: `n/a` — чисто-документационная задача.
+- [x] `git status` чист.
 
 ## 8. Риски и смягчение
 
@@ -312,7 +312,7 @@ In-memory шина с async pub/sub. Фундаментальное событи
 | 2.4 | Перенести in-session суммаризацию на подписчик                         | medium    | S     | Done   | 2.3        |
 | 3.1 | `Archiver` публикует `ConversationArchived`                            | medium    | XS    | Done   | 2.1        |
 | 3.2 | Вынести `_cleanup_tmp_images` в подписчика `ConversationArchived`      | medium    | XS    | Done   | 3.1        |
-| 4.1 | Финальная ревизия документации и `current-state.md` / `roadmap.md`     | medium    | XS    | Progress   | 3.2        |
+| 4.1 | Финальная ревизия документации и `current-state.md` / `roadmap.md`     | medium    | XS    | Done   | 3.2        |
 
 > Обновляется при каждом переходе статуса и при добавлении/удалении задач.
 
@@ -327,3 +327,4 @@ In-memory шина с async pub/sub. Фундаментальное событи
 - **2026-05-05** — закрыта задача 2.4: создан summarizer_subscriber.py с подписчиком on_response_generated_summarize для in-session суммаризации, подписчик зарегистрирован в main.py и console_main.py после conversation_subscriber, удалены прямые вызовы summarizer.summarize из хендлеров Telegram и консоли, добавлены unit-тесты, обновлена документация _docs/memory.md §2.5.
 - **2026-05-05** — закрыта задача 3.1: добавлено событие ConversationArchived в events.py, Archiver принимает EventBus опциональным параметром и публикует событие при успешном архивировании, добавлены поля user и channel в CommandContext, обновлены точки входа (main.py, console_main.py) и хендлеры для передачи user/channel в archiver.archive(), добавлены unit-тесты для проверки публикации события, обновлена документация _docs/memory.md.
 - **2026-05-05** — закрыта задача 3.2: создан tmp_cleanup.py с функцией _cleanup_tmp_images и подписчиком on_conversation_archived_cleanup для очистки старых изображений при успешном архивировании, подписчик зарегистрирован в main.py и console_main.py, добавлены unit-тесты, обновлена документация _docs/events.md с информацией о подписчике.
+- **2026-05-05** — закрыта задача 4.1: обновлена документация _docs/events.md (сводная таблица событий и подписчиков), _docs/architecture.md (EventBus и UserRepository в схеме, события в потоках), _docs/current-state.md (записи о Users и EventBus, порядок подписчиков), _docs/roadmap.md (этап 6.5), _docs/agent-loop.md и _docs/memory.md (обновление упоминаний на событийную архитектуру), обновлён _board/plan.md (спринт 04 в Активные, перенумерация запланированных).
