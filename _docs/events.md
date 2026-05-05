@@ -106,3 +106,15 @@ class EventBus:
 **Кто публикует:** Archiver (через внедрённый EventBus)
 
 **Кто подписан (MVP):** `on_conversation_archived_cleanup` (tmp_cleanup.py) - удаляет изображения старше 1 часа из временной директории при успешном архивировании
+
+
+## Сводная таблица событий и подписчиков (спринт 04)
+
+| Событие | Кто публикует | Кто подписан (MVP) |
+|---------|--------------|-------------------|
+| UserCreated | UserRepository | никто (заготовка) |
+| MessageReceived | Хендлеры адаптеров (Telegram, консоль) | conversation_subscriber.on_message_received (запись в ConversationStore) |
+| ResponseGenerated | Хендлеры адаптеров (Telegram, консоль) | conversation_subscriber.on_response_generated (запись в ConversationStore), summarizer_subscriber.on_response_generated_summarize (in-session суммаризация) |
+| ConversationArchived | Archiver | on_conversation_archived_cleanup (очистка tmp-изображений) |
+
+**Примечание:** Подписчики вызываются последовательно в порядке регистрации (FIFO). Для события `ResponseGenerated` важно, чтобы `conversation_subscriber.on_response_generated` регистрировался первым, чтобы к моменту суммаризации ответ уже был записан в стор.

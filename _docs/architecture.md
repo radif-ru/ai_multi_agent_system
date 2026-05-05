@@ -21,17 +21,17 @@ Telegram-адаптер принимает текст, оборачивает е
                 |   aiogram Bot        |<-----> |  ConversationStore         |
                 |   (Dispatcher,       | read/  |  (in-memory per-user       |
                 |    Router, Handlers) | write  |   history, FIFO + summary) |
-                +-----------+----------+        +----------------------------+
-                            |
-                            | task.create(goal, user_id, conversation_id)
-                            v
-                +----------------------+
-                |   Core / Orchestrator|        (в MVP — функция в app/core/orchestrator.py;
-                |   (routing only)     |         в будущем — мульти-процесс или мульти-агент)
-                +-----------+----------+
-                            |
-                            v
-                +----------------------+
+                +-----------+----------+        +------------+---------------+
+                            |                            ^
+                            | task.create(goal, user_id, conversation_id)     |
+                            v                            | events
+                +----------------------+        +----------------------------+
+                |   Core / Orchestrator|        |   EventBus                 |
+                |   (routing only)     |<------>|  (pub/sub)                 |
+                +-----------+----------+        +------------+---------------+
+                            |                            |
+                            v                            | user events
+                +----------------------+               |
                 |   Executor Agent     |  thought → action → observation → ...
                 |   (agent loop)       |
                 +-----+----------+-----+
@@ -55,6 +55,12 @@ Telegram-адаптер принимает текст, оборачивает е
         | qwen3.5:4b +   |
         | nomic-embed... |
         +----------------+
+
+Долгоживущие сервисы (инициализируются при старте):
+- EventBus — событийная шина для pub/sub между компонентами
+- UserRepository — хранилище пользователей с get_or_create
+- ConversationStore — in-memory история диалогов
+- SemanticMemory — долгосрочная семантическая память (sqlite-vec)
 ```
 
 Обратный путь: финальный ответ Executor → Core → Telegram-адаптер → `bot.send_message` → пользователь. Ошибка любого слоя → понятное сообщение пользователю + запись в лог.
@@ -119,7 +125,7 @@ Telegram-адаптер принимает текст, оборачивает е
 
 ### 3.5 Краткосрочная память (`app/services/conversation.py`, `app/services/summarizer.py`)
 
-- **`ConversationStore`** — in-memory `user_id → list[{role, content}]` + `user_id → conversation_id`. API: `get_history`, `get_session_log`, `add_user_message`, `add_assistant_message`, `replace_with_summary(summary, kept_tail=2)`, `clear`, `current_conversation_id`, `rotate_conversation_id`. Жёсткий лимит `Settings.history_max_messages` (FIFO). `get_history` отдаёт **копию**. Внутри стора два буфера: rolling-`_messages` (с in-session compaction для LLM-контекста) и параллельный append-only `_session_log` (полный лог текущей сессии для `/new` → `Archiver`, страховка `Settings.session_log_max_messages`); `replace_with_summary` `_session_log` не трогает. См. `memory.md` §2.5.
+- **`ConversationStore`** — in-memory `user_id → list[{role, content}]` + `user_id → conversation_id`. API: `get_history`, `get_session_log`, `add_user_message`, `add_assistant_message`, `replace_with_summary(summary, kept_tail=2)`, `clear`, `current_conversation_id`, `rotate_conversation_id`. Жёсткий лимит `Settings.history_max_messages` (FIFO). `get_history` отдаёт **копию**. Внутри стора два буфера: rolling-`_messages` (с in-session compaction для LLM-контекста) и параллельный append-only `_session_log` (полный лог текущей сессии для `/new` → `Archiver`, страховка `Settings.session_log_max_messages`); `replace_with_summary` `_session_log` не трогает. См. `memory.md` §2.5. Примечание: методы `add_user_message` и `add_assistant_message` вызываются подписчиками событий `MessageReceived` и `ResponseGenerated`, а не напрямую из хендлеров.
 - **`Summarizer`** — обёртка над `OllamaClient.chat`, сжимает историю в краткое резюме (`Settings.summarization_prompt`). Используется в двух местах:
   1. **In-session** (когда `len(history) >= history_summary_threshold`) — заменяет старую часть истории резюме (`replace_with_summary`).
   2. **При архивировании** (`/new`) — суммирует всю сессию, дальше архиватор режет на чанки и пишет в `SemanticMemory`.
@@ -215,16 +221,16 @@ class Executor:
    1. Проверяет длину ввода (`MAX_INPUT_LENGTH = 4000`); при превышении — подсказка и выход.
    2. **Reply-обработка:** если сообщение является ответом (`message.reply_to_message`), текст оригинального сообщения включается в контекст в формате `[В ответ на: <текст оригинала>]\n<текст ответа>`. Длинные оригиналы обрезаются до 500 символов. Это позволяет агенту понимать контекст ответа.
    3. Берёт `model` и `system_prompt` из `UserSettingsRegistry` (per-user override).
-   4. Дописывает сообщение пользователя в `ConversationStore`.
-   5. Запускает `bot.send_chat_action(ChatAction.TYPING)`.
-   6. Вызывает `core.handle_user_task(text, user_id=..., chat_id=...)`.
+   4. Получает пользователя через `UserRepository.get_or_create`.
+   5. Публикует событие `MessageReceived` через EventBus (подписчики записывают сообщение в ConversationStore).
+   6. Запускает `bot.send_chat_action(ChatAction.TYPING)`.
+   7. Вызывает `core.handle_user_task(text, user_id=..., chat_id=...)`.
 5. Core берёт `conversation_id` из `ConversationStore` и вызывает `Executor.run(...)`.
 6. Executor крутит цикл (см. §3.11) до финального ответа или лимита шагов.
 7. Core возвращает финальный текст в handler.
 8. Handler:
-   1. Дописывает ответ ассистента в `ConversationStore`.
-   2. **Условная in-session суммаризация**: если `len(history) >= history_summary_threshold`, вызывает `Summarizer.summarize(history[:-2])` и пишет результат через `replace_with_summary(..., kept_tail=2)`. Падение суммаризации → `WARNING`, ответ пользователю не страдает.
-   3. Отправляет ответ пользователю (`message.answer`), при необходимости разбивая на части > 4096 символов.
+   1. Публикует событие `ResponseGenerated` через EventBus (подписчики записывают ответ в ConversationStore и выполняют in-session суммаризацию).
+   2. Отправляет ответ пользователю (`message.answer`), при необходимости разбивая на части > 4096 символов.
 9. При ошибке любого слоя — человекочитаемое сообщение пользователю + запись в лог.
 
 ## 5. Поток `/new` (архивирование сессии)
@@ -241,6 +247,7 @@ class Executor:
    4. `SemanticMemory.insert(chunk, embedding, metadata)` — `metadata` включает `conversation_id`, `chat_id`, `chunk_index`.
       - Лог: `archive stage=database chunks=N dur_ms=N`
    5. **Прогресс**: при `progress_callback` пользователю показываются этапы («Суммирую…», «Создаю эмбеддинги…»).
+   6. **Публикация события:** при успешном завершении архивирования публикуется событие `ConversationArchived` через EventBus (подписчики выполняют побочные эффекты, например, очистку временных файлов).
 4. `ConversationStore.clear(user_id)` + `rotate_conversation_id(user_id)`.
 5. Пользователю — сообщение «Архивировано N чанков, новая сессия открыта».
 6. Если суммаризация / эмбеддинг упали — `WARNING`, история не очищается (чтобы не потерять контекст), пользователь получает сообщение «Архивирование не удалось: <error>. Сессия сохранена, попробуйте /new ещё раз позже».
