@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from app.users.models import User
 
 if TYPE_CHECKING:
-    from app.core.events import EventBus
+    from app.core.events import EventBus, UserCreated
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +28,12 @@ class UserRepository:
         _lock: Lock для потокобезопасности записи.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, event_bus: "EventBus | None" = None) -> None:
         self._users: dict[int, User] = {}
         self._by_external: dict[tuple[str, str], int] = {}
         self._next_id = 1
         self._lock = asyncio.Lock()
+        self._event_bus = event_bus
 
     async def get_or_create(
         self,
@@ -76,6 +77,12 @@ class UserRepository:
                 channel,
                 external_id,
             )
+
+            # Публикуем событие UserCreated если есть EventBus
+            if self._event_bus:
+                from app.core.events import UserCreated
+
+                await self._event_bus.publish(UserCreated(user=user))
 
             return user, True
 
