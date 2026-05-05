@@ -68,11 +68,11 @@
 
 #### Definition of Done
 
-- [ ] Файлы созданы, импорт `from app.users import User, UserRepository` работает.
-- [ ] Unit-тест `tests/users/test_repository.py` покрывает: создание нового, повторный `get_or_create` возвращает тот же id и `created=False`, `get_by_external` находит созданного, `get` по несуществующему id — `None`.
-- [ ] **Документация обновлена**: `_docs/architecture.md` §3 — новый подраздел про модуль Users (короткий, 5–10 строк). До коммита кода.
-- [ ] **Тесты добавлены / обновлены**: см. выше.
-- [ ] `git status` чист, артефакты не закоммичены.
+- [x] Файлы созданы, импорт `from app.users import User, UserRepository` работает.
+- [x] Unit-тест `tests/users/test_repository.py` покрывает: создание нового, повторный `get_or_create` возвращает тот же id и `created=False`, `get_by_external` находит созданного, `get` по несуществующему id — `None`.
+- [x] **Документация обновлена**: `_docs/architecture.md` §3 — новый подраздел про модуль Users (короткий, 5–10 строк). До коммита кода.
+- [x] **Тесты добавлены / обновлены**: см. выше.
+- [x] `git status` чист, артефакты не закоммичены.
 
 ### Задача 1.2. Интеграция `UserRepository` в адаптеры и DI
 
@@ -304,8 +304,8 @@ In-memory шина с async pub/sub. Фундаментальное событи
 
 | #   | Задача                                                                 | Приоритет | Объём | Статус | Зависит от |
 |-----|------------------------------------------------------------------------|:---------:|:-----:|:------:|:----------:|
-| 1.1 | Создать `app/users/` с `User` и `UserRepository`                       | high      | S     | Progress | —          |
-| 1.2 | Интеграция `UserRepository` в адаптеры и DI                            | high      | S     | Progress | 1.1        |
+| 1.1 | Создать `app/users/` с `User` и `UserRepository`                       | high      | S     | Done    | —          |
+| 1.2 | Интеграция `UserRepository` в адаптеры и DI                            | high      | S     | ToDo    | 1.1        |
 | 2.1 | Реализовать `EventBus` и базовый `Event`                               | high      | S     | ToDo   | —          |
 | 2.2 | События `MessageReceived` / `ResponseGenerated` / `UserCreated`        | high      | S     | ToDo   | 2.1, 1.2   |
 | 2.3 | Перенести запись в `ConversationStore` на подписчик                    | high      | S     | ToDo   | 2.2        |
