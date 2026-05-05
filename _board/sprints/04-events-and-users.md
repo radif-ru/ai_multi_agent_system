@@ -241,7 +241,7 @@ In-memory шина с async pub/sub. Фундаментальное событи
 
 ### Задача 3.2. Вынести `_cleanup_tmp_images` в подписчика `ConversationArchived`
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** medium
 - **Объём:** XS
 - **Зависит от:** Задача 3.1
@@ -311,7 +311,7 @@ In-memory шина с async pub/sub. Фундаментальное событи
 | 2.3 | Перенести запись в `ConversationStore` на подписчик                    | high      | S     | Done   | 2.2        |
 | 2.4 | Перенести in-session суммаризацию на подписчик                         | medium    | S     | Done   | 2.3        |
 | 3.1 | `Archiver` публикует `ConversationArchived`                            | medium    | XS    | Done   | 2.1        |
-| 3.2 | Вынести `_cleanup_tmp_images` в подписчика `ConversationArchived`      | medium    | XS    | ToDo   | 3.1        |
+| 3.2 | Вынести `_cleanup_tmp_images` в подписчика `ConversationArchived`      | medium    | XS    | Progress   | 3.1        |
 | 4.1 | Финальная ревизия документации и `current-state.md` / `roadmap.md`     | medium    | XS    | ToDo   | 3.2        |
 
 > Обновляется при каждом переходе статуса и при добавлении/удалении задач.
