@@ -186,7 +186,7 @@ In-memory шина с async pub/sub. Фундаментальное событи
 
 ### Задача 2.4. Перенести in-session суммаризацию на подписчик
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** medium
 - **Объём:** S
 - **Зависит от:** Задача 2.3
@@ -203,12 +203,12 @@ In-memory шина с async pub/sub. Фундаментальное событи
 
 #### Definition of Done
 
-- [ ] В хендлере текста нет вызова `summarizer.summarize(...)` в основном потоке.
-- [ ] Unit-тест: `ResponseGenerated` при `history_len >= threshold` приводит к вызову `Summarizer.summarize` и `replace_with_summary`; при меньшей длине — не приводит.
-- [ ] Unit-тест: исключение в суммаризаторе не роняет других подписчиков (через тест-шпион).
-- [ ] **Документация обновлена**: `_docs/memory.md` §2.5 — уточнить, что триггер in-session суммаризации — подписчик на `ResponseGenerated`.
-- [ ] **Тесты добавлены / обновлены**: см. выше.
-- [ ] `git status` чист.
+- [x] В хендлере текста нет вызова `summarizer.summarize(...)` в основном потоке.
+- [x] Unit-тест: `ResponseGenerated` при `history_len >= threshold` приводит к вызову `Summarizer.summarize` и `replace_with_summary`; при меньшей длине — не приводит.
+- [x] Unit-тест: исключение в суммаризаторе не роняет других подписчиков (через тест-шпион).
+- [x] **Документация обновлена**: `_docs/memory.md` §2.5 — уточнить, что триггер in-session суммаризации — подписчик на `ResponseGenerated`.
+- [x] **Тесты добавлены / обновлены**: см. выше.
+- [x] `git status` чист.
 
 ## 6. Этап 3. Событие `ConversationArchived` и вынос tmp-cleanup
 
@@ -309,7 +309,7 @@ In-memory шина с async pub/sub. Фундаментальное событи
 | 2.1 | Реализовать `EventBus` и базовый `Event`                               | high      | S     | Done    | —          |
 | 2.2 | События `MessageReceived` / `ResponseGenerated` / `UserCreated`        | high      | S     | Done    | 2.1, 1.2   |
 | 2.3 | Перенести запись в `ConversationStore` на подписчик                    | high      | S     | Done   | 2.2        |
-| 2.4 | Перенести in-session суммаризацию на подписчик                         | medium    | S     | Progress   | 2.3        |
+| 2.4 | Перенести in-session суммаризацию на подписчик                         | medium    | S     | Done   | 2.3        |
 | 3.1 | `Archiver` публикует `ConversationArchived`                            | medium    | XS    | ToDo   | 2.1        |
 | 3.2 | Вынести `_cleanup_tmp_images` в подписчика `ConversationArchived`      | medium    | XS    | ToDo   | 3.1        |
 | 4.1 | Финальная ревизия документации и `current-state.md` / `roadmap.md`     | medium    | XS    | ToDo   | 3.2        |
@@ -324,3 +324,4 @@ In-memory шина с async pub/sub. Фундаментальное событи
 - **2026-05-05** — закрыта задача 2.1: реализован EventBus и базовый Event, добавлены unit-тесты, создана документация _docs/events.md.
 - **2026-05-05** — закрыта задача 2.2: добавлена публикация событий UserCreated (в UserRepository), MessageReceived и ResponseGenerated (в хендлерах Telegram и консоли), EventBus интегрирован в DI (main.py, console_main.py), обновлена документация _docs/events.md с контрактами событий.
 - **2026-05-05** — закрыта задача 2.3: создан conversation_subscriber.py с подписчиками MessageReceived и ResponseGenerated для записи в ConversationStore, подписчики зарегистрированы в main.py и console_main.py, удалены прямые вызовы add_user_message/add_assistant_message из хендлеров Telegram и консоли, обновлена документация _docs/events.md, обновлены тесты для работы с новой архитектурой.
+- **2026-05-05** — закрыта задача 2.4: создан summarizer_subscriber.py с подписчиком on_response_generated_summarize для in-session суммаризации, подписчик зарегистрирован в main.py и console_main.py после conversation_subscriber, удалены прямые вызовы summarizer.summarize из хендлеров Telegram и консоли, добавлены unit-тесты, обновлена документация _docs/memory.md §2.5.
