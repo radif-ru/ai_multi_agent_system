@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from aiogram import Bot, Dispatcher
@@ -156,14 +157,18 @@ async def _build_components(settings: Settings) -> _Components:
     )
 
     # Регистрируем подписчиков для записи в ConversationStore
+    from app.core.events import ConversationArchived
     from app.services.conversation_subscriber import on_message_received, on_response_generated
     from app.services.summarizer_subscriber import on_response_generated_summarize
+    from app.services.tmp_cleanup import on_conversation_archived_cleanup
     from functools import partial
 
     event_bus.subscribe(MessageReceived, partial(on_message_received, conversations=conversations))
     event_bus.subscribe(ResponseGenerated, partial(on_response_generated, conversations=conversations))
     # Регистрируем подписчика суммаризации ПОСЛЕ conversation_subscriber, чтобы ответ уже был записан в стор
     event_bus.subscribe(ResponseGenerated, partial(on_response_generated_summarize, conversations=conversations, summarizer=summarizer, user_settings=user_settings, settings=settings))
+    # Регистрируем подписчика очистки tmp-изображений при успешном архивировании
+    event_bus.subscribe(ConversationArchived, partial(on_conversation_archived_cleanup, tmp_dir=Path(settings.tmp_base_dir)))
 
     return _Components(
         settings=settings,
