@@ -156,10 +156,13 @@ async def _build_components(settings: Settings) -> _Components:
 
     # Регистрируем подписчиков для записи в ConversationStore
     from app.services.conversation_subscriber import on_message_received, on_response_generated
+    from app.services.summarizer_subscriber import on_response_generated_summarize
     from functools import partial
 
     event_bus.subscribe(MessageReceived, partial(on_message_received, conversations=conversations))
     event_bus.subscribe(ResponseGenerated, partial(on_response_generated, conversations=conversations))
+    # Регистрируем подписчика суммаризации ПОСЛЕ conversation_subscriber, чтобы ответ уже был записан в стор
+    event_bus.subscribe(ResponseGenerated, partial(on_response_generated_summarize, conversations=conversations, summarizer=summarizer, user_settings=user_settings, settings=settings))
 
     return _Components(
         settings=settings,

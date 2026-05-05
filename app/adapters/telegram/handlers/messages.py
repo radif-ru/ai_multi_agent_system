@@ -198,22 +198,6 @@ def build_text_handler(
                 channel="telegram"
             ))
 
-        history = conversations.get_history(user_id)
-        if len(history) >= settings.history_summary_threshold:
-            try:
-                summary = await summarizer.summarize(
-                    history[:-2], model=model
-                )
-                conversations.replace_with_summary(
-                    user_id, summary, kept_tail=2
-                )
-            except Exception:  # noqa: BLE001
-                logger.warning(
-                    "in-session суммаризация не удалась user=%s",
-                    user_id,
-                    exc_info=True,
-                )
-
         for part in split_long_message(reply, TELEGRAM_MAX_MESSAGE_LENGTH):
             formatted, parse_mode = format_for_telegram(part)
             await _send_with_fallback(message, formatted, parse_mode)
@@ -329,14 +313,6 @@ async def handle_document(
             conversation_id=str(chat_id),
             channel="telegram"
         ))
-
-    history = conversations.get_history(user_id)
-    if len(history) >= settings.history_summary_threshold:
-        try:
-            summary = await summarizer.summarize(history[:-2], model=model)
-            conversations.replace_with_summary(user_id, summary, kept_tail=2)
-        except Exception:  # noqa: BLE001
-            logger.warning("in-session суммаризация не удалась user=%s", user_id, exc_info=True)
 
     for part in split_long_message(reply, TELEGRAM_MAX_MESSAGE_LENGTH):
         formatted, parse_mode = format_for_telegram(part)
@@ -482,14 +458,6 @@ async def handle_voice(
             conversation_id=str(chat_id),
             channel="telegram"
         ))
-
-    history = conversations.get_history(user_id)
-    if len(history) >= settings.history_summary_threshold:
-        try:
-            summary = await summarizer.summarize(history[:-2], model=model)
-            conversations.replace_with_summary(user_id, summary, kept_tail=2)
-        except Exception:  # noqa: BLE001
-            logger.warning("in-session суммаризация не удалась user=%s", user_id, exc_info=True)
 
     for part in split_long_message(reply, TELEGRAM_MAX_MESSAGE_LENGTH):
         formatted, parse_mode = format_for_telegram(part)
@@ -644,14 +612,6 @@ async def handle_photo(
             conversation_id=str(chat_id),
             channel="telegram"
         ))
-
-    history = conversations.get_history(user_id)
-    if len(history) >= settings.history_summary_threshold:
-        try:
-            summary = await summarizer.summarize(history[:-2], model=model)
-            conversations.replace_with_summary(user_id, summary, kept_tail=2)
-        except Exception:  # noqa: BLE001
-            logger.warning("in-session суммаризация не удалась user=%s", user_id, exc_info=True)
 
     for part in split_long_message(reply, TELEGRAM_MAX_MESSAGE_LENGTH):
         formatted, parse_mode = format_for_telegram(part)

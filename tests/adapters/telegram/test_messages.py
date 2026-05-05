@@ -256,60 +256,6 @@ async def test_long_reply_is_split_into_chunks(patch_handle_user_task) -> None:
     assert all(len(p) <= TELEGRAM_MAX_MESSAGE_LENGTH for p in parts)
 
 
-@pytest.mark.asyncio
-async def test_in_session_summary_runs_when_threshold_reached(
-    patch_handle_user_task,
-    event_bus_with_conversations,
-) -> None:
-    patch_handle_user_task("короткий ответ")
-    settings = _FakeSettings(history_summary_threshold=2)
-    summarizer = _FakeSummarizer(summary="резюме истории")
-    event_bus, conversations, mock_users = event_bus_with_conversations
-    handler = _make_handler(
-        settings=settings, summarizer=summarizer, conversations=conversations
-    )
-    msg, _ = _make_message(text="ещё вопрос")
-    # Добавляем event_bus и users в dispatcher
-    msg.bot.get_current_dispatcher.return_value.get.side_effect = lambda key: {
-        "users": mock_users,
-        "event_bus": event_bus,
-    }.get(key)
-
-    await handler(msg)
-
-    assert len(summarizer.calls) == 1
-    history = conversations.get_history(42)
-    # После replace_with_summary: один system (резюме) + 2 хвостовых сообщения.
-    assert history[0]["role"] == "system"
-    assert "резюме истории" in history[0]["content"]
-    assert len(history) == 3
-
-
-@pytest.mark.asyncio
-async def test_in_session_summary_failure_does_not_break_reply(
-    patch_handle_user_task, caplog: pytest.LogCaptureFixture, event_bus_with_conversations
-) -> None:
-    patch_handle_user_task("ответ")
-    settings = _FakeSettings(history_summary_threshold=2)
-    summarizer = _FakeSummarizer(error=RuntimeError("llm down"))
-    event_bus, conversations, mock_users = event_bus_with_conversations
-    handler = _make_handler(
-        settings=settings, summarizer=summarizer, conversations=conversations
-    )
-    msg, answer = _make_message()
-    # Добавляем event_bus и users в dispatcher
-    msg.bot.get_current_dispatcher.return_value.get.side_effect = lambda key: {
-        "users": mock_users,
-        "event_bus": event_bus,
-    }.get(key)
-
-    with caplog.at_level(logging.WARNING, logger="app.adapters.telegram.handlers.messages"):
-        await handler(msg)
-
-    answer.assert_awaited_once_with("ответ", parse_mode=None)
-    assert any("суммаризация не удалась" in r.message for r in caplog.records)
-
-
 # ---------- Reply-обработка -------------------------------------------------
 
 

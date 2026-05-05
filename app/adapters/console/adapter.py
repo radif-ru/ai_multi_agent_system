@@ -237,14 +237,6 @@ class ConsoleAdapter:
                 ))
 
             print(format_console_output(response))
-
-            # Условная in-session суммаризация
-            history = self.conversations.get_history(self.user_id)
-            if len(history) >= self.settings.history_summary_threshold:
-                from app.services.summarizer import Summarizer
-
-                summarizer = Summarizer(llm=None)  # будет заполнен через DI
-                # TODO: реализовать суммаризацию для консоли
         except Exception as exc:  # noqa: BLE001
             # Выводим детали ошибки для отладки
             print(f"{Colors.RED}Ошибка: {exc}{Colors.RESET}")

@@ -48,15 +48,18 @@ class ConversationStore:
 
 ### 2.3 In-session суммаризация (порог)
 
-Срабатывает в обработчике сообщения после ответа LLM:
+Триггерится подписчиком на событие `ResponseGenerated` после успешной генерации ответа LLM (см. `events.md`):
 
 ```python
-if len(store.get_history(user_id)) >= settings.history_summary_threshold:
-    summary = await summarizer.summarize(history[:-2], model=...)
-    store.replace_with_summary(user_id, summary, kept_tail=2)
+# В app/services/summarizer_subscriber.py
+async def on_response_generated_summarize(event: ResponseGenerated, ...):
+    history = conversations.get_history(user_id)
+    if len(history) >= settings.history_summary_threshold:
+        summary = await summarizer.summarize(history[:-2], model=...)
+        conversations.replace_with_summary(user_id, summary, kept_tail=2)
 ```
 
-Падение суммаризации → `WARNING summarize failed ...`, история остаётся. См. `architecture.md` §4.
+Подписчик регистрируется в `main.py` и `console_main.py` **после** подписчика записи в `ConversationStore`, чтобы к моменту суммаризации ответ ассистента уже был записан в стор. Падение суммаризации → `WARNING in-session суммаризация не удалась ...`, история остаётся, другие подписчики не страдают. См. `architecture.md` §4 и `events.md`.
 
 ### 2.4 Подгрузка истории в LLM
 
