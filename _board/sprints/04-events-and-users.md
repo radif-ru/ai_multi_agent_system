@@ -105,7 +105,7 @@ In-memory шина с async pub/sub. Фундаментальное событи
 
 ### Задача 2.1. Реализовать `EventBus` и базовый `Event`
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** —
@@ -306,7 +306,7 @@ In-memory шина с async pub/sub. Фундаментальное событи
 |-----|------------------------------------------------------------------------|:---------:|:-----:|:------:|:----------:|
 | 1.1 | Создать `app/users/` с `User` и `UserRepository`                       | high      | S     | Done    | —          |
 | 1.2 | Интеграция `UserRepository` в адаптеры и DI                            | high      | S     | Done    | 1.1        |
-| 2.1 | Реализовать `EventBus` и базовый `Event`                               | high      | S     | ToDo   | —          |
+| 2.1 | Реализовать `EventBus` и базовый `Event`                               | high      | S     | Progress | —          |
 | 2.2 | События `MessageReceived` / `ResponseGenerated` / `UserCreated`        | high      | S     | ToDo   | 2.1, 1.2   |
 | 2.3 | Перенести запись в `ConversationStore` на подписчик                    | high      | S     | ToDo   | 2.2        |
 | 2.4 | Перенести in-session суммаризацию на подписчик                         | medium    | S     | ToDo   | 2.3        |
