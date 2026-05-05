@@ -216,7 +216,7 @@ In-memory шина с async pub/sub. Фундаментальное событи
 
 ### Задача 3.1. `Archiver` публикует `ConversationArchived`
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** medium
 - **Объём:** XS
 - **Зависит от:** Задача 2.1
@@ -233,11 +233,11 @@ In-memory шина с async pub/sub. Фундаментальное событи
 
 #### Definition of Done
 
-- [ ] Событие опубликовано ровно один раз на успешное архивирование; при падении — не публикуется.
-- [ ] Unit-тест: успешный `archive` публикует `ConversationArchived` с корректными полями; упавший — не публикует.
-- [ ] **Документация обновлена**: `_docs/events.md` — добавлен контракт `ConversationArchived`; `_docs/memory.md` — короткое упоминание.
-- [ ] **Тесты добавлены / обновлены**: см. выше.
-- [ ] `git status` чист.
+- [x] Событие опубликовано ровно один раз на успешное архивирование; при падении — не публикуется.
+- [x] Unit-тест: успешный `archive` публикует `ConversationArchived` с корректными полями; упавший — не публикует.
+- [x] **Документация обновлена**: `_docs/events.md` — добавлен контракт `ConversationArchived`; `_docs/memory.md` — короткое упоминание.
+- [x] **Тесты добавлены / обновлены**: см. выше.
+- [x] `git status` чист.
 
 ### Задача 3.2. Вынести `_cleanup_tmp_images` в подписчика `ConversationArchived`
 
@@ -310,7 +310,7 @@ In-memory шина с async pub/sub. Фундаментальное событи
 | 2.2 | События `MessageReceived` / `ResponseGenerated` / `UserCreated`        | high      | S     | Done    | 2.1, 1.2   |
 | 2.3 | Перенести запись в `ConversationStore` на подписчик                    | high      | S     | Done   | 2.2        |
 | 2.4 | Перенести in-session суммаризацию на подписчик                         | medium    | S     | Done   | 2.3        |
-| 3.1 | `Archiver` публикует `ConversationArchived`                            | medium    | XS    | Progress   | 2.1        |
+| 3.1 | `Archiver` публикует `ConversationArchived`                            | medium    | XS    | Done   | 2.1        |
 | 3.2 | Вынести `_cleanup_tmp_images` в подписчика `ConversationArchived`      | medium    | XS    | ToDo   | 3.1        |
 | 4.1 | Финальная ревизия документации и `current-state.md` / `roadmap.md`     | medium    | XS    | ToDo   | 3.2        |
 
@@ -325,3 +325,4 @@ In-memory шина с async pub/sub. Фундаментальное событи
 - **2026-05-05** — закрыта задача 2.2: добавлена публикация событий UserCreated (в UserRepository), MessageReceived и ResponseGenerated (в хендлерах Telegram и консоли), EventBus интегрирован в DI (main.py, console_main.py), обновлена документация _docs/events.md с контрактами событий.
 - **2026-05-05** — закрыта задача 2.3: создан conversation_subscriber.py с подписчиками MessageReceived и ResponseGenerated для записи в ConversationStore, подписчики зарегистрированы в main.py и console_main.py, удалены прямые вызовы add_user_message/add_assistant_message из хендлеров Telegram и консоли, обновлена документация _docs/events.md, обновлены тесты для работы с новой архитектурой.
 - **2026-05-05** — закрыта задача 2.4: создан summarizer_subscriber.py с подписчиком on_response_generated_summarize для in-session суммаризации, подписчик зарегистрирован в main.py и console_main.py после conversation_subscriber, удалены прямые вызовы summarizer.summarize из хендлеров Telegram и консоли, добавлены unit-тесты, обновлена документация _docs/memory.md §2.5.
+- **2026-05-05** — закрыта задача 3.1: добавлено событие ConversationArchived в events.py, Archiver принимает EventBus опциональным параметром и публикует событие при успешном архивировании, добавлены поля user и channel в CommandContext, обновлены точки входа (main.py, console_main.py) и хендлеры для передачи user/channel в archiver.archive(), добавлены unit-тесты для проверки публикации события, обновлена документация _docs/memory.md.
