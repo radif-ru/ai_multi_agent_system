@@ -43,6 +43,7 @@ def build_command_handlers(
     skills: Any,
     conversations: "ConversationStore",
     archiver: "Archiver",
+    users: Any = None,
 ) -> dict[str, Any]:
     """Собрать словарь handler'ов команд.
 
@@ -68,6 +69,7 @@ def build_command_handlers(
             skills=skills,
             conversations=conversations,
             archiver=archiver,
+            users=users,
         )
         result = await registry.execute("start", ctx)
         await message.answer(result.text)
@@ -85,6 +87,7 @@ def build_command_handlers(
             skills=skills,
             conversations=conversations,
             archiver=archiver,
+            users=users,
         )
         result = await registry.execute("help", ctx)
         await message.answer(result.text)
@@ -102,6 +105,7 @@ def build_command_handlers(
             skills=skills,
             conversations=conversations,
             archiver=archiver,
+            users=users,
         )
         result = await registry.execute("models", ctx)
         await message.answer(result.text)
@@ -119,6 +123,7 @@ def build_command_handlers(
             skills=skills,
             conversations=conversations,
             archiver=archiver,
+            users=users,
         )
         arg = (command.args or "").strip()
         result = await registry.execute("model", ctx, args=arg)
@@ -137,6 +142,7 @@ def build_command_handlers(
             skills=skills,
             conversations=conversations,
             archiver=archiver,
+            users=users,
         )
         result = await registry.execute("search_engines", ctx)
         await message.answer(result.text)
@@ -154,6 +160,7 @@ def build_command_handlers(
             skills=skills,
             conversations=conversations,
             archiver=archiver,
+            users=users,
         )
         arg = (command.args or "").strip()
         result = await registry.execute("search_engine", ctx, args=arg)
@@ -172,6 +179,7 @@ def build_command_handlers(
             skills=skills,
             conversations=conversations,
             archiver=archiver,
+            users=users,
         )
         arg = (command.args or "").strip()
         result = await registry.execute("prompt", ctx, args=arg)
@@ -190,6 +198,7 @@ def build_command_handlers(
             skills=skills,
             conversations=conversations,
             archiver=archiver,
+            users=users,
         )
 
         # Показываем прогресс для долгих операций
@@ -232,6 +241,7 @@ def build_command_handlers(
             skills=skills,
             conversations=conversations,
             archiver=archiver,
+            users=users,
         )
         result = await registry.execute("reset", ctx)
         await message.answer(result.text)
@@ -258,6 +268,7 @@ def build_commands_router(
     skills: Any,
     conversations: "ConversationStore",
     archiver: "Archiver",
+    users: Any = None,
 ) -> Router:
     """Собрать aiogram-Router с handler'ами команд.
 
@@ -275,6 +286,7 @@ def build_commands_router(
         skills=skills,
         conversations=conversations,
         archiver=archiver,
+        users=users,
     )
     router = Router(name="commands")
     router.message.register(handlers["start"], Command("start"))
@@ -300,6 +312,7 @@ def _build_context(
     skills: Any,
     conversations: "ConversationStore",
     archiver: "Archiver",
+    users: Any = None,
 ) -> CommandContext:
     """Построить контекст команды для Telegram."""
     return CommandContext(
@@ -312,6 +325,7 @@ def _build_context(
         skills=skills,
         conversations=conversations,
         archiver=archiver,
+        users=users,
     )
 
 

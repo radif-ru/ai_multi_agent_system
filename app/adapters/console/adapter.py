@@ -7,6 +7,7 @@ ConsoleAdapter — REPL-цикл, который читает ввод поль�
 
 from __future__ import annotations
 
+import inspect
 import re
 import sys
 from typing import TYPE_CHECKING, Any
@@ -89,6 +90,7 @@ class ConsoleAdapter:
         conversations: Any,
         archiver: Any,
         core_handle_user_task: Any,
+        users: Any,
     ) -> None:
         """Инициализировать консольный адаптер.
 
@@ -103,6 +105,7 @@ class ConsoleAdapter:
             conversations: хранилище диалогов
             archiver: архиватор сессий
             core_handle_user_task: функция core.handle_user_task для текстовых сообщений
+            users: репозиторий пользователей
         """
         self.user_id = user_id
         self.chat_id = chat_id
@@ -114,6 +117,7 @@ class ConsoleAdapter:
         self.conversations = conversations
         self.archiver = archiver
         self.core_handle_user_task = core_handle_user_task
+        self.users = users
 
         from app.commands import CommandRegistry
 
@@ -133,6 +137,7 @@ class ConsoleAdapter:
             skills=self.skills,
             conversations=self.conversations,
             archiver=self.archiver,
+            users=self.users,
         )
 
     async def run(self) -> None:
@@ -192,6 +197,9 @@ class ConsoleAdapter:
 
     async def _handle_text(self, text: str) -> None:
         """Обработать текстовое сообщение."""
+        # Получаем или создаём пользователя
+        if hasattr(self.users, "get_or_create") and inspect.iscoroutinefunction(self.users.get_or_create):
+            user, _ = await self.users.get_or_create("console", str(self.user_id), "Console User")
         ctx = self._build_context()
 
         # Дописываем сообщение в историю

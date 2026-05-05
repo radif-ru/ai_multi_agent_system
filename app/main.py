@@ -42,6 +42,7 @@ from app.tools.read_file import ReadFileTool
 from app.tools.registry import ToolRegistry
 from app.tools.web_search import WebSearchTool
 from app.tools.weather import WeatherTool
+from app.users.repository import UserRepository
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,7 @@ class _Components:
     tools: ToolRegistry
     archiver: Archiver
     executor: Executor
+    users: UserRepository
 
 
 async def _build_components(settings: Settings) -> _Components:
@@ -147,6 +149,7 @@ async def _build_components(settings: Settings) -> _Components:
         user_settings=user_settings,
         summarizer=summarizer,
     )
+    users = UserRepository()
     return _Components(
         settings=settings,
         llm=llm,
@@ -159,12 +162,14 @@ async def _build_components(settings: Settings) -> _Components:
         tools=tools,
         archiver=archiver,
         executor=executor,
+        users=users,
     )
 
 
 def _wire_telegram(c: _Components) -> tuple[Bot, Dispatcher]:
     bot = Bot(token=c.settings.telegram_bot_token)
     dispatcher = Dispatcher()
+    dispatcher["users"] = c.users
     dispatcher.update.middleware(LoggingMiddleware())
     dispatcher.include_router(
         build_commands_router(
@@ -175,6 +180,7 @@ def _wire_telegram(c: _Components) -> tuple[Bot, Dispatcher]:
             skills=c.skills,
             conversations=c.conversations,
             archiver=c.archiver,
+            users=c.users,
         )
     )
     dispatcher.include_router(

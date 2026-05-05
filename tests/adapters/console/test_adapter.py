@@ -40,6 +40,8 @@ def mock_components():
 
     core_handle_user_task = MagicMock(return_value="test response")
 
+    users = MagicMock()
+
     return {
         "settings": settings,
         "user_settings": user_settings,
@@ -49,6 +51,7 @@ def mock_components():
         "conversations": conversations,
         "archiver": archiver,
         "core_handle_user_task": core_handle_user_task,
+        "users": users,
     }
 
 

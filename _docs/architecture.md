@@ -78,8 +78,8 @@ Telegram-адаптер принимает текст, оборачивает е
 
 - Загружает конфигурацию (`Settings`).
 - Поднимает логирование.
-- Создаёт долгоживущие сервисы: `OllamaClient`, `ConversationStore`, `Summarizer`, `SemanticMemory`, `SkillRegistry`, `PromptLoader`, `ToolRegistry`, `Executor`.
-- Создаёт `Bot`, `Dispatcher`, прокидывает зависимости в `dispatcher["..."]` (DI aiogram 3).
+- Создаёт долгоживущие сервисы: `OllamaClient`, `ConversationStore`, `Summarizer`, `SemanticMemory`, `SkillRegistry`, `PromptLoader`, `ToolRegistry`, `Executor`, `UserRepository`.
+- Создаёт `Bot`, `Dispatcher`, прокидывает зависимости в `dispatcher["..."]` (DI aiogram 3), включая `UserRepository` как `dispatcher["users"]`.
 - Регистрирует роутеры адаптера (`commands`, `messages`, `errors`) и middleware (`LoggingMiddleware`).
 - Регистрирует команды в Telegram UI через `bot.set_my_commands(...)`.
 - Запускает polling, в `finally` корректно закрывает клиенты.
@@ -204,7 +204,7 @@ class Executor:
 - `middlewares/logging_mw.py`: логирует каждый апдейт.
 - `files.py`: утилита `download_telegram_file` для скачивания файлов из Telegram с проверкой размера и лимитов.
 
-Адаптер **не знает** про executor / tools / memory напрямую — только про `core.handle_user_task`, `ConversationStore`, `UserSettingsRegistry`, `Archiver`.
+Адаптер **не знает** про executor / tools / memory напрямую — только про `core.handle_user_task`, `ConversationStore`, `UserSettingsRegistry`, `Archiver`, `UserRepository` (для получения пользователя через `get_or_create`).
 
 ## 4. Поток обработки текстового сообщения (без команды)
 

@@ -33,6 +33,7 @@ from app.tools.read_file import ReadFileTool
 from app.tools.registry import ToolRegistry
 from app.tools.web_search import WebSearchTool
 from app.tools.weather import WeatherTool
+from app.users.repository import UserRepository
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +113,7 @@ async def _build_components(settings: Settings) -> tuple:
         user_settings=user_settings,
         summarizer=summarizer,
     )
+    users = UserRepository()
     return (
         settings,
         llm,
@@ -124,6 +126,7 @@ async def _build_components(settings: Settings) -> tuple:
         tools,
         archiver,
         executor,
+        users,
     )
 
 
@@ -161,6 +164,7 @@ async def main() -> None:
         tools,
         archiver,
         executor,
+        users,
     ) = await _build_components(settings)
 
     # Функция core.handle_user_task для текстовых сообщений
@@ -196,6 +200,7 @@ async def main() -> None:
         conversations=conversations,
         archiver=archiver,
         core_handle_user_task=core_handle_user_task,
+        users=users,
     )
 
     try:

@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
 from typing import TYPE_CHECKING, Awaitable, Callable
 
@@ -99,6 +100,19 @@ def build_text_handler(
             return
         user_id = message.from_user.id
         chat_id = message.chat.id if message.chat is not None else user_id
+
+        # Получаем или создаём пользователя
+        users = None
+        if hasattr(message, "bot") and message.bot:
+            dispatcher = message.bot.get_current_dispatcher()
+            users = dispatcher.get("users")
+        if users and hasattr(users, "get_or_create") and inspect.iscoroutinefunction(users.get_or_create):
+            user, _ = await users.get_or_create(
+                "telegram",
+                str(user_id),
+                message.from_user.full_name or message.from_user.username or f"User {user_id}",
+            )
+        # user пока используется только для будущих событий, не передаём дальше
 
         if len(text) > MAX_INPUT_LENGTH:
             formatted, parse_mode = format_for_telegram(TOO_LONG_INPUT_REPLY)
@@ -208,6 +222,18 @@ async def handle_document(
     document = message.document
     caption = message.caption or ""
 
+    # Получаем или создаём пользователя
+    users = None
+    if hasattr(message, "bot") and message.bot:
+        dispatcher = message.bot.get_current_dispatcher()
+        users = dispatcher.get("users")
+    if users and hasattr(users, "get_or_create") and inspect.iscoroutinefunction(users.get_or_create):
+        user, _ = await users.get_or_create(
+            "telegram",
+            str(user_id),
+            message.from_user.full_name or message.from_user.username or f"User {user_id}",
+        )
+
     # Скачиваем файл
     try:
         file_path = await download_telegram_file(
@@ -300,6 +326,18 @@ async def handle_voice(
     user_id = message.from_user.id
     chat_id = message.chat.id if message.chat is not None else user_id
     voice = message.voice
+
+    # Получаем или создаём пользователя
+    users = None
+    if hasattr(message, "bot") and message.bot:
+        dispatcher = message.bot.get_current_dispatcher()
+        users = dispatcher.get("users")
+    if users and hasattr(users, "get_or_create") and inspect.iscoroutinefunction(users.get_or_create):
+        user, _ = await users.get_or_create(
+            "telegram",
+            str(user_id),
+            message.from_user.full_name or message.from_user.username or f"User {user_id}",
+        )
 
     # Проверяем доступность transcriber
     if not is_transcriber_available():
@@ -423,6 +461,18 @@ async def handle_photo(
     chat_id = message.chat.id if message.chat is not None else user_id
     photo = message.photo[-1]  # Берём последнее (самое большое) фото
     caption = message.caption or ""
+
+    # Получаем или создаём пользователя
+    users = None
+    if hasattr(message, "bot") and message.bot:
+        dispatcher = message.bot.get_current_dispatcher()
+        users = dispatcher.get("users")
+    if users and hasattr(users, "get_or_create") and inspect.iscoroutinefunction(users.get_or_create):
+        user, _ = await users.get_or_create(
+            "telegram",
+            str(user_id),
+            message.from_user.full_name or message.from_user.username or f"User {user_id}",
+        )
 
     # Проверяем доступность vision-модели
     if not settings.vision_model:
