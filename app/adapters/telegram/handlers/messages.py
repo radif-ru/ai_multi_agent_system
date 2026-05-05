@@ -105,6 +105,7 @@ def build_text_handler(
         # Получаем или создаём пользователя
         users = None
         event_bus = None
+        user = None
         if hasattr(message, "bot") and message.bot:
             dispatcher = message.bot.get_current_dispatcher()
             users = dispatcher.get("users")
@@ -153,7 +154,6 @@ def build_text_handler(
                     else:
                         logger.warning("контекст файла не найден для reply_msg_id=%s", reply_msg_id)
 
-        conversations.add_user_message(user_id, text)
         model = user_settings.get_model(user_id)
 
         try:
@@ -197,8 +197,6 @@ def build_text_handler(
                 conversation_id=str(chat_id),
                 channel="telegram"
             ))
-
-        conversations.add_assistant_message(user_id, reply)
 
         history = conversations.get_history(user_id)
         if len(history) >= settings.history_summary_threshold:
@@ -291,7 +289,6 @@ async def handle_document(
             channel="telegram"
         ))
 
-    conversations.add_user_message(user_id, goal)
     # Сохраняем контекст файла по message_id для ответов на конкретный файл
     conversations.save_file_context(user_id, message.message_id, "document", goal)
     model = user_settings.get_model(user_id)
@@ -332,8 +329,6 @@ async def handle_document(
             conversation_id=str(chat_id),
             channel="telegram"
         ))
-
-    conversations.add_assistant_message(user_id, reply)
 
     history = conversations.get_history(user_id)
     if len(history) >= settings.history_summary_threshold:
@@ -447,8 +442,6 @@ async def handle_voice(
             channel="telegram"
         ))
 
-    # Передаём goal в историю и для обработки
-    conversations.add_user_message(user_id, goal)
     # Сохраняем контекст голосового файла по message_id для ответов на конкретный файл
     conversations.save_file_context(user_id, message.message_id, "voice", goal)
     model = user_settings.get_model(user_id)
@@ -489,8 +482,6 @@ async def handle_voice(
             conversation_id=str(chat_id),
             channel="telegram"
         ))
-
-    conversations.add_assistant_message(user_id, reply)
 
     history = conversations.get_history(user_id)
     if len(history) >= settings.history_summary_threshold:
@@ -613,7 +604,6 @@ async def handle_photo(
             channel="telegram"
         ))
 
-    conversations.add_user_message(user_id, goal)
     # Сохраняем контекст файла по message_id для ответов на конкретный файл
     conversations.save_file_context(user_id, message.message_id, "image", goal)
     model = user_settings.get_model(user_id)
@@ -654,8 +644,6 @@ async def handle_photo(
             conversation_id=str(chat_id),
             channel="telegram"
         ))
-
-    conversations.add_assistant_message(user_id, reply)
 
     history = conversations.get_history(user_id)
     if len(history) >= settings.history_summary_threshold:

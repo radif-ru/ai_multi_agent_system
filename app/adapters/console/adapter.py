@@ -216,9 +216,6 @@ class ConsoleAdapter:
                 channel="console"
             ))
 
-        # Дописываем сообщение в историю
-        self.conversations.add_user_message(self.user_id, text)
-
         try:
             response = await self.core_handle_user_task(
                 text=text,
@@ -240,9 +237,6 @@ class ConsoleAdapter:
                 ))
 
             print(format_console_output(response))
-
-            # Дописываем ответ ассистента в историю
-            self.conversations.add_assistant_message(self.user_id, response)
 
             # Условная in-session суммаризация
             history = self.conversations.get_history(self.user_id)

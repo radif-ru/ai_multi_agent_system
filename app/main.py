@@ -43,7 +43,7 @@ from app.tools.registry import ToolRegistry
 from app.tools.web_search import WebSearchTool
 from app.tools.weather import WeatherTool
 from app.users.repository import UserRepository
-from app.core.events import EventBus
+from app.core.events import EventBus, MessageReceived, ResponseGenerated
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +153,14 @@ async def _build_components(settings: Settings) -> _Components:
     )
     event_bus = EventBus()
     users = UserRepository(event_bus=event_bus)
+
+    # Регистрируем подписчиков для записи в ConversationStore
+    from app.services.conversation_subscriber import on_message_received, on_response_generated
+    from functools import partial
+
+    event_bus.subscribe(MessageReceived, partial(on_message_received, conversations=conversations))
+    event_bus.subscribe(ResponseGenerated, partial(on_response_generated, conversations=conversations))
+
     return _Components(
         settings=settings,
         llm=llm,

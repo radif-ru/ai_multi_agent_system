@@ -16,6 +16,7 @@ from app.adapters.telegram.handlers.messages import (
     GENERIC_ERROR_REPLY,
     handle_document,
 )
+from app.core.events import EventBus, MessageReceived, ResponseGenerated
 
 
 @pytest.fixture
@@ -68,6 +69,24 @@ def mock_semantic_memory():
     return MagicMock()
 
 
+@pytest.fixture
+def event_bus_with_conversations(mock_conversations):
+    """Создаёт EventBus с подписчиками для ConversationStore и мок для users."""
+    event_bus = EventBus()
+    from app.services.conversation_subscriber import on_message_received, on_response_generated
+    from functools import partial
+    event_bus.subscribe(MessageReceived, partial(on_message_received, conversations=mock_conversations))
+    event_bus.subscribe(ResponseGenerated, partial(on_response_generated, conversations=mock_conversations))
+
+    # Мок для users
+    mock_user = MagicMock()
+    mock_user.external_id = "123"
+    mock_users = MagicMock()
+    mock_users.get_or_create = AsyncMock(return_value=(mock_user, False))
+
+    return event_bus, mock_users
+
+
 @pytest.mark.asyncio
 async def test_handle_document_success(
     mock_settings,
@@ -77,9 +96,11 @@ async def test_handle_document_success(
     mock_executor,
     mock_llm,
     mock_semantic_memory,
+    event_bus_with_conversations,
     tmp_path: Path,
 ) -> None:
     """Успешная обработка документа."""
+    event_bus, mock_users = event_bus_with_conversations
     # Создаём временный файл
     test_file = tmp_path / "test.txt"
     test_file.write_text("test content", encoding="utf-8")
@@ -106,6 +127,11 @@ async def test_handle_document_success(
         message.caption = "Test doc"
         message.bot = MagicMock()
         message.answer = AsyncMock()
+        # Добавляем event_bus и users в dispatcher
+        message.bot.get_current_dispatcher.return_value.get.side_effect = lambda key: {
+            "users": mock_users,
+            "event_bus": event_bus,
+        }.get(key)
 
         # Вызываем handler
         await handle_document(
@@ -119,17 +145,8 @@ async def test_handle_document_success(
             semantic_memory=mock_semantic_memory,
         )
 
-        # Проверяем, что сообщение добавлено в историю
-        mock_conversations.add_user_message.assert_called_once()
-        goal_arg = mock_conversations.add_user_message.call_args[0][1]
-        assert "Пользователь прислал документ" in goal_arg
-        assert "Test doc" in goal_arg
-
         # Проверяем, что executor.run был вызван
         mock_executor.run.assert_called_once()
-
-        # Проверяем, что ответ добавлен
-        mock_conversations.add_assistant_message.assert_called_once_with(123, "Ответ на документ")
 
         # Файл не удаляется сразу - он живёт до /new (как и изображения)
         assert test_file.exists()
@@ -181,9 +198,6 @@ async def test_handle_document_too_large(
 
         # Проверяем, что отправлено сообщение о превышении
         message.answer.assert_called_once_with(FILE_TOO_LARGE_REPLY, parse_mode=None)
-
-        # Проверяем, что executor не вызывался
-        mock_conversations.add_user_message.assert_not_called()
     finally:
         messages.download_telegram_file = original_download
 

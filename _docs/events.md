@@ -67,11 +67,11 @@ class EventBus:
 - `conversation_id: str` - идентификатор беседы
 - `channel: str` - канал ("telegram" или "console")
 
-**Семантика:** Уведомляет о входящем сообщении пользователя. В будущем подписчики будут записывать сообщение в ConversationStore и запускать in-session суммаризацию.
+**Семантика:** Уведомляет о входящем сообщении пользователя. Подписчики записывают сообщение в ConversationStore.
 
 **Кто публикует:** Хендлеры адаптеров (Telegram, консоль)
 
-**Кто подписан (MVP):** никто (заготовка для задачи 2.3)
+**Кто подписан (MVP):** conversation_subscriber.on_message_received - записывает сообщение в ConversationStore
 
 
 ### ResponseGenerated
@@ -84,11 +84,11 @@ class EventBus:
 - `conversation_id: str` - идентификатор беседы
 - `channel: str` - канал ("telegram" или "console")
 
-**Семантика:** Уведомляет о генерации ответа LLM. В будущем подписчики будут записывать ответ в ConversationStore и запускать in-session суммаризацию.
+**Семантика:** Уведомляет о генерации ответа LLM. Подписчики записывают ответ в ConversationStore.
 
 **Кто публикует:** Хендлеры адаптеров (Telegram, консоль)
 
-**Кто подписан (MVP):** никто (заготовка для задачи 2.3)
+**Кто подписан (MVP):** conversation_subscriber.on_response_generated - записывает ответ в ConversationStore
 
 
 ### ConversationArchived

@@ -101,10 +101,11 @@ class EventBus:
         if type_name not in self._subscribers:
             self._subscribers[type_name] = []
         self._subscribers[type_name].append(handler)
+        handler_name = getattr(handler, '__name__', getattr(handler, 'func', lambda: None).__name__ if hasattr(handler, 'func') else str(handler))
         logger.info(
             "Подписчик зарегистрирован: event_type=%s, handler=%s",
             type_name,
-            handler.__name__,
+            handler_name,
         )
 
     async def publish(self, event: Event) -> None:
