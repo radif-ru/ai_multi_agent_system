@@ -162,7 +162,7 @@ In-memory шина с async pub/sub. Фундаментальное событи
 
 ### Задача 2.3. Перенести запись в `ConversationStore` на подписчик
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 2.2
@@ -177,12 +177,12 @@ In-memory шина с async pub/sub. Фундаментальное событи
 
 #### Definition of Done
 
-- [ ] В `messages.py` (Telegram) и в консольной точке ввода **нет** прямых вызовов `conversations.add_user_message` / `conversations.add_assistant_message` в основном потоке обработки текста.
-- [ ] Подписчик покрыт unit-тестом: публикация `MessageReceived` приводит к `add_user_message`, `ResponseGenerated` — к `add_assistant_message` с корректными ключами.
-- [ ] Существующие тесты хендлеров продолжают проходить (или адаптированы).
-- [ ] **Документация обновлена**: `_docs/memory.md` §2 и `_docs/architecture.md` §4 — упомянуть, что запись в `ConversationStore` теперь идёт через подписчика на события.
-- [ ] **Тесты добавлены / обновлены**: см. выше.
-- [ ] `git status` чист.
+- [x] В `messages.py` (Telegram) и в консольной точке ввода **нет** прямых вызовов `conversations.add_user_message` / `conversations.add_assistant_message` в основном потоке обработки текста.
+- [x] Подписчик покрыт unit-тестом: публикация `MessageReceived` приводит к `add_user_message`, `ResponseGenerated` — к `add_assistant_message` с корректными ключами.
+- [x] Существующие тесты хендлеров продолжают проходить (или адаптированы).
+- [x] **Документация обновлена**: `_docs/memory.md` §2 и `_docs/architecture.md` §4 — упомянуть, что запись в `ConversationStore` теперь идёт через подписчика на события.
+- [x] **Тесты добавлены / обновлены**: см. выше.
+- [x] `git status` чист.
 
 ### Задача 2.4. Перенести in-session суммаризацию на подписчик
 
@@ -308,7 +308,7 @@ In-memory шина с async pub/sub. Фундаментальное событи
 | 1.2 | Интеграция `UserRepository` в адаптеры и DI                            | high      | S     | Done    | 1.1        |
 | 2.1 | Реализовать `EventBus` и базовый `Event`                               | high      | S     | Done    | —          |
 | 2.2 | События `MessageReceived` / `ResponseGenerated` / `UserCreated`        | high      | S     | Done    | 2.1, 1.2   |
-| 2.3 | Перенести запись в `ConversationStore` на подписчик                    | high      | S     | ToDo   | 2.2        |
+| 2.3 | Перенести запись в `ConversationStore` на подписчик                    | high      | S     | Done   | 2.2        |
 | 2.4 | Перенести in-session суммаризацию на подписчик                         | medium    | S     | ToDo   | 2.3        |
 | 3.1 | `Archiver` публикует `ConversationArchived`                            | medium    | XS    | ToDo   | 2.1        |
 | 3.2 | Вынести `_cleanup_tmp_images` в подписчика `ConversationArchived`      | medium    | XS    | ToDo   | 3.1        |
@@ -323,3 +323,4 @@ In-memory шина с async pub/sub. Фундаментальное событи
 - **2026-05-05** — закрыта задача 1.2: UserRepository интегрирован в точки входа (main.py, console_main.py), прокинут через dispatcher["users"] в Telegram и через CommandContext в консоли, добавлены вызовы get_or_create в хендлерах messages.py и консольной точке ввода, обновлена документация.
 - **2026-05-05** — закрыта задача 2.1: реализован EventBus и базовый Event, добавлены unit-тесты, создана документация _docs/events.md.
 - **2026-05-05** — закрыта задача 2.2: добавлена публикация событий UserCreated (в UserRepository), MessageReceived и ResponseGenerated (в хендлерах Telegram и консоли), EventBus интегрирован в DI (main.py, console_main.py), обновлена документация _docs/events.md с контрактами событий.
+- **2026-05-05** — закрыта задача 2.3: создан conversation_subscriber.py с подписчиками MessageReceived и ResponseGenerated для записи в ConversationStore, подписчики зарегистрированы в main.py и console_main.py, удалены прямые вызовы add_user_message/add_assistant_message из хендлеров Telegram и консоли, обновлена документация _docs/events.md, обновлены тесты для работы с новой архитектурой.
