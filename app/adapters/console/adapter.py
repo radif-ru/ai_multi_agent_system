@@ -91,6 +91,7 @@ class ConsoleAdapter:
         archiver: Any,
         core_handle_user_task: Any,
         users: Any,
+        event_bus: Any = None,
     ) -> None:
         """Инициализировать консольный адаптер.
 
@@ -106,6 +107,7 @@ class ConsoleAdapter:
             archiver: архиватор сессий
             core_handle_user_task: функция core.handle_user_task для текстовых сообщений
             users: репозиторий пользователей
+            event_bus: событийная шина
         """
         self.user_id = user_id
         self.chat_id = chat_id
@@ -118,6 +120,7 @@ class ConsoleAdapter:
         self.archiver = archiver
         self.core_handle_user_task = core_handle_user_task
         self.users = users
+        self.event_bus = event_bus
 
         from app.commands import CommandRegistry
 
@@ -198,9 +201,20 @@ class ConsoleAdapter:
     async def _handle_text(self, text: str) -> None:
         """Обработать текстовое сообщение."""
         # Получаем или создаём пользователя
+        user = None
         if hasattr(self.users, "get_or_create") and inspect.iscoroutinefunction(self.users.get_or_create):
             user, _ = await self.users.get_or_create("console", str(self.user_id), "Console User")
         ctx = self._build_context()
+
+        # Публикуем MessageReceived
+        if self.event_bus and user:
+            from app.core.events import MessageReceived
+            await self.event_bus.publish(MessageReceived(
+                user=user,
+                text=text,
+                conversation_id=str(self.chat_id),
+                channel="console"
+            ))
 
         # Дописываем сообщение в историю
         self.conversations.add_user_message(self.user_id, text)
@@ -214,6 +228,17 @@ class ConsoleAdapter:
                 model=self.user_settings.get_model(self.user_id),
                 system_prompt=self.user_settings.get_prompt(self.user_id),
             )
+
+            # Публикуем ResponseGenerated
+            if self.event_bus and user:
+                from app.core.events import ResponseGenerated
+                await self.event_bus.publish(ResponseGenerated(
+                    user=user,
+                    text=response,
+                    conversation_id=str(self.chat_id),
+                    channel="console"
+                ))
+
             print(format_console_output(response))
 
             # Дописываем ответ ассистента в историю

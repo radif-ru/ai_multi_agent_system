@@ -28,6 +28,7 @@ from aiogram.types import Message
 
 from app.adapters.telegram.files import FileTooLargeError, download_telegram_file
 from app.adapters.telegram.utils import format_for_telegram
+from app.core.events import MessageReceived, ResponseGenerated
 from app.core.orchestrator import handle_user_task
 from app.services.llm import LLMBadResponse, LLMTimeout, LLMUnavailable
 from app.services.transcribe import (
@@ -103,16 +104,27 @@ def build_text_handler(
 
         # Получаем или создаём пользователя
         users = None
+        event_bus = None
         if hasattr(message, "bot") and message.bot:
             dispatcher = message.bot.get_current_dispatcher()
             users = dispatcher.get("users")
+            event_bus = dispatcher.get("event_bus")
         if users and hasattr(users, "get_or_create") and inspect.iscoroutinefunction(users.get_or_create):
-            user, _ = await users.get_or_create(
+            user, created = await users.get_or_create(
                 "telegram",
                 str(user_id),
                 message.from_user.full_name or message.from_user.username or f"User {user_id}",
             )
         # user пока используется только для будущих событий, не передаём дальше
+
+        # Публикуем MessageReceived
+        if event_bus and user:
+            await event_bus.publish(MessageReceived(
+                user=user,
+                text=text,
+                conversation_id=str(chat_id),
+                channel="telegram"
+            ))
 
         if len(text) > MAX_INPUT_LENGTH:
             formatted, parse_mode = format_for_telegram(TOO_LONG_INPUT_REPLY)
@@ -177,6 +189,15 @@ def build_text_handler(
             await _send_with_fallback(message, formatted, parse_mode)
             return
 
+        # Публикуем ResponseGenerated
+        if event_bus and user:
+            await event_bus.publish(ResponseGenerated(
+                user=user,
+                text=reply,
+                conversation_id=str(chat_id),
+                channel="telegram"
+            ))
+
         conversations.add_assistant_message(user_id, reply)
 
         history = conversations.get_history(user_id)
@@ -224,9 +245,12 @@ async def handle_document(
 
     # Получаем или создаём пользователя
     users = None
+    event_bus = None
+    user = None
     if hasattr(message, "bot") and message.bot:
         dispatcher = message.bot.get_current_dispatcher()
         users = dispatcher.get("users")
+        event_bus = dispatcher.get("event_bus")
     if users and hasattr(users, "get_or_create") and inspect.iscoroutinefunction(users.get_or_create):
         user, _ = await users.get_or_create(
             "telegram",
@@ -257,6 +281,15 @@ async def handle_document(
 
     # Формируем обогащённый goal
     goal = f"Пользователь прислал документ {file_path}. Caption: {caption}. Прочитай через read_document и ответь по сути. Важно: для read_document используй ТОЛЬКО путь {file_path} без изменений, не меняй его и не используй относительные пути."
+
+    # Публикуем MessageReceived
+    if event_bus and user:
+        await event_bus.publish(MessageReceived(
+            user=user,
+            text=goal,
+            conversation_id=str(chat_id),
+            channel="telegram"
+        ))
 
     conversations.add_user_message(user_id, goal)
     # Сохраняем контекст файла по message_id для ответов на конкретный файл
@@ -290,6 +323,15 @@ async def handle_document(
         formatted, parse_mode = format_for_telegram(LLM_BAD_RESPONSE_REPLY)
         await _send_with_fallback(message, formatted, parse_mode)
         return
+
+    # Публикуем ResponseGenerated
+    if event_bus and user:
+        await event_bus.publish(ResponseGenerated(
+            user=user,
+            text=reply,
+            conversation_id=str(chat_id),
+            channel="telegram"
+        ))
 
     conversations.add_assistant_message(user_id, reply)
 
@@ -329,9 +371,12 @@ async def handle_voice(
 
     # Получаем или создаём пользователя
     users = None
+    event_bus = None
+    user = None
     if hasattr(message, "bot") and message.bot:
         dispatcher = message.bot.get_current_dispatcher()
         users = dispatcher.get("users")
+        event_bus = dispatcher.get("event_bus")
     if users and hasattr(users, "get_or_create") and inspect.iscoroutinefunction(users.get_or_create):
         user, _ = await users.get_or_create(
             "telegram",
@@ -392,7 +437,16 @@ async def handle_voice(
 
     # Формируем обогащённый goal с путём к файлу и транскрипцией
     goal = f"Голосовое сообщение: {file_path}\nТранскрипция: {text}"
-    
+
+    # Публикуем MessageReceived
+    if event_bus and user:
+        await event_bus.publish(MessageReceived(
+            user=user,
+            text=goal,
+            conversation_id=str(chat_id),
+            channel="telegram"
+        ))
+
     # Передаём goal в историю и для обработки
     conversations.add_user_message(user_id, goal)
     # Сохраняем контекст голосового файла по message_id для ответов на конкретный файл
@@ -426,6 +480,15 @@ async def handle_voice(
         formatted, parse_mode = format_for_telegram(LLM_BAD_RESPONSE_REPLY)
         await _send_with_fallback(message, formatted, parse_mode)
         return
+
+    # Публикуем ResponseGenerated
+    if event_bus and user:
+        await event_bus.publish(ResponseGenerated(
+            user=user,
+            text=reply,
+            conversation_id=str(chat_id),
+            channel="telegram"
+        ))
 
     conversations.add_assistant_message(user_id, reply)
 
@@ -464,9 +527,12 @@ async def handle_photo(
 
     # Получаем или создаём пользователя
     users = None
+    event_bus = None
+    user = None
     if hasattr(message, "bot") and message.bot:
         dispatcher = message.bot.get_current_dispatcher()
         users = dispatcher.get("users")
+        event_bus = dispatcher.get("event_bus")
     if users and hasattr(users, "get_or_create") and inspect.iscoroutinefunction(users.get_or_create):
         user, _ = await users.get_or_create(
             "telegram",
@@ -537,6 +603,16 @@ async def handle_photo(
     # Передаём описание с путём к файлу для уточняющих вопросов
     # Файл не удаляем сразу - он живёт до /new или TTL cleanup
     goal = f"Изображение: {file_path}\nОписание: {description}"
+
+    # Публикуем MessageReceived
+    if event_bus and user:
+        await event_bus.publish(MessageReceived(
+            user=user,
+            text=goal,
+            conversation_id=str(chat_id),
+            channel="telegram"
+        ))
+
     conversations.add_user_message(user_id, goal)
     # Сохраняем контекст файла по message_id для ответов на конкретный файл
     conversations.save_file_context(user_id, message.message_id, "image", goal)
@@ -569,6 +645,15 @@ async def handle_photo(
         formatted, parse_mode = format_for_telegram(LLM_BAD_RESPONSE_REPLY)
         await _send_with_fallback(message, formatted, parse_mode)
         return
+
+    # Публикуем ResponseGenerated
+    if event_bus and user:
+        await event_bus.publish(ResponseGenerated(
+            user=user,
+            text=reply,
+            conversation_id=str(chat_id),
+            channel="telegram"
+        ))
 
     conversations.add_assistant_message(user_id, reply)
 

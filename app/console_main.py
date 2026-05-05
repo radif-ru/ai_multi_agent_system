@@ -34,6 +34,7 @@ from app.tools.registry import ToolRegistry
 from app.tools.web_search import WebSearchTool
 from app.tools.weather import WeatherTool
 from app.users.repository import UserRepository
+from app.core.events import EventBus
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +114,8 @@ async def _build_components(settings: Settings) -> tuple:
         user_settings=user_settings,
         summarizer=summarizer,
     )
-    users = UserRepository()
+    event_bus = EventBus()
+    users = UserRepository(event_bus=event_bus)
     return (
         settings,
         llm,
@@ -127,6 +129,7 @@ async def _build_components(settings: Settings) -> tuple:
         archiver,
         executor,
         users,
+        event_bus,
     )
 
 
@@ -165,6 +168,7 @@ async def main() -> None:
         archiver,
         executor,
         users,
+        event_bus,
     ) = await _build_components(settings)
 
     # Функция core.handle_user_task для текстовых сообщений
@@ -201,6 +205,7 @@ async def main() -> None:
         archiver=archiver,
         core_handle_user_task=core_handle_user_task,
         users=users,
+        event_bus=event_bus,
     )
 
     try:

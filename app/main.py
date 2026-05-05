@@ -43,6 +43,7 @@ from app.tools.registry import ToolRegistry
 from app.tools.web_search import WebSearchTool
 from app.tools.weather import WeatherTool
 from app.users.repository import UserRepository
+from app.core.events import EventBus
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +76,7 @@ class _Components:
     archiver: Archiver
     executor: Executor
     users: UserRepository
+    event_bus: EventBus
 
 
 async def _build_components(settings: Settings) -> _Components:
@@ -149,7 +151,8 @@ async def _build_components(settings: Settings) -> _Components:
         user_settings=user_settings,
         summarizer=summarizer,
     )
-    users = UserRepository()
+    event_bus = EventBus()
+    users = UserRepository(event_bus=event_bus)
     return _Components(
         settings=settings,
         llm=llm,
@@ -163,6 +166,7 @@ async def _build_components(settings: Settings) -> _Components:
         archiver=archiver,
         executor=executor,
         users=users,
+        event_bus=event_bus,
     )
 
 
@@ -170,6 +174,7 @@ def _wire_telegram(c: _Components) -> tuple[Bot, Dispatcher]:
     bot = Bot(token=c.settings.telegram_bot_token)
     dispatcher = Dispatcher()
     dispatcher["users"] = c.users
+    dispatcher["event_bus"] = c.event_bus
     dispatcher.update.middleware(LoggingMiddleware())
     dispatcher.include_router(
         build_commands_router(
