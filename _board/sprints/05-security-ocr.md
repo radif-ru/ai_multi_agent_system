@@ -213,7 +213,7 @@ Tool по аналогии с `DescribeImageTool`:
 
 ### Задача 4.1. Создать `FileIdMapper` для маскирования путей
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** medium
 - **Объём:** S
 - **Зависит от:** —
@@ -444,7 +444,7 @@ Tool по аналогии с `DescribeImageTool`:
 | 2.2 | Skill `_skills/ocr/SKILL.md` с правилами выбора OCR vs Vision          | medium    | XS    | Done   | 2.1        |
 | 3.1 | Создать `app/security/` с `InputSanitizer`                           | high      | S     | Done   | —          |
 | 3.2 | Интегрировать `InputSanitizer` в Telegram-хендлеры                   | high      | XS    | Done   | 3.1        |
-| 4.1 | Создать `FileIdMapper` для маскирования путей                        | medium    | S     | ToDo   | —          |
+| 4.1 | Создать `FileIdMapper` для маскирования путей                        | medium    | S     | Progress | —          |
 | 4.2 | Интегрировать `FileIdMapper` в хендлеры файлов                        | medium    | S     | ToDo   | 4.1        |
 | 5.1 | Обновить `_prompts/agent_system.md` с правилами безопасности          | high      | XS    | ToDo   | —          |
 | 6.1 | Добавить allowlist для опасных tools                                 | high      | S     | ToDo   | —          |
