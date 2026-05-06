@@ -322,7 +322,7 @@ Tool по аналогии с `DescribeImageTool`:
 
 ### Задача 6.2. Усилить валидацию параметров опасных tools
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** medium
 - **Объём:** S
 - **Зависит от:** Задача 6.1
@@ -448,7 +448,7 @@ Tool по аналогии с `DescribeImageTool`:
 | 4.2 | Интегрировать `FileIdMapper` в хендлеры файлов                        | medium    | S     | Done   | 4.1        |
 | 5.1 | Обновить `_prompts/agent_system.md` с правилами безопасности          | high      | XS    | Done   | —          |
 | 6.1 | Добавить allowlist для опасных tools                                 | high      | S     | Done   | —          |
-| 6.2 | Усилить валидацию параметров опасных tools                            | medium    | S     | ToDo   | 6.1        |
+| 6.2 | Усилить валидацию параметров опасных tools                            | medium    | S     | Progress   | 6.1        |
 | 7.1 | Создать `ResponseSanitizer` для фильтрации ответов                   | medium    | S     | ToDo   | —          |
 | 7.2 | Интегрировать `ResponseSanitizer` в executor                          | medium    | XS    | ToDo   | 7.1        |
 | 8.1 | Финальная ревизия документации                                       | medium    | XS    | ToDo   | 7.2, 2.2   |
