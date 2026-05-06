@@ -69,7 +69,7 @@
 
 ### Задача 1.1. Выделить OCR-логику в `app/services/ocr.py`
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** —
@@ -439,7 +439,7 @@ Tool по аналогии с `DescribeImageTool`:
 
 | #   | Задача                                                                 | Приоритет | Объём | Статус | Зависит от |
 |-----|------------------------------------------------------------------------|:---------:|:-----:|:------:|:----------:|
-| 1.1 | Выделить OCR-логику в `app/services/ocr.py`                            | high      | S     | ToDo   | —          |
+| 1.1 | Выделить OCR-логику в `app/services/ocr.py`                            | high      | S     | Progress   | —          |
 | 2.1 | Новый tool `ocr_image` для произвольных изображений в `tmp/`           | high      | S     | ToDo   | 1.1        |
 | 2.2 | Skill `_skills/ocr/SKILL.md` с правилами выбора OCR vs Vision          | medium    | XS    | ToDo   | 2.1        |
 | 3.1 | Создать `app/security/` с `InputSanitizer`                           | high      | S     | ToDo   | —          |
