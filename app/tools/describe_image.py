@@ -8,6 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Mapping
 
+from app.security import get_global_mapper
 from app.services.vision import Vision
 from app.tools.base import Tool, ToolContext
 from app.tools.errors import ToolError
@@ -16,7 +17,7 @@ from app.tools.errors import ToolError
 class DescribeImageTool(Tool):
     name = "describe_image"
     description = (
-        "Повторно описать изображение по пути к файлу. "
+        "Повторно описать изображение по пути к файлу или file_id. "
         "Используется для уточнения деталей после первичного описания. "
         "Путь должен быть в каталоге tmp/."
     )
@@ -24,16 +25,28 @@ class DescribeImageTool(Tool):
         "type": "object",
         "properties": {
             "image_path": {"type": "string"},
+            "file_id": {"type": "string"},
             "caption": {"type": "string"},
         },
-        "required": ["image_path"],
+        "required": [],
     }
 
     def __init__(self, *, tmp_dir: str = "tmp") -> None:
         self._tmp_dir = Path(tmp_dir).resolve()
 
     async def run(self, args: Mapping[str, Any], ctx: ToolContext) -> str:
-        raw_path = str(args["image_path"])
+        # Если передан file_id, восстанавливаем путь через FileIdMapper
+        if "file_id" in args and args["file_id"]:
+            mapper = get_global_mapper()
+            path = mapper.get_path(str(args["file_id"]))
+            if path is None:
+                raise ToolError(f"file_id {args['file_id']} не найден")
+            raw_path = str(path)
+        elif "image_path" in args and args["image_path"]:
+            raw_path = str(args["image_path"])
+        else:
+            raise ToolError("требуется image_path или file_id")
+        
         caption = str(args.get("caption", ""))
 
         # Валидация пути (синхронная)

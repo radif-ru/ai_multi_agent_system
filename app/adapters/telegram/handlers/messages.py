@@ -37,7 +37,6 @@ from app.services.transcribe import (
     TranscriberUnavailableError,
     is_transcriber_available,
 )
-from app.services.vision import Vision
 from app.utils.text import split_long_message
 
 if TYPE_CHECKING:
@@ -69,7 +68,6 @@ FILE_TOO_LARGE_REPLY = "Файл слишком большой, отправьт
 VOICE_TRANSCRIPTION_UNAVAILABLE_REPLY = (
     "Распознавание речи недоступно, установите faster-whisper."
 )
-VISION_UNAVAILABLE_REPLY = "Vision-модель не подключена, отправь текстом, что на картинке."
 LLM_UNAVAILABLE_REPLY = "LLM сейчас недоступна, попробуйте позже."
 LLM_TIMEOUT_REPLY = "Модель слишком долго отвечает, попробуйте ещё раз."
 LLM_BAD_RESPONSE_REPLY = (
@@ -216,7 +214,7 @@ async def handle_document(
     semantic_memory: "SemanticMemory | None" = None,
     **data: dict,
 ) -> None:
-    """Обработчик документов (PDF, TXT, MD)."""
+    """Обработчик документов (PDF, TXT, MD, аудио)."""
     if message.from_user is None or message.document is None:
         return
 
@@ -224,6 +222,7 @@ async def handle_document(
     chat_id = message.chat.id if message.chat is not None else user_id
     document = message.document
     caption = message.caption or ""
+    mime_type = document.mime_type or ""
 
     # Получаем или создаём пользователя
     users = data.get("users")
@@ -234,6 +233,22 @@ async def handle_document(
             str(user_id),
             message.from_user.full_name or message.from_user.username or f"User {user_id}",
         )
+
+    # Проверяем, это аудио файл - перенаправляем в handle_voice
+    if isinstance(mime_type, str) and mime_type.startswith("audio/"):
+        logger.info("Аудиофайл отправлен как документ, перенаправляем в handle_voice user=%s mime_type=%s", user_id, mime_type)
+        await handle_voice(
+            message,
+            settings=settings,
+            user_settings=user_settings,
+            conversations=conversations,
+            summarizer=summarizer,
+            executor=executor,
+            llm=llm,
+            semantic_memory=semantic_memory,
+            **data,
+        )
+        return
 
     # Скачиваем файл
     try:
@@ -259,7 +274,8 @@ async def handle_document(
     # Формируем обогащённый goal с временным ID вместо полного пути
     mapper = get_global_mapper()
     file_id = mapper.generate_id(file_path)
-    goal = f"Пользователь прислал документ (ID: {file_id}). Caption: {caption}. Прочитай через read_document с параметром file_id={file_id} и ответь по сути."
+    # Сохраняем полный путь в контексте для восстановления file_id при перезапуске
+    goal = f"Пользователь прислал документ (ID: {file_id}, путь: {file_path}). Caption: {caption}. Прочитай через read_document с параметром file_id={file_id} и ответь по сути."
 
     # Публикуем MessageReceived
     if event_bus and user:
@@ -334,12 +350,21 @@ async def handle_voice(
     **data: dict,
 ) -> None:
     """Обработчик голосовых сообщений (Voice/Audio)."""
-    if message.from_user is None or message.voice is None:
+    if message.from_user is None:
+        return
+
+    # Поддерживаем как voice, так и audio (документы с audio/* mime type)
+    if message.voice is not None:
+        file_id = message.voice.file_id
+        mime_type = message.voice.mime_type or "audio/ogg"
+    elif message.document is not None and message.document.mime_type and message.document.mime_type.startswith("audio/"):
+        file_id = message.document.file_id
+        mime_type = message.document.mime_type
+    else:
         return
 
     user_id = message.from_user.id
     chat_id = message.chat.id if message.chat is not None else user_id
-    voice = message.voice
 
     # Получаем или создаём пользователя
     users = data.get("users")
@@ -362,11 +387,11 @@ async def handle_voice(
     try:
         file_path = await download_telegram_file(
             message.bot,
-            voice.file_id,
+            file_id,
             max_size_mb=settings.telegram_max_file_mb,
             tmp_dir=settings.tmp_base_dir,
             user_id=user_id,
-            mime_type=voice.mime_type,
+            mime_type=mime_type,
         )
     except FileTooLargeError as exc:
         logger.warning("голосовое слишком большое user=%s size=%d", user_id, exc.file_size_mb)
@@ -402,10 +427,26 @@ async def handle_voice(
         await _send_with_fallback(message, formatted, parse_mode)
         return
 
+    # Если это ответ на файл (фото, документ или голосовой), добавляем контекст конкретного файла по message_id
+    reply_msg = getattr(message, "reply_to_message", None)
+    if reply_msg is not None:
+        if getattr(reply_msg, "photo", None) is not None or getattr(reply_msg, "document", None) is not None or getattr(reply_msg, "voice", None) is not None:
+            reply_msg_id = getattr(reply_msg, "message_id", None)
+            logger.info("reply на файл user=%s reply_msg_id=%s", user_id, reply_msg_id)
+            if reply_msg_id is not None:
+                file_context = conversations.get_file_context(user_id, reply_msg_id)
+                logger.info("file_context найден=%s для reply_msg_id=%s", file_context is not None, reply_msg_id)
+                if file_context:
+                    # Добавляем контекст конкретного файла
+                    text = f"{file_context}\n\nГолосовой запрос: {text}"
+                else:
+                    logger.warning("контекст файла не найден для reply_msg_id=%s", reply_msg_id)
+
     # Формируем обогащённый goal с временным ID вместо полного пути
     mapper = get_global_mapper()
     file_id = mapper.generate_id(file_path)
-    goal = f"Голосовое сообщение (ID: {file_id})\nТранскрипция: {text}"
+    # Сохраняем полный путь в контексте для восстановления file_id при перезапуске
+    goal = f"Голосовое сообщение (ID: {file_id}, путь: {file_path})\nТранскрипция: {text}"
 
     # Публикуем MessageReceived
     if event_bus and user:
@@ -477,7 +518,7 @@ async def handle_photo(
     semantic_memory: "SemanticMemory | None" = None,
     **data: dict,
 ) -> None:
-    """Обработчик фотографий (vision)."""
+    """Обработчик фотографий - передаёт агенту для выбора между vision и OCR."""
     if message.from_user is None or message.photo is None:
         return
 
@@ -495,19 +536,6 @@ async def handle_photo(
             str(user_id),
             message.from_user.full_name or message.from_user.username or f"User {user_id}",
         )
-
-    # Проверяем доступность vision-модели
-    if not settings.vision_model:
-        logger.warning("vision-модель не настроена user=%s", user_id)
-        formatted, parse_mode = format_for_telegram(VISION_UNAVAILABLE_REPLY)
-        await _send_with_fallback(message, formatted, parse_mode)
-        return
-
-    if llm is None:
-        logger.warning("LLM недоступна для vision user=%s", user_id)
-        formatted, parse_mode = format_for_telegram(LLM_UNAVAILABLE_REPLY)
-        await _send_with_fallback(message, formatted, parse_mode)
-        return
 
     # Скачиваем файл
     try:
@@ -530,37 +558,12 @@ async def handle_photo(
         await _send_with_fallback(message, formatted, parse_mode)
         return
 
-    # Описываем изображение
-    try:
-        vision = Vision(ollama=llm, model=settings.vision_model)
-        description = await vision.describe(file_path, caption=caption)
-    except Exception as exc:
-        logger.error("vision: описание не удалось user=%s: %s", user_id, exc)
-        formatted, parse_mode = format_for_telegram(GENERIC_ERROR_REPLY)
-        await _send_with_fallback(message, formatted, parse_mode)
-        # Удаляем файл при ошибке
-        try:
-            file_path.unlink()
-        except Exception:  # noqa: BLE001
-            logger.warning("не удалось удалить временный photo-файл %s", file_path)
-        return
-
-    # Если описание пусто
-    if not description:
-        formatted, parse_mode = format_for_telegram("Не удалось описать изображение.")
-        await _send_with_fallback(message, formatted, parse_mode)
-        # Удаляем файл при ошибке
-        try:
-            file_path.unlink()
-        except Exception:  # noqa: BLE001
-            logger.warning("не удалось удалить временный photo-файл %s", file_path)
-        return
-
-    # Передаём описание с временным ID для уточняющих вопросов
+    # Передаём изображение агенту для выбора между vision и OCR
     # Файл не удаляем сразу - он живёт до /new или TTL cleanup
     mapper = get_global_mapper()
     file_id = mapper.generate_id(file_path)
-    goal = f"Изображение (ID: {file_id})\nОписание: {description}"
+    # Сохраняем полный путь в контексте для восстановления file_id при перезапуске
+    goal = f"Пользователь прислал изображение (file_id: {file_id}, путь: {file_path}). Caption: {caption}. Используй describe_image с параметром file_id для описания сцены или ocr_image с параметром file_id для распознавания текста. Выбери подходящий инструмент и ответь по сути."
 
     # Публикуем MessageReceived
     if event_bus and user:

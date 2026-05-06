@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from app.adapters.telegram.files import FileTooLargeError
-from app.adapters.telegram.handlers.messages import VISION_UNAVAILABLE_REPLY, handle_photo
+from app.adapters.telegram.handlers.messages import handle_photo
 from app.core.events import EventBus, MessageReceived, ResponseGenerated
 
 
@@ -21,8 +21,7 @@ def mock_settings():
     settings = MagicMock()
     settings.telegram_max_file_mb = 20
     settings.history_summary_threshold = 10
-    settings.vision_model = None
-    settings.tmp_files_dir = Path("tmp")
+    settings.tmp_base_dir = Path("tmp")
     return settings
 
 
@@ -85,44 +84,6 @@ def event_bus_with_conversations(mock_conversations):
 
 
 @pytest.mark.asyncio
-async def test_handle_photo_vision_model_not_configured(
-    mock_settings,
-    mock_user_settings,
-    mock_conversations,
-    mock_summarizer,
-    mock_executor,
-    mock_llm,
-    mock_semantic_memory,
-) -> None:
-    """Vision-модель не настроена."""
-    # Создаём мок Message с фото
-    message = MagicMock()
-    message.from_user = MagicMock(id=123)
-    message.chat = MagicMock(id=456)
-    message.photo = [MagicMock(file_id="photo123")]
-    message.bot = MagicMock()
-    message.answer = AsyncMock()
-
-    # Вызываем handler
-    await handle_photo(
-        message,
-        settings=mock_settings,
-        user_settings=mock_user_settings,
-        conversations=mock_conversations,
-        summarizer=mock_summarizer,
-        executor=mock_executor,
-        llm=mock_llm,
-        semantic_memory=mock_semantic_memory,
-    )
-
-    # Проверяем, что отправлено сообщение о недоступности
-    message.answer.assert_called_once_with(VISION_UNAVAILABLE_REPLY, parse_mode=None)
-
-    # Проверяем, что executor не вызывался
-    mock_conversations.add_user_message.assert_not_called()
-
-
-@pytest.mark.asyncio
 async def test_handle_photo_success(
     mock_settings,
     mock_user_settings,
@@ -134,16 +95,8 @@ async def test_handle_photo_success(
     event_bus_with_conversations,
     mocker,
 ) -> None:
-    """Успешная обработка фото (без реальной vision - только проверка потока)."""
+    """Успешная обработка фото - передача агенту для выбора между vision и OCR."""
     from app.adapters.telegram.handlers import messages
-
-    # Настраиваем vision-модель
-    mock_settings.vision_model = "llava:7b"
-
-    # Мокаем Vision в том месте, откуда его импортирует handler
-    mock_vision_instance = MagicMock()
-    mock_vision_instance.describe = AsyncMock(return_value="На фото кот")
-    mocker.patch("app.adapters.telegram.handlers.messages.Vision", return_value=mock_vision_instance)
 
     # Мокаем download_telegram_file
     original_download = messages.download_telegram_file
@@ -158,8 +111,9 @@ async def test_handle_photo_success(
     messages.download_telegram_file = mock_download
 
     try:
-        # Мокаем executor.run
-        mock_executor.run = AsyncMock(return_value="Ответ на фото")
+        # Мокаем handle_user_task
+        original_handle_user_task = messages.handle_user_task
+        messages.handle_user_task = AsyncMock(return_value="Ответ на фото")
 
         # Создаём мок Message с фото
         message = MagicMock()
@@ -185,7 +139,14 @@ async def test_handle_photo_success(
             event_bus=event_bus,
         )
 
-        # Проверяем, что executor.run был вызван
-        mock_executor.run.assert_called_once()
+        # Проверяем, что handle_user_task был вызван
+        messages.handle_user_task.assert_called_once()
+        
+        # Проверяем, что в goal есть file_id
+        call_args = messages.handle_user_task.call_args
+        goal = call_args[0][0]  # Первый позиционный аргумент - это goal
+        assert "file_id:" in goal
+        assert "describe_image" in goal or "ocr_image" in goal
     finally:
         messages.download_telegram_file = original_download
+        messages.handle_user_task = original_handle_user_task

@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 from typing import Any, Mapping
 
+from app.security import get_global_mapper
 from app.services.ocr import extract_text
 from app.tools.base import Tool, ToolContext, truncate_output
 from app.tools.errors import ToolError
@@ -28,9 +29,10 @@ class OcrImageTool(Tool):
         "type": "object",
         "properties": {
             "image_path": {"type": "string"},
+            "file_id": {"type": "string"},
             "lang": {"type": "string"},
         },
-        "required": ["image_path"],
+        "required": [],
     }
 
     def __init__(self, tmp_dir: Path, max_output_chars: int = 8000) -> None:
@@ -38,7 +40,18 @@ class OcrImageTool(Tool):
         self._max_output_chars = max_output_chars
 
     async def run(self, args: Mapping[str, Any], ctx: ToolContext) -> str:
-        raw_path = str(args["image_path"])
+        # Если передан file_id, восстанавливаем путь через FileIdMapper
+        if "file_id" in args and args["file_id"]:
+            mapper = get_global_mapper()
+            path = mapper.get_path(str(args["file_id"]))
+            if path is None:
+                raise ToolError(f"file_id {args['file_id']} не найден")
+            raw_path = str(path)
+        elif "image_path" in args and args["image_path"]:
+            raw_path = str(args["image_path"])
+        else:
+            raise ToolError("требуется image_path или file_id")
+        
         lang = args.get("lang")
         return await asyncio.to_thread(self._run_sync, raw_path, lang)
 

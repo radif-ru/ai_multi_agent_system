@@ -15,7 +15,8 @@ from app.tools.errors import ArgsValidationError, ToolError, ToolNotFound
 logger = logging.getLogger(__name__)
 
 # Список опасных tools, требующих явного разрешения через allowlist
-_DANGEROUS_TOOLS = {"http_request", "read_file", "read_document"}
+# read_document исключён после внедрения FileIdMapper (пути заменяются на временные идентификаторы)
+_DANGEROUS_TOOLS = {"http_request", "read_file"}
 
 
 _PY_TYPES: dict[str, tuple[type, ...]] = {
