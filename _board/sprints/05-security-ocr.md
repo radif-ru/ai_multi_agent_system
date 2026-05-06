@@ -188,7 +188,7 @@ Tool по аналогии с `DescribeImageTool`:
 
 ### Задача 3.2. Интегрировать `InputSanitizer` в Telegram-хендлеры
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** XS
 - **Зависит от:** Задача 3.1
@@ -201,11 +201,11 @@ Tool по аналогии с `DescribeImageTool`:
 
 #### Definition of Done
 
-- [ ] Во всех хендлерах текст проходит через `sanitize_user_input` перед вызовом `core.handle_user_task`.
-- [ ] Unit/интеграционный тест: ввод с подозрительным паттерном либо фильтруется, либо логируется.
-- [ ] **Документация обновлена**: `_docs/security.md` — точки интеграции; `_docs/architecture.md` — упоминание.
-- [ ] **Тесты добавлены / обновлены**: см. выше.
-- [ ] `git status` чист.
+- [x] Во всех хендлерах текст проходит через `sanitize_user_input` перед вызовом `core.handle_user_task`.
+- [x] Unit/интеграционный тест: ввод с подозрительным паттерном либо фильтруется, либо логируется.
+- [x] **Документация обновлена**: `_docs/security.md` — точки интеграции; `_docs/architecture.md` — упоминание.
+- [x] **Тесты добавлены / обновлены**: см. выше.
+- [x] `git status` чист.
 
 ## 7. Этап 4. Data Leakage - маскирование путей к файлам
 
@@ -443,7 +443,7 @@ Tool по аналогии с `DescribeImageTool`:
 | 2.1 | Новый tool `ocr_image` для произвольных изображений в `tmp/`           | high      | S     | Done   | 1.1        |
 | 2.2 | Skill `_skills/ocr/SKILL.md` с правилами выбора OCR vs Vision          | medium    | XS    | Done   | 2.1        |
 | 3.1 | Создать `app/security/` с `InputSanitizer`                           | high      | S     | Done   | —          |
-| 3.2 | Интегрировать `InputSanitizer` в Telegram-хендлеры                   | high      | XS    | Progress | 3.1        |
+| 3.2 | Интегрировать `InputSanitizer` в Telegram-хендлеры                   | high      | XS    | Done   | 3.1        |
 | 4.1 | Создать `FileIdMapper` для маскирования путей                        | medium    | S     | ToDo   | —          |
 | 4.2 | Интегрировать `FileIdMapper` в хендлеры файлов                        | medium    | S     | ToDo   | 4.1        |
 | 5.1 | Обновить `_prompts/agent_system.md` с правилами безопасности          | high      | XS    | ToDo   | —          |
@@ -462,3 +462,4 @@ Tool по аналогии с `DescribeImageTool`:
 - **2026-05-06** — закрыта задача 2.1: создан tool `ocr_image` для распознавания текста с одиночных изображений.
 - **2026-05-06** — закрыта задача 2.2: создан skill `_skills/ocr/SKILL.md` с правилами выбора OCR vs Vision.
 - **2026-05-06** — закрыта задача 3.1: создан модуль `app/security/` с `InputSanitizer` для защиты от prompt injection.
+- **2026-05-06** — закрыта задача 3.2: интегрирован `InputSanitizer` в Telegram-хендлеры и консольный адаптер.
