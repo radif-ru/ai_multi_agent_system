@@ -129,7 +129,7 @@ Tool по аналогии с `DescribeImageTool`:
 
 ### Задача 2.2. Skill `_skills/ocr/SKILL.md` с правилами выбора OCR vs Vision
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** medium
 - **Объём:** XS
 - **Зависит от:** Задача 2.1
@@ -147,11 +147,11 @@ Tool по аналогии с `DescribeImageTool`:
 
 #### Definition of Done
 
-- [ ] Файл `_skills/ocr/SKILL.md` создан по структуре существующих skill'ов.
-- [ ] `LoadSkillTool` находит skill по имени `ocr` (ручная smoke-проверка с отметкой в `_board/progress.txt`).
-- [ ] **Документация обновлена**: `_docs/skills.md` — упоминание skill; `_skills/README.md` — добавить в индекс.
-- [ ] **Тесты добавлены / обновлены**: `n/a` — чисто-skill задача.
-- [ ] `git status` чист.
+- [x] Файл `_skills/ocr/SKILL.md` создан по структуре существующих skill'ов.
+- [x] `LoadSkillTool` находит skill по имени `ocr` (ручная smoke-проверка с отметкой в `_board/progress.txt`).
+- [x] **Документация обновлена**: `_docs/skills.md` — упоминание skill; `_skills/README.md` — добавить в индекс.
+- [x] **Тесты добавлены / обновлены**: `n/a` — чисто-skill задача.
+- [x] `git status` чист.
 
 ## 6. Этап 3. Защита от Prompt Injection
 
@@ -441,7 +441,7 @@ Tool по аналогии с `DescribeImageTool`:
 |-----|------------------------------------------------------------------------|:---------:|:-----:|:------:|:----------:|
 | 1.1 | Выделить OCR-логику в `app/services/ocr.py`                            | high      | S     | Done   | —          |
 | 2.1 | Новый tool `ocr_image` для произвольных изображений в `tmp/`           | high      | S     | Done   | 1.1        |
-| 2.2 | Skill `_skills/ocr/SKILL.md` с правилами выбора OCR vs Vision          | medium    | XS    | Progress   | 2.1        |
+| 2.2 | Skill `_skills/ocr/SKILL.md` с правилами выбора OCR vs Vision          | medium    | XS    | Done   | 2.1        |
 | 3.1 | Создать `app/security/` с `InputSanitizer`                           | high      | S     | ToDo   | —          |
 | 3.2 | Интегрировать `InputSanitizer` в Telegram-хендлеры                   | high      | XS    | ToDo   | 3.1        |
 | 4.1 | Создать `FileIdMapper` для маскирования путей                        | medium    | S     | ToDo   | —          |
@@ -460,3 +460,4 @@ Tool по аналогии с `DescribeImageTool`:
 - **2026-05-06** — спринт открыт, ветка `feature/05-security-ocr` создана от `main`.
 - **2026-05-06** — закрыта задача 1.1: создан сервис `app/services/ocr.py`, рефакторинг `read_document` для использования сервиса.
 - **2026-05-06** — закрыта задача 2.1: создан tool `ocr_image` для распознавания текста с одиночных изображений.
+- **2026-05-06** — закрыта задача 2.2: создан skill `_skills/ocr/SKILL.md` с правилами выбора OCR vs Vision.
