@@ -169,12 +169,7 @@ async def test_handle_photo_success(
         message.caption = "Мой кот"
         message.bot = MagicMock()
         message.answer = AsyncMock()
-        # Добавляем event_bus и users в dispatcher
         event_bus, mock_users = event_bus_with_conversations
-        message.bot.get_current_dispatcher.return_value.get.side_effect = lambda key: {
-            "users": mock_users,
-            "event_bus": event_bus,
-        }.get(key)
 
         # Вызываем handler
         await handle_photo(
@@ -186,6 +181,8 @@ async def test_handle_photo_success(
             executor=mock_executor,
             llm=mock_llm,
             semantic_memory=mock_semantic_memory,
+            users=mock_users,
+            event_bus=event_bus,
         )
 
         # Проверяем, что executor.run был вызван

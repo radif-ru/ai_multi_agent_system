@@ -127,11 +127,6 @@ async def test_handle_document_success(
         message.caption = "Test doc"
         message.bot = MagicMock()
         message.answer = AsyncMock()
-        # Добавляем event_bus и users в dispatcher
-        message.bot.get_current_dispatcher.return_value.get.side_effect = lambda key: {
-            "users": mock_users,
-            "event_bus": event_bus,
-        }.get(key)
 
         # Вызываем handler
         await handle_document(
@@ -143,6 +138,8 @@ async def test_handle_document_success(
             executor=mock_executor,
             llm=mock_llm,
             semantic_memory=mock_semantic_memory,
+            users=mock_users,
+            event_bus=event_bus,
         )
 
         # Проверяем, что executor.run был вызван

@@ -88,7 +88,6 @@ def _make_message(
     msg.text = text
     msg.answer = AsyncMock()
     msg.bot = MagicMock()
-    msg.bot.get_current_dispatcher.return_value.get.return_value = None
     return msg, msg.answer
 
 
@@ -150,13 +149,8 @@ async def test_success_path_calls_orchestrator_and_replies(
         conversations=conversations, user_settings=user_settings
     )
     msg, answer = _make_message(text="посчитай 2+2")
-    # Добавляем event_bus и users в dispatcher
-    msg.bot.get_current_dispatcher.return_value.get.side_effect = lambda key: {
-        "users": mock_users,
-        "event_bus": event_bus,
-    }.get(key)
 
-    await handler(msg)
+    await handler(msg, users=mock_users, event_bus=event_bus)
 
     # handle_user_task получил текст, user_id, chat_id, model и conversations.
     assert len(calls) == 1
@@ -272,13 +266,7 @@ async def test_reply_to_text_message_includes_context(patch_handle_user_task, ev
     reply_msg.text = "оригинальное сообщение"
     reply_msg.message_id = 999
     msg.reply_to_message = reply_msg
-    # Добавляем event_bus и users в dispatcher
-    msg.bot.get_current_dispatcher.return_value.get.side_effect = lambda key: {
-        "users": mock_users,
-        "event_bus": event_bus,
-    }.get(key)
-
-    await handler(msg)
+    await handler(msg, users=mock_users, event_bus=event_bus)
 
     # Проверяем, что ответ отправлен (контекст проверяется в интеграционных тестах)
     answer.assert_awaited_once_with("ответ на reply", parse_mode=None)
@@ -296,13 +284,7 @@ async def test_reply_to_long_message_is_truncated(patch_handle_user_task, event_
     reply_msg.text = "x" * 600
     reply_msg.message_id = 999
     msg.reply_to_message = reply_msg
-    # Добавляем event_bus и users в dispatcher
-    msg.bot.get_current_dispatcher.return_value.get.side_effect = lambda key: {
-        "users": mock_users,
-        "event_bus": event_bus,
-    }.get(key)
-
-    await handler(msg)
+    await handler(msg, users=mock_users, event_bus=event_bus)
 
     # Проверяем, что ответ отправлен (обрезка контекста проверяется в интеграционных тестах)
     answer.assert_awaited_once_with("ответ", parse_mode=None)
@@ -315,13 +297,7 @@ async def test_no_reply_without_reply_to_message(patch_handle_user_task, event_b
     event_bus, conversations, mock_users = event_bus_with_conversations
     handler = _make_handler(conversations=conversations)
     msg, answer = _make_message(text="просто текст")
-    # Добавляем event_bus и users в dispatcher
-    msg.bot.get_current_dispatcher.return_value.get.side_effect = lambda key: {
-        "users": mock_users,
-        "event_bus": event_bus,
-    }.get(key)
-
-    await handler(msg)
+    await handler(msg, users=mock_users, event_bus=event_bus)
 
     history = conversations.get_history(42)
     assert len(history) == 2

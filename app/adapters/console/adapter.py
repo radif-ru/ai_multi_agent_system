@@ -126,14 +126,14 @@ class ConsoleAdapter:
 
         self.command_registry = CommandRegistry()
 
-    def _build_context(self) -> "CommandContext":
+    async def _build_context(self) -> "CommandContext":
         """Построить контекст команды."""
         from app.commands.context import CommandContext
 
         # Получаем user для публикации событий
         user_obj = None
         if self.users is not None:
-            user_obj, _ = self.users.get_or_create(
+            user_obj, _ = await self.users.get_or_create(
                 channel="console",
                 external_id=str(self.user_id),
                 display_name="Console User",
@@ -191,7 +191,7 @@ class ConsoleAdapter:
         command_name = parts[0][1:]  # убираем слеш
         args = parts[1] if len(parts) > 1 else ""
 
-        ctx = self._build_context()
+        ctx = await self._build_context()
 
         try:
             # Для команды /new передаём callback для прогресса
@@ -211,11 +211,8 @@ class ConsoleAdapter:
 
     async def _handle_text(self, text: str) -> None:
         """Обработать текстовое сообщение."""
-        # Получаем или создаём пользователя
-        user = None
-        if hasattr(self.users, "get_or_create") and inspect.iscoroutinefunction(self.users.get_or_create):
-            user, _ = await self.users.get_or_create("console", str(self.user_id), "Console User")
-        ctx = self._build_context()
+        ctx = await self._build_context()
+        user = ctx.user
 
         # Публикуем MessageReceived
         if self.event_bus and user:

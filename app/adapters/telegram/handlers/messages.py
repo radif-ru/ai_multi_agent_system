@@ -89,7 +89,7 @@ def build_text_handler(
 ) -> Callable[[Message], Awaitable[None]]:
     """Собрать async-handler для текстовых сообщений (без `/`-команд)."""
 
-    async def handle_text(message: Message) -> None:
+    async def handle_text(message: Message, **data: dict) -> None:
         text = message.text
         if not text:
             formatted, parse_mode = format_for_telegram(NON_TEXT_REPLY)
@@ -103,13 +103,8 @@ def build_text_handler(
         chat_id = message.chat.id if message.chat is not None else user_id
 
         # Получаем или создаём пользователя
-        users = None
-        event_bus = None
-        user = None
-        if hasattr(message, "bot") and message.bot:
-            dispatcher = message.bot.get_current_dispatcher()
-            users = dispatcher.get("users")
-            event_bus = dispatcher.get("event_bus")
+        users = data.get("users")
+        event_bus = data.get("event_bus")
         if users and hasattr(users, "get_or_create") and inspect.iscoroutinefunction(users.get_or_create):
             user, created = await users.get_or_create(
                 "telegram",
@@ -184,7 +179,7 @@ def build_text_handler(
             if "empty" in str(exc):
                 error_msg = "Модель не смогла обработать такой большой запрос. Попробуйте отправить файл меньшего размера или задайте более конкретный вопрос."
             else:
-                error_msg = f"Модель ответила в неожиданном формате: {exc}. Попробуйте ещё раз."
+                error_msg = f"Модель ответила в неожиданном формате. Попробуйте ещё раз."
             formatted, parse_mode = format_for_telegram(error_msg)
             await _send_with_fallback(message, formatted, parse_mode)
             return
@@ -215,6 +210,7 @@ async def handle_document(
     executor: "Executor",
     llm: "OllamaClient | None" = None,
     semantic_memory: "SemanticMemory | None" = None,
+    **data: dict,
 ) -> None:
     """Обработчик документов (PDF, TXT, MD)."""
     if message.from_user is None or message.document is None:
@@ -226,13 +222,8 @@ async def handle_document(
     caption = message.caption or ""
 
     # Получаем или создаём пользователя
-    users = None
-    event_bus = None
-    user = None
-    if hasattr(message, "bot") and message.bot:
-        dispatcher = message.bot.get_current_dispatcher()
-        users = dispatcher.get("users")
-        event_bus = dispatcher.get("event_bus")
+    users = data.get("users")
+    event_bus = data.get("event_bus")
     if users and hasattr(users, "get_or_create") and inspect.iscoroutinefunction(users.get_or_create):
         user, _ = await users.get_or_create(
             "telegram",
@@ -331,6 +322,7 @@ async def handle_voice(
     executor: "Executor",
     llm: "OllamaClient | None" = None,
     semantic_memory: "SemanticMemory | None" = None,
+    **data: dict,
 ) -> None:
     """Обработчик голосовых сообщений (Voice/Audio)."""
     if message.from_user is None or message.voice is None:
@@ -341,13 +333,8 @@ async def handle_voice(
     voice = message.voice
 
     # Получаем или создаём пользователя
-    users = None
-    event_bus = None
-    user = None
-    if hasattr(message, "bot") and message.bot:
-        dispatcher = message.bot.get_current_dispatcher()
-        users = dispatcher.get("users")
-        event_bus = dispatcher.get("event_bus")
+    users = data.get("users")
+    event_bus = data.get("event_bus")
     if users and hasattr(users, "get_or_create") and inspect.iscoroutinefunction(users.get_or_create):
         user, _ = await users.get_or_create(
             "telegram",
@@ -474,6 +461,7 @@ async def handle_photo(
     executor: "Executor",
     llm: "OllamaClient | None" = None,
     semantic_memory: "SemanticMemory | None" = None,
+    **data: dict,
 ) -> None:
     """Обработчик фотографий (vision)."""
     if message.from_user is None or message.photo is None:
@@ -485,13 +473,8 @@ async def handle_photo(
     caption = message.caption or ""
 
     # Получаем или создаём пользователя
-    users = None
-    event_bus = None
-    user = None
-    if hasattr(message, "bot") and message.bot:
-        dispatcher = message.bot.get_current_dispatcher()
-        users = dispatcher.get("users")
-        event_bus = dispatcher.get("event_bus")
+    users = data.get("users")
+    event_bus = data.get("event_bus")
     if users and hasattr(users, "get_or_create") and inspect.iscoroutinefunction(users.get_or_create):
         user, _ = await users.get_or_create(
             "telegram",

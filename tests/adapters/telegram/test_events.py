@@ -35,10 +35,6 @@ async def test_handler_publishes_events() -> None:
     # Создаём mock message
     msg, answer = _make_message()
 
-    # Подменяем dispatcher
-    if hasattr(msg, "bot"):
-        msg.bot.get_current_dispatcher = lambda: type("obj", (object,), {"get": lambda self, k: bus if k == "event_bus" else None})()
-
     # Вызываем хендлер (он не упадёт если есть users mock)
     # В реальном тесте нужно более полный setup, но для MVP достаточно проверить
     # что события определены и могут быть опубликованы
@@ -58,6 +54,5 @@ def _make_message(text="test"):
     msg.from_user.username = "testuser"
     msg.reply_to_message = None
     msg.bot = MagicMock()
-    msg.bot.get_current_dispatcher = MagicMock()
     answer = MagicMock()
     return msg, answer

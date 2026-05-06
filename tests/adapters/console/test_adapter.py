@@ -42,7 +42,9 @@ def mock_components():
     core_handle_user_task = MagicMock(return_value="test response")
 
     users = MagicMock()
-    users.get_or_create.return_value = (MagicMock(id=1), False)
+    async def mock_get_or_create(*args, **kwargs):
+        return MagicMock(id=1), False
+    users.get_or_create = mock_get_or_create
 
     event_bus = EventBus()
     # Регистрируем подписчиков для теста
@@ -79,7 +81,8 @@ def test_console_adapter_init(mock_components):
     assert adapter.user_settings == mock_components["user_settings"]
 
 
-def test_console_adapter_build_context(mock_components):
+@pytest.mark.asyncio
+async def test_console_adapter_build_context(mock_components):
     """Тест построения контекста."""
     adapter = ConsoleAdapter(
         user_id=-1,
@@ -87,7 +90,7 @@ def test_console_adapter_build_context(mock_components):
         **mock_components,
     )
 
-    ctx = adapter._build_context()
+    ctx = await adapter._build_context()
 
     assert isinstance(ctx, CommandContext)
     assert ctx.user_id == -1

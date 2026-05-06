@@ -116,21 +116,22 @@ async def _build_components(settings: Settings) -> _Components:
     tools = ToolRegistry(
         [
             CalculatorTool(),
-            ReadFileTool(),
+            ReadFileTool(max_output_chars=settings.max_tool_output_chars),
             ReadDocumentTool(
                 tmp_files_dir=settings.tmp_base_dir,
                 max_file_size_mb=settings.telegram_max_file_mb,
-                max_extracted_images=settings.read_document_max_extracted_images,
-                max_ocr_images=settings.read_document_max_ocr_images,
-                ocr_enabled=settings.read_document_ocr_enabled
+                max_document_chars=settings.max_document_chars,
+                max_images=settings.document_max_images,
+                ocr_enabled=settings.document_ocr_enabled
             ),
-            HttpRequestTool(),
-            WebSearchTool(),
-            MemorySearchTool(),
-            LoadSkillTool(),
+            HttpRequestTool(max_output_chars=settings.max_tool_output_chars),
+            WebSearchTool(max_output_chars=settings.max_tool_output_chars),
+            MemorySearchTool(max_output_chars=settings.max_tool_output_chars),
+            LoadSkillTool(max_output_chars=settings.max_tool_output_chars),
             DescribeImageTool(tmp_dir=settings.tmp_base_dir),
-            WeatherTool(),
-        ]
+            WeatherTool(max_output_chars=settings.max_tool_output_chars),
+        ],
+        max_output_chars=settings.max_tool_output_chars
     )
     executor = Executor(
         settings=settings,

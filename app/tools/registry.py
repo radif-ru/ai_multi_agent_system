@@ -9,12 +9,7 @@ import logging
 import time
 from typing import Any, Iterable, Mapping
 
-from app.tools.base import (
-    MAX_TOOL_OUTPUT_CHARS,
-    Tool,
-    ToolContext,
-    truncate_output,
-)
+from app.tools.base import Tool, ToolContext, truncate_output
 from app.tools.errors import ArgsValidationError, ToolError, ToolNotFound
 
 logger = logging.getLogger(__name__)
@@ -70,8 +65,9 @@ def _validate_args(schema: Mapping[str, Any], args: Mapping[str, Any]) -> None:
 class ToolRegistry:
     """Хранит tool'ы и единственная точка их вызова из `Executor`."""
 
-    def __init__(self, tools: Iterable[Tool]) -> None:
+    def __init__(self, tools: Iterable[Tool], max_output_chars: int = 50000) -> None:
         self._tools: dict[str, Tool] = {}
+        self._max_output_chars = max_output_chars
         for t in tools:
             if t.name in self._tools:
                 raise ValueError(f"duplicate tool name: {t.name}")
@@ -119,7 +115,7 @@ class ToolRegistry:
             raise
         if not isinstance(result, str):
             result = str(result)
-        out = truncate_output(result, MAX_TOOL_OUTPUT_CHARS)
+        out = truncate_output(result, self._max_output_chars)
         self._log(name, started, "ok")
         return out
 

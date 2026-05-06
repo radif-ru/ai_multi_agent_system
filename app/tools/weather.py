@@ -11,7 +11,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any, Mapping
 
-from app.tools.base import MAX_TOOL_OUTPUT_CHARS, Tool, ToolContext, truncate_output
+from app.tools.base import Tool, ToolContext, truncate_output
 from app.tools.errors import ToolError
 
 
@@ -33,7 +33,7 @@ class WeatherTool(Tool):
         "required": ["location"],
     }
 
-    def __init__(self, *, max_output_chars: int = MAX_TOOL_OUTPUT_CHARS) -> None:
+    def __init__(self, *, max_output_chars: int = 50000) -> None:
         self._max_output_chars = max_output_chars
 
     async def run(self, args: Mapping[str, Any], ctx: ToolContext) -> str:

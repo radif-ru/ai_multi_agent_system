@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 
 import httpx
 
-from app.tools.base import MAX_TOOL_OUTPUT_CHARS, Tool, ToolContext, truncate_output
+from app.tools.base import Tool, ToolContext, truncate_output
 from app.tools.errors import ToolError
 
 DEFAULT_TIMEOUT: float = 30.0
@@ -32,7 +32,7 @@ class HttpRequestTool(Tool):
         self,
         *,
         timeout: float = DEFAULT_TIMEOUT,
-        max_output_chars: int = MAX_TOOL_OUTPUT_CHARS,
+        max_output_chars: int = 50000,
         client: httpx.AsyncClient | None = None,
     ) -> None:
         self._timeout = timeout
