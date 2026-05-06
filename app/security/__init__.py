@@ -9,10 +9,12 @@ from app.security.file_id_mapper import (
     get_global_mapper,
 )
 from app.security.input_sanitizer import sanitize_user_input
+from app.security.response_sanitizer import sanitize_response
 
 __all__ = [
     "FileIdMapper",
     "clear_global_mapper",
     "get_global_mapper",
     "sanitize_user_input",
+    "sanitize_response",
 ]
