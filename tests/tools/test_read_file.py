@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
+from app.security import clear_global_mapper, get_global_mapper
 from app.tools.errors import ToolError
 from app.tools.read_file import ReadFileTool
 
@@ -70,3 +72,47 @@ async def test_truncation(tmp_path, ctx):
     out = await tool.run({"path": str(f)}, ctx)
     assert len(out) == 100
     assert out.endswith("[truncated]")
+
+
+async def test_file_id_reads_file(tmp_path, ctx):
+    """Чтение файла через file_id."""
+    clear_global_mapper()
+    f = tmp_path / "note.txt"
+    f.write_text("hello", encoding="utf-8")
+    tool = ReadFileTool(allowed_dirs=[tmp_path])
+
+    mapper = get_global_mapper()
+    file_id = mapper.generate_id(f)
+
+    out = await tool.run({"file_id": file_id}, ctx)
+    assert out == "hello"
+    clear_global_mapper()
+
+
+async def test_file_id_not_found_error(tmp_path, ctx):
+    """Ошибка при неизвестном file_id."""
+    clear_global_mapper()
+    tool = ReadFileTool(allowed_dirs=[tmp_path])
+    with pytest.raises(ToolError, match="file_id .* не найден"):
+        await tool.run({"file_id": "file_unknown"}, ctx)
+    clear_global_mapper()
+
+
+async def test_requires_path_or_file_id(tmp_path, ctx):
+    """Ошибка при отсутствии path и file_id."""
+    clear_global_mapper()
+    tool = ReadFileTool(allowed_dirs=[tmp_path])
+    with pytest.raises(ToolError, match="требуется path или file_id"):
+        await tool.run({}, ctx)
+    clear_global_mapper()
+
+
+async def test_system_path_rejected(tmp_path, ctx):
+    """Запрет на системные пути (/etc, /sys, /proc)."""
+    tool = ReadFileTool(allowed_dirs=[tmp_path])
+    with pytest.raises(ToolError, match="системный путь не разрешён"):
+        await tool.run({"path": "/etc/passwd"}, ctx)
+    with pytest.raises(ToolError, match="системный путь не разрешён"):
+        await tool.run({"path": "/sys/kernel"}, ctx)
+    with pytest.raises(ToolError, match="системный путь не разрешён"):
+        await tool.run({"path": "/proc/cpuinfo"}, ctx)

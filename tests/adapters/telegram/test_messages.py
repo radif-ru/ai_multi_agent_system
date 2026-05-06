@@ -231,7 +231,7 @@ async def test_llm_bad_response_replies_with_format_message(
 
     await handler(msg)
 
-    expected_msg = "Модель ответила в неожиданном формате: not json. Попробуйте ещё раз."
+    expected_msg = "Модель ответила в неожиданном формате. Попробуйте ещё раз."
     answer.assert_awaited_once_with(expected_msg, parse_mode=None)
 
 

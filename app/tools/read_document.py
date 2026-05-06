@@ -20,6 +20,8 @@ try:
 except ImportError:
     pytesseract = None  # type: ignore
 
+from app.security import get_global_mapper
+from app.services.ocr import extract_text, get_default_lang
 from app.tools.base import Tool, ToolContext, truncate_output
 from app.tools.errors import ToolError
 
@@ -38,9 +40,10 @@ class ReadDocumentTool(Tool):
         "type": "object",
         "properties": {
             "path": {"type": "string"},
+            "file_id": {"type": "string"},
             "max_chars": {"type": "integer", "default": 50000},
         },
-        "required": ["path"],
+        "required": [],
     }
 
     def __init__(
@@ -50,15 +53,27 @@ class ReadDocumentTool(Tool):
         max_document_chars: int = 50000,
         max_images: int = 20,
         ocr_enabled: bool = False,
+        ocr_min_text_threshold: int = 100,
     ) -> None:
         self._tmp_dir = tmp_files_dir.resolve()
         self._max_file_size = max_file_size_mb * 1024 * 1024
         self._max_document_chars = max_document_chars
         self._max_images = max_images
         self._ocr_enabled = ocr_enabled
+        self._ocr_min_text_threshold = ocr_min_text_threshold
 
     async def run(self, args: Mapping[str, Any], ctx: ToolContext) -> str:
-        raw_path = str(args["path"])
+        # Если передан file_id, восстанавливаем путь через FileIdMapper
+        if "file_id" in args and args["file_id"]:
+            mapper = get_global_mapper()
+            path = mapper.get_path(str(args["file_id"]))
+            if path is None:
+                raise ToolError(f"file_id {args['file_id']} не найден")
+            raw_path = str(path)
+        elif "path" in args and args["path"]:
+            raw_path = str(args["path"])
+        else:
+            raise ToolError("требуется path или file_id")
         max_chars = int(args.get("max_chars", 50000))
         return await asyncio.to_thread(self._read_sync, raw_path, max_chars)
 
@@ -73,6 +88,12 @@ class ReadDocumentTool(Tool):
             resolved = candidate.resolve(strict=False)
         except OSError as exc:
             raise ToolError(f"ошибка разрешения пути: {exc}") from exc
+
+        # Запрещаем системные пути
+        system_paths = ["/etc", "/sys", "/proc", "/root/.ssh", "/home/*/.ssh"]
+        for sys_path in system_paths:
+            if str(resolved).startswith(sys_path):
+                raise ToolError("системный путь не разрешён")
 
         # Сначала проверяем существование файла
         if not resolved.exists():
@@ -164,54 +185,19 @@ class ReadDocumentTool(Tool):
                     break
 
             text = "\n".join(text_parts)
-            
-            # Если OCR включен и текста очень мало, извлекаем текст из картинок
+
+            # Если OCR включен и текста очень мало, извлекаем текст из картинок через сервис
             ocr_successful = False
-            if self._ocr_enabled and len(text) < 100 and image_paths and pytesseract is not None:
-                # Проверяем кеш OCR текста
+            if self._ocr_enabled and len(text) < self._ocr_min_text_threshold and image_paths:
                 ocr_cache_path = path.with_suffix(".ocr.txt")
-                if ocr_cache_path.exists():
-                    logger.info("OCR кеш найден: %s", ocr_cache_path)
-                    ocr_text = ocr_cache_path.read_text(encoding="utf-8")
-                    if ocr_text.strip():
-                        text += f"\n\n[OCR текст из изображений:]\n{ocr_text}"
-                        logger.info("OCR загружен из кеша: %d символов", len(ocr_text))
-                        ocr_successful = True
-                else:
-                    logger.info("OCR включен, извлекаем текст из %d картинок", len(image_paths))
-                    # Проверяем доступные языки tesseract
-                    try:
-                        available_langs = pytesseract.get_languages(config='')
-                        logger.info("Доступные языки tesseract: %s", available_langs)
-                        ocr_lang = "rus+eng" if "rus" in available_langs else "eng"
-                        logger.info("Используем язык OCR: %s", ocr_lang)
-                    except Exception as exc:
-                        logger.warning("Ошибка получения языков tesseract, используем eng: %s", exc)
-                        ocr_lang = "eng"
-                    
-                    ocr_text_parts = []
-                    for img_path in image_paths:
-                        try:
-                            from PIL import Image
-                            img = Image.open(img_path)
-                            ocr_text = pytesseract.image_to_string(img, lang=ocr_lang)
-                            if ocr_text.strip():
-                                ocr_text_parts.append(ocr_text.strip())
-                                logger.info("OCR извлёк текст из %s: %d символов", img_path, len(ocr_text))
-                        except ImportError:
-                            logger.warning("PIL не установлен, OCR недоступен")
-                            break
-                        except Exception as exc:
-                            logger.warning("Ошибка OCR для %s: %s", img_path, exc)
-                    
-                    if ocr_text_parts:
-                        ocr_text = "\n\n".join(ocr_text_parts)
-                        text += f"\n\n[OCR текст из изображений:]\n{ocr_text}"
-                        logger.info("OCR добавил %d символов текста", len(ocr_text))
-                        # Сохраняем OCR текст в кеш
-                        ocr_cache_path.write_text(ocr_text, encoding="utf-8")
-                        logger.info("OCR текст сохранён в кеш: %s", ocr_cache_path)
-                        ocr_successful = True
+                ocr_text = extract_text(
+                    image_paths=[Path(p) for p in image_paths],
+                    cache_path=ocr_cache_path,
+                )
+                if ocr_text:
+                    text += f"\n\n[OCR текст из изображений:]\n{ocr_text}"
+                    logger.info("OCR добавил %d символов текста", len(ocr_text))
+                    ocr_successful = True
             
             result = truncate_output(text, max_chars)
             
@@ -260,54 +246,12 @@ class ReadDocumentTool(Tool):
         if not self._ocr_enabled:
             raise ToolError("OCR отключён. Включите DOCUMENT_OCR_ENABLED в настройках.")
 
-        try:
-            import pytesseract
-        except ImportError as exc:
-            raise ToolError("pytesseract не установлен. Установите: pip install pytesseract") from exc
-
-        try:
-            from PIL import Image
-        except ImportError as exc:
-            raise ToolError("PIL не установлен. Установите: pip install Pillow") from exc
-
         # Проверяем кеш OCR
         ocr_cache_path = path.with_suffix(".ocr.txt")
-        if ocr_cache_path.exists():
-            logger.info("OCR кеш найден: %s", ocr_cache_path)
-            text = ocr_cache_path.read_text(encoding="utf-8")
-            # Проверяем, что это не просто изображение без текста
-            if len(text.strip()) < 50:
-                logger.warning("OCR извлёк очень мало текста (%d символов), похоже на обычное изображение", len(text))
-                text = f"[OCR извлёк очень мало текста ({len(text)} символов). Если это обычное изображение без текста, загрузите его как изображение в Telegram, а не как файл.]\n\n{text}"
-            return truncate_output(text, max_chars)
+        text = extract_text(image_paths=[path], cache_path=ocr_cache_path)
 
-        # Выполняем OCR
-        try:
-            img = Image.open(path)
-        except Exception as exc:
-            raise ToolError(f"ошибка открытия изображения: {exc}") from exc
-
-        # Определяем язык
-        try:
-            available_langs = pytesseract.get_languages(config='')
-            ocr_lang = "rus+eng" if "rus" in available_langs else "eng"
-            logger.info("Используем язык OCR: %s", ocr_lang)
-        except Exception:
-            ocr_lang = "eng"
-
-        try:
-            text = pytesseract.image_to_string(img, lang=ocr_lang)
-        except Exception as exc:
-            raise ToolError(f"ошибка OCR: {exc}") from exc
-
-        # Сохраняем в кеш
-        try:
-            ocr_cache_path.write_text(text, encoding="utf-8")
-            logger.info("OCR текст сохранён в кеш: %s", ocr_cache_path)
-        except Exception as exc:
-            logger.warning("Не удалось сохранить OCR кеш: %s", exc)
-
-        logger.info("OCR извлёк текст: %d символов", len(text))
+        if not text:
+            raise ToolError("OCR не смог извлечь текст с изображения")
 
         # Проверяем, что это не просто изображение без текста
         if len(text.strip()) < 50:

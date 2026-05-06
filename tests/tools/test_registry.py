@@ -10,6 +10,7 @@ from typing import Any, Mapping
 
 import pytest
 
+from app.config import Settings
 from app.tools.base import Tool
 from app.tools.errors import ArgsValidationError, ToolError, ToolNotFound
 from app.tools.registry import ToolRegistry
@@ -38,6 +39,15 @@ class _BoomTool(Tool):
 
     async def run(self, args: Mapping[str, Any], ctx) -> str:
         raise ToolError("kaboom")
+
+
+class _DangerousTool(Tool):
+    name = "http_request"
+    description = "Dangerous tool."
+    args_schema: Mapping[str, Any] = {"type": "object", "properties": {}, "required": []}
+
+    async def run(self, args: Mapping[str, Any], ctx) -> str:
+        return "ok"
 
 
 @pytest.fixture
@@ -115,3 +125,39 @@ def test_list_descriptions_sorted_and_complete():
 def test_duplicate_name_rejected():
     with pytest.raises(ValueError):
         ToolRegistry([_EchoTool(), _EchoTool()])
+
+
+async def test_dangerous_tool_blocked_when_not_in_allowlist():
+    """Опасный tool блокируется, если его нет в allowlist."""
+    settings = Settings(dangerous_tools_allowlist=[])
+    ctx = SimpleNamespace(
+        user_id=1, chat_id=1, conversation_id="c", settings=settings,
+        llm=None, semantic_memory=None, skills=None,
+    )
+    reg = ToolRegistry([_DangerousTool()])
+    with pytest.raises(ToolError, match="не разрешён в настройках безопасности"):
+        await reg.execute("http_request", {}, ctx)
+
+
+async def test_dangerous_tool_allowed_when_in_allowlist():
+    """Опасный tool работает, если он в allowlist."""
+    settings = Settings(dangerous_tools_allowlist=["http_request"])
+    ctx = SimpleNamespace(
+        user_id=1, chat_id=1, conversation_id="c", settings=settings,
+        llm=None, semantic_memory=None, skills=None,
+    )
+    reg = ToolRegistry([_DangerousTool()])
+    result = await reg.execute("http_request", {}, ctx)
+    assert result == "ok"
+
+
+async def test_non_dangerous_tool_not_affected_by_allowlist():
+    """Обычный tool не проверяется по allowlist."""
+    settings = Settings(dangerous_tools_allowlist=[])
+    ctx = SimpleNamespace(
+        user_id=1, chat_id=1, conversation_id="c", settings=settings,
+        llm=None, semantic_memory=None, skills=None,
+    )
+    reg = ToolRegistry([_EchoTool()])
+    result = await reg.execute("echo", {"text": "hi"}, ctx)
+    assert result == "hi"

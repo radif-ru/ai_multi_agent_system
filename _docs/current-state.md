@@ -39,8 +39,9 @@
 - **Handler Photo** — `app/adapters/telegram/handlers/messages.py` — обрабатывает `Photo` сообщения. Скачивает файл, описывает через `Vision` (Ollama vision API), передаёт описание в агентный цикл. Файл не удаляется сразу — живёт до `/new` или TTL cleanup.
 - **Transcriber** — `app/services/transcribe.py` — обёртка над `faster-whisper` для транскрипции речи. Опциональная зависимость.
 - **Vision** — `app/services/vision.py` — обёртка над `OllamaClient.chat` с поддержкой параметра `images` для описания изображений.
-- **ReadDocumentTool** — `app/tools/read_document.py` — tool для чтения документов из временной директории (PDF/TXT/MD/JPG/PNG). Защита от path traversal, усечение вывода. OCR (опционально): если включён `DOCUMENT_OCR_ENABLED` и установлен tesseract-ocr, для PDF с малым количеством текста (< 100 символов) и для отдельных изображений извлекается текст через pytesseract. OCR текст кешируется в файл `.ocr.txt` рядом с исходным файлом. Поддержка кириллицы через `tesseract-ocr-rus`. Установка: `sudo apt-get install tesseract-ocr tesseract-ocr-rus`.
+- **ReadDocumentTool** — `app/tools/read_document.py` — tool для чтения документов из временной директории (PDF/TXT/MD/JPG/PNG). Защита от path traversal, усечение вывода. OCR делегируется сервису `app/services/ocr.py` (pytesseract). OCR текст кешируется в файл `.ocr.txt` рядом с исходным файлом. Поддержка кириллицы через `tesseract-ocr-rus`. Установка: `sudo apt-get install tesseract-ocr tesseract-ocr-rus`.
 - **DescribeImageTool** — `app/tools/describe_image.py` — tool для повторного описания изображений по пути к файлу. Используется для уточнения деталей после первичного описания.
+- **OcrImageTool** — `app/tools/ocr_image.py` — tool для распознавания текста с одиночных изображений через OCR. Используется для точной транскрипции текста (сканы документов, чеки, таблицы). OCR делегируется сервису `app/services/ocr.py`. Кеш OCR в `<file>.ocr.txt`. Обрезка вывода до 8000 символов.
 - **WeatherTool** — `app/tools/weather.py` — tool для получения погоды через wttr.in с fallback на WebSearchTool при недоступности сервиса.
 
 ### 1.4 Адаптеры
@@ -64,6 +65,13 @@
   - `conversation_subscriber.py` — подписчики on_message_received и on_response_generated для записи в ConversationStore.
   - `summarizer_subscriber.py` — подписчик on_response_generated_summarize для in-session суммаризации.
   - `tmp_cleanup.py` — подписчик on_conversation_archived_cleanup для очистки временных изображений.
+
+### 1.6 Безопасность
+
+- **InputSanitizer** — `app/security/input_sanitizer.py` — функция `sanitize_user_input` для защиты от prompt injection. Детектирует подозрительные паттерны (ignore instructions, repeat system prompt и т.д.) и возвращает очищенный текст или текст с предупреждением. Интегрирован в Telegram-хендлеры и консольный адаптер перед вызовом `core.handle_user_task`.
+- **FileIdMapper** — `app/security/file_id_mapper.py` — класс для маскирования путей к файлам во избежание data leakage. Генерирует временные ID для файлов и умеет восстанавливать путь по ID. Интегрирован в хендлеры файлов и tools (read_file, read_document).
+- **ResponseSanitizer** — `app/security/response_sanitizer.py` — функция `sanitize_response` для фильтрации системной информации в ответах модели. Маскирует пути к файлам, конфигурационные ключи и фрагменты системного промпта. Интегрирован в executor для фильтрации `final_answer` перед возвращением пользователю.
+- **Защита tools** — allowlist для опасных tools (http_request, read_file, read_document) в конфигурации и дополнительная валидация параметров (запрет на системные пути, path traversal).
 
 ## 2. Известные проблемы и легаси
 

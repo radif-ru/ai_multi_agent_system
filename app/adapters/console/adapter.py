@@ -12,6 +12,8 @@ import re
 import sys
 from typing import TYPE_CHECKING, Any
 
+from app.security import sanitize_user_input
+
 if TYPE_CHECKING:
     from app.commands.context import CommandContext, CommandResult
 
@@ -224,9 +226,12 @@ class ConsoleAdapter:
                 channel="console"
             ))
 
+        # Санитайзинг пользовательского ввода
+        sanitized_text = sanitize_user_input(text, user_id=self.user_id, mode="warn")
+
         try:
             response = await self.core_handle_user_task(
-                text=text,
+                text=sanitized_text,
                 user_id=self.user_id,
                 chat_id=self.chat_id,
                 conversations=self.conversations,

@@ -61,6 +61,8 @@ Telegram-адаптер принимает текст, оборачивает е
 - UserRepository — хранилище пользователей с get_or_create
 - ConversationStore — in-memory история диалогов
 - SemanticMemory — долгосрочная семантическая память (sqlite-vec)
+- Security — модуль безопасности (InputSanitizer, FileIdMapper, ResponseSanitizer)
+- OcrService — сервис OCR для распознавания текста с изображений
 ```
 
 Обратный путь: финальный ответ Executor → Core → Telegram-адаптер → `bot.send_message` → пользователь. Ошибка любого слоя → понятное сообщение пользователю + запись в лог.
@@ -105,6 +107,7 @@ Telegram-адаптер принимает текст, оборачивает е
 - **Временные файлы**: `TMP_BASE_DIR` (default `data/tmp`). Для каждого пользователя создаётся отдельный подкаталог по `user_id`.
 - **Whisper (STT)**: `WHISPER_MODEL` (default `base`), `WHISPER_LANGUAGE` (default `ru`).
 - **Vision**: `VISION_MODEL` (default `gemma3:4b`). См. `_docs/vision-models.md` — сравнение лёгких моделей для локального запуска.
+- **OCR**: `OCR_DEFAULT_LANG` (default `rus+eng`), `OCR_MIN_TEXT_THRESHOLD` (default `100`). OCR делегируется сервису `app/services/ocr.py`.
 
 Валидация: `OLLAMA_DEFAULT_MODEL ∈ OLLAMA_AVAILABLE_MODELS`, `HISTORY_SUMMARY_THRESHOLD ≤ HISTORY_MAX_MESSAGES`, оба `> 0`, `EMBEDDING_DIMENSIONS > 0`, путь `AGENT_SYSTEM_PROMPT_PATH` существует.
 
@@ -211,6 +214,17 @@ class Executor:
 - `files.py`: утилита `download_telegram_file` для скачивания файлов из Telegram с проверкой размера и лимитов.
 
 Адаптер **не знает** про executor / tools / memory напрямую — только про `core.handle_user_task`, `ConversationStore`, `UserSettingsRegistry`, `Archiver`, `UserRepository` (для получения пользователя через `get_or_create`).
+
+### 3.14 Безопасность (`app/security/`)
+
+- `input_sanitizer.py`: функция `sanitize_user_input` для защиты от prompt injection. Детектирует подозрительные паттерны (ignore instructions, repeat system prompt и т.д.) и возвращает очищенный текст или текст с предупреждением.
+- `file_id_mapper.py`: класс `FileIdMapper` для маскирования путей к файлам во избежание data leakage. Генерирует временные ID для файлов и умеет восстанавливать путь по ID.
+- `response_sanitizer.py`: функция `sanitize_response` для фильтрации системной информации в ответах модели. Маскирует пути к файлам, конфигурационные ключи и фрагменты системного промпта.
+- Интеграция:
+  - `InputSanitizer` — в Telegram-хендлеры и консольный адаптер перед вызовом `core.handle_user_task`.
+  - `FileIdMapper` — в хендлеры файлов и tools (read_file, read_document).
+  - `ResponseSanitizer` — в executor для фильтрации `final_answer` перед возвращением пользователю.
+См. `_docs/security.md`.
 
 ## 4. Поток обработки текстового сообщения (без команды)
 

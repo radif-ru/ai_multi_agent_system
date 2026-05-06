@@ -78,6 +78,9 @@ class Settings(BaseSettings):
     max_document_chars: int = 50000
     document_max_images: int = 20
     document_ocr_enabled: bool = False
+    # Настройки OCR
+    ocr_default_lang: str = "rus+eng"
+    ocr_min_text_threshold: int = 100
 
     # --- Whisper (speech-to-text) ---
     whisper_model: str = "base"
@@ -90,6 +93,11 @@ class Settings(BaseSettings):
     search_engine_default: str = "duckduckgo"
     search_engines_available: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["duckduckgo"]
+    )
+
+    # --- Security ---
+    dangerous_tools_allowlist: Annotated[list[str], NoDecode] = Field(
+        default_factory=list
     )
 
     @field_validator("ollama_available_models", mode="before")

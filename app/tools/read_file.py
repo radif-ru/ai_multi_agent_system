@@ -9,6 +9,7 @@ import asyncio
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from app.security import get_global_mapper
 from app.tools.base import Tool, ToolContext, truncate_output
 from app.tools.errors import ToolError
 
@@ -23,8 +24,11 @@ class ReadFileTool(Tool):
     )
     args_schema: Mapping[str, Any] = {
         "type": "object",
-        "properties": {"path": {"type": "string"}},
-        "required": ["path"],
+        "properties": {
+            "path": {"type": "string"},
+            "file_id": {"type": "string"},
+        },
+        "required": [],
     }
 
     def __init__(
@@ -41,7 +45,17 @@ class ReadFileTool(Tool):
         self._max_output_chars = max_output_chars
 
     async def run(self, args: Mapping[str, Any], ctx: ToolContext) -> str:
-        raw = str(args["path"])
+        # Если передан file_id, восстанавливаем путь через FileIdMapper
+        if "file_id" in args and args["file_id"]:
+            mapper = get_global_mapper()
+            path = mapper.get_path(str(args["file_id"]))
+            if path is None:
+                raise ToolError(f"file_id {args['file_id']} не найден")
+            raw = str(path)
+        elif "path" in args and args["path"]:
+            raw = str(args["path"])
+        else:
+            raise ToolError("требуется path или file_id")
         return await asyncio.to_thread(self._read_sync, raw)
 
     def _read_sync(self, raw: str) -> str:
@@ -53,6 +67,12 @@ class ReadFileTool(Tool):
             resolved = candidate.resolve(strict=False)
         except OSError as exc:
             raise ToolError(f"path resolve error: {exc}") from exc
+
+        # Запрещаем системные пути
+        system_paths = ["/etc", "/sys", "/proc", "/root/.ssh", "/home/*/.ssh"]
+        for sys_path in system_paths:
+            if str(resolved).startswith(sys_path):
+                raise ToolError("системный путь не разрешён")
 
         if not any(self._is_within(resolved, root) for root in self._allowed):
             raise ToolError("path not allowed")

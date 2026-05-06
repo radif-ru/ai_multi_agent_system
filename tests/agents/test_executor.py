@@ -316,3 +316,17 @@ async def test_tool_context_passed_with_user_and_conversation():
     assert ctx.user_id == 99
     assert ctx.chat_id == 100
     assert ctx.conversation_id == "abc"
+
+
+async def test_final_answer_sanitized():
+    """final_answer проходит через sanitize_response для маскирования чувствительной информации."""
+    llm = FakeLLM([
+        json.dumps({"final_answer": "Файл по пути /home/user/file.txt"}),
+    ])
+    executor = make_executor(llm=llm)
+
+    result = await run_default(executor)
+
+    # Путь должен быть замаскирован
+    assert "[FILE_PATH]" in result
+    assert "/home/user/file.txt" not in result

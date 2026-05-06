@@ -8,7 +8,7 @@
 
 | ID | Название | Файл | Ветка | Статус | Открыт | Закрыт |
 |:--:|----------|------|-------|:------:|:------:|:------:|
-| 04 | Событийная модель и модуль Users | [`sprints/04-events-and-users.md`](./sprints/04-events-and-users.md) | `feature/04-events-and-users` | Active | 2026-05-05 | — |
+| — | — | — | — | — | — | — |
 
 ### Закрытые
 
@@ -18,15 +18,17 @@
 | 01 | MVP Agent | [`sprints/01-mvp-agent.md`](./sprints/01-mvp-agent.md) | `feature/mvp-agent` | Closed | 2026-04-28 | 2026-04-28 |
 | 02 | Память и файловые входы | [`sprints/02-memory-and-files.md`](./sprints/02-memory-and-files.md) | `feature/02-memory-and-files` | Closed | 2026-04-29 | 2026-04-29 |
 | 03 | Исправление багов и консольный режим | [`sprints/03-bugs-and-console.md`](./sprints/03-bugs-and-console.md) | `feature/03-bugs-and-console` | Closed | 2026-04-30 | 2026-05-04 |
+| 04 | Событийная модель и модуль Users | [`sprints/04-events-and-users.md`](./sprints/04-events-and-users.md) | `feature/04-events-and-users` | Closed | 2026-05-05 | 2026-05-06 |
+| 05 | Усиление безопасности и OCR-рефакторинг | [`sprints/05-security-ocr.md`](./sprints/05-security-ocr.md) | `feature/05-security-ocr` | Closed | 2026-05-06 | 2026-05-06 |
 
 ### Запланированные
 
 | ID | Название | Файл | Источник |
 |:--:|----------|------|----------|
-| 05 | UX: Streaming steps | (создаётся при старте) | `_docs/roadmap.md` Этап 3 |
-| 06 | Multi-agent (Planner + Critic) | (создаётся при старте) | `_docs/roadmap.md` Этап 5 |
-| 07 | Web и MAX адаптеры | (создаётся при старте) | `_docs/roadmap.md` Этап 6 |
-| 08 | Внешние онлайн-LLM | (создаётся при старте) | ТЗ пользователя (пункт 7) |
+| — | UX: Streaming steps | (создаётся при старте) | `_docs/roadmap.md` Этап 3 |
+| — | Multi-agent (Planner + Critic) | (создаётся при старте) | `_docs/roadmap.md` Этап 5 |
+| — | Web и MAX адаптеры | (создаётся при старте) | `_docs/roadmap.md` Этап 6 |
+| — | Внешние онлайн-LLM | (создаётся при старте) | ТЗ пользователя (пункт 7) |
 
 ## Сводная таблица состояния
 
@@ -36,7 +38,8 @@
 | 01. MVP Agent | Closed | 0 / 0 / 28 | `sprints/01-mvp-agent.md` |
 | 02. Память и файловые входы | Closed | 0 / 0 / 19 | `sprints/02-memory-and-files.md` |
 | 03. Исправление багов и консольный режим | Closed | 0 / 0 / 30 | `sprints/03-bugs-and-console.md` |
-| 04. Событийная модель и модуль Users | Active | 0 / 0 / 8 | `sprints/04-events-and-users.md` |
+| 04. Событийная модель и модуль Users | Closed | 0 / 0 / 9 | `sprints/04-events-and-users.md` |
+| 05. Усиление безопасности и OCR-рефакторинг | Closed | 0 / 0 / 9 | `sprints/05-security-ocr.md` |
 
 > Таблицу обновлять одновременно с переходами статусов в файлах спринтов (см. `process.md` §7.3 и §7.9).
 

@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.agents.protocol import AgentDecision, parse_agent_response
+from app.security import sanitize_response
 from app.services.llm import LLMBadResponse
 from app.tools.errors import ArgsValidationError, ToolError, ToolNotFound
 
@@ -137,7 +138,7 @@ class Executor:
             if parsed.kind == "final":
                 self._log_step(step, parsed, user_id, conversation_id)
                 assert parsed.final_answer is not None
-                return parsed.final_answer
+                return sanitize_response(parsed.final_answer)
 
             self._log_step(step, parsed, user_id, conversation_id)
 
