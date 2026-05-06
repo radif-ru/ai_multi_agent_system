@@ -60,15 +60,43 @@ def sanitize_user_input(
 class FileIdMapper:
     def generate_id(file_path: Path) -> str
     def get_path(file_id: str) -> Path | None
+    def clear() -> None
+```
+
+**Глобальный экземпляр:**
+```python
+from app.security import get_global_mapper, clear_global_mapper
+
+mapper = get_global_mapper()  # Получить глобальный экземпляр
+file_id = mapper.generate_id(file_path)
+path = mapper.get_path(file_id)
+clear_global_mapper()  # Очистить (для тестов)
 ```
 
 **Методы:**
-- `generate_id(file_path)` — генерирует уникальный временный ID для файла (например, `file_abc123`).
+- `generate_id(file_path)` — генерирует уникальный временный ID для файла (например, `file_abc123`). При повторном вызове для того же пути возвращает тот же ID.
 - `get_path(file_id)` — возвращает путь по ID или `None`, если ID не найден.
+- `clear()` — очищает хранилище маппингов.
 
 **Хранилище:** in-memory dict.
 
-См. задачу 4.1 спринта 05.
+### 2.1 Интеграция
+
+`FileIdMapper` интегрирован в хендлеры файлов и tools:
+
+**Хендлеры:**
+- `app/adapters/telegram/handlers/messages.py` — в `handle_document`, `handle_voice`, `handle_photo` полные пути заменяются на временные ID в goal.
+
+**Tools:**
+- `app/tools/read_file.py` — поддерживает параметр `file_id` как альтернативу `path`.
+- `app/tools/read_document.py` — поддерживает параметр `file_id` как альтернативу `path`.
+
+В goal вместо полных путей используется формат:
+```
+Пользователь прислал документ (ID: file_abc123def456). Caption: ... Прочитай через read_document с параметром file_id=file_abc123def456
+```
+
+См. задачи 4.1 и 4.2 спринта 05.
 
 ## 3. ResponseSanitizer
 

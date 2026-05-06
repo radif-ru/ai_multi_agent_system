@@ -121,10 +121,10 @@ class ToolRegistry:
 ### 4.2 `read_file`
 
 - **Описание:** Прочитать содержимое файла из разрешённых каталогов (по умолчанию `data/`).
-- **Args:** `{"path": "<строка>"}`.
+- **Args:** `{"path": "<строка>"}` или `{"file_id": "<строка>"}` (один из параметров обязателен).
 - **Return:** содержимое файла (UTF-8), усечённое до `MAX_TOOL_OUTPUT_CHARS`.
-- **Реализация:** валидация пути (`Path.resolve()` должен начинаться с одного из путей whitelist'а из `Settings`); запрет `..`; запрет симлинков, которые ведут наружу; ограничение размера файла (`MAX_FILE_BYTES`, default 1 MiB).
-- **Ошибки:** путь вне whitelist → `ToolError("path not allowed")`; файла нет → `ToolError("file not found")`; файл бинарный → `ToolError("binary file not supported")`.
+- **Реализация:** валидация пути (`Path.resolve()` должен начинаться с одного из путей whitelist'а из `Settings`); запрет `..`; запрет симлинков, которые ведут наружу; ограничение размера файла (`MAX_FILE_BYTES`, default 1 MiB). Если передан `file_id`, путь восстанавливается через `FileIdMapper`.
+- **Ошибки:** путь вне whitelist → `ToolError("path not allowed")`; файла нет → `ToolError("file not found")`; файл бинарный → `ToolError("binary file not supported")`; file_id не найден → `ToolError("file_id ... не найден")`.
 
 ### 4.3 `http_request`
 
@@ -176,10 +176,10 @@ class ToolRegistry:
 ### 4.9 `read_document`
 
 - **Описание:** Прочитать содержимое документа (PDF, TXT, MD, JPG, PNG) из временной директории.
-- **Args:** `{"path": "<строка>", "max_chars": <int, default 50000>}`.
+- **Args:** `{"path": "<строка>", "max_chars": <int, default 50000>}` или `{"file_id": "<строка>", "max_chars": <int, default 50000>}` (один из path/file_id обязателен).
 - **Return:** содержимое документа; для PDF — текст + OCR при необходимости; для изображений — текст через OCR.
-- **Реализация:** валидация пути (должен быть в `tmp/`, без `..`); для PDF — извлечение текста через pypdf + картинок; OCR делегируется сервису `app/services/ocr.py` (pytesseract); кеш OCR в `<file>.ocr.txt`.
-- **Ошибки:** путь вне `tmp/` → `ToolError`; файла нет → `ToolError`; неподдерживаемый тип → `ToolError`; OCR отключён → `ToolError`.
+- **Реализация:** валидация пути (должен быть в `tmp/`, без `..`); для PDF — извлечение текста через pypdf + картинок; OCR делегируется сервису `app/services/ocr.py` (pytesseract); кеш OCR в `<file>.ocr.txt`. Если передан `file_id`, путь восстанавливается через `FileIdMapper`.
+- **Ошибки:** путь вне `tmp/` → `ToolError`; файла нет → `ToolError`; неподдерживаемый тип → `ToolError`; OCR отключён → `ToolError`; file_id не найден → `ToolError("file_id ... не найден")`.
 
 ### 4.10 `ocr_image`
 

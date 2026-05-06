@@ -11,6 +11,29 @@ from pathlib import Path
 from typing import Final
 
 
+# Глобальный экземпляр для использования в хендлерах и tools
+_global_mapper: FileIdMapper | None = None
+
+
+def get_global_mapper() -> FileIdMapper:
+    """Получить глобальный экземпляр FileIdMapper."""
+    global _global_mapper
+    if _global_mapper is None:
+        _global_mapper = FileIdMapper()
+    return _global_mapper
+
+
+def clear_global_mapper() -> None:
+    """Очистить глобальный экземпляр FileIdMapper.
+
+    Полезно для тестов.
+    """
+    global _global_mapper
+    if _global_mapper is not None:
+        _global_mapper.clear()
+        _global_mapper = None
+
+
 class FileIdMapper:
     """Маппер временных идентификаторов для файлов.
 

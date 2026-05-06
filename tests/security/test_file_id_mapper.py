@@ -4,7 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from app.security.file_id_mapper import FileIdMapper
+from app.security.file_id_mapper import (
+    FileIdMapper,
+    clear_global_mapper,
+    get_global_mapper,
+)
 
 
 def test_generate_id_creates_unique_id():
@@ -84,3 +88,43 @@ def test_generate_id_after_clear_creates_new_id():
 
     # ID должны быть разными, так как хранилище очищено
     assert file_id1 != file_id2
+
+
+def test_get_global_mapper_returns_same_instance():
+    """Глобальный маппер возвращает один и тот же экземпляр."""
+    mapper1 = get_global_mapper()
+    mapper2 = get_global_mapper()
+
+    assert mapper1 is mapper2
+
+
+def test_clear_global_mapper_clears_instance():
+    """Очистка глобального маппера сбрасывает состояние."""
+    mapper = get_global_mapper()
+    path = Path("/tmp/test.txt")
+
+    file_id = mapper.generate_id(path)
+    assert mapper.get_path(file_id) == path
+
+    clear_global_mapper()
+
+    # После очистки создаётся новый экземпляр
+    new_mapper = get_global_mapper()
+    assert new_mapper is not mapper
+    assert new_mapper.get_path(file_id) is None
+
+
+def test_global_mapper_persists_across_calls():
+    """Глобальный маппер сохраняет состояние между вызовами."""
+    clear_global_mapper()  # Сбрасываем перед тестом
+
+    mapper1 = get_global_mapper()
+    path = Path("/tmp/test.txt")
+    file_id1 = mapper1.generate_id(path)
+
+    mapper2 = get_global_mapper()
+    recovered_path = mapper2.get_path(file_id1)
+
+    assert recovered_path == path
+
+    clear_global_mapper()  # Очищаем после теста

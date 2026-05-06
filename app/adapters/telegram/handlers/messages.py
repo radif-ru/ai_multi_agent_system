@@ -30,7 +30,7 @@ from app.adapters.telegram.files import FileTooLargeError, download_telegram_fil
 from app.adapters.telegram.utils import format_for_telegram
 from app.core.events import MessageReceived, ResponseGenerated
 from app.core.orchestrator import handle_user_task
-from app.security import sanitize_user_input
+from app.security import get_global_mapper, sanitize_user_input
 from app.services.llm import LLMBadResponse, LLMTimeout, LLMUnavailable
 from app.services.transcribe import (
     Transcriber,
@@ -256,8 +256,10 @@ async def handle_document(
         await _send_with_fallback(message, formatted, parse_mode)
         return
 
-    # Формируем обогащённый goal
-    goal = f"Пользователь прислал документ {file_path}. Caption: {caption}. Прочитай через read_document и ответь по сути. Важно: для read_document используй ТОЛЬКО путь {file_path} без изменений, не меняй его и не используй относительные пути."
+    # Формируем обогащённый goal с временным ID вместо полного пути
+    mapper = get_global_mapper()
+    file_id = mapper.generate_id(file_path)
+    goal = f"Пользователь прислал документ (ID: {file_id}). Caption: {caption}. Прочитай через read_document с параметром file_id={file_id} и ответь по сути."
 
     # Публикуем MessageReceived
     if event_bus and user:
@@ -400,8 +402,10 @@ async def handle_voice(
         await _send_with_fallback(message, formatted, parse_mode)
         return
 
-    # Формируем обогащённый goal с путём к файлу и транскрипцией
-    goal = f"Голосовое сообщение: {file_path}\nТранскрипция: {text}"
+    # Формируем обогащённый goal с временным ID вместо полного пути
+    mapper = get_global_mapper()
+    file_id = mapper.generate_id(file_path)
+    goal = f"Голосовое сообщение (ID: {file_id})\nТранскрипция: {text}"
 
     # Публикуем MessageReceived
     if event_bus and user:
@@ -552,9 +556,11 @@ async def handle_photo(
             logger.warning("не удалось удалить временный photo-файл %s", file_path)
         return
 
-    # Передаём описание с путём к файлу для уточняющих вопросов
+    # Передаём описание с временным ID для уточняющих вопросов
     # Файл не удаляем сразу - он живёт до /new или TTL cleanup
-    goal = f"Изображение: {file_path}\nОписание: {description}"
+    mapper = get_global_mapper()
+    file_id = mapper.generate_id(file_path)
+    goal = f"Изображение (ID: {file_id})\nОписание: {description}"
 
     # Публикуем MessageReceived
     if event_bus and user:

@@ -10,6 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from app.security import clear_global_mapper, get_global_mapper
 from app.tools.read_document import ReadDocumentTool
 from app.tools.errors import ToolError
 
@@ -133,3 +134,37 @@ async def test_not_a_file(tool: ReadDocumentTool, tmp_dir: Path) -> None:
     """Путь указывает на директорию, не на файл."""
     with pytest.raises(ToolError, match="не является обычным файлом"):
         await tool.run({"path": str(tmp_dir)}, MagicMock())
+
+
+@pytest.mark.asyncio
+async def test_file_id_reads_txt_file(tool: ReadDocumentTool, tmp_dir: Path) -> None:
+    """Чтение TXT-файла через file_id."""
+    clear_global_mapper()
+    test_file = tmp_dir / "test.txt"
+    test_file.write_text("Hello, world!", encoding="utf-8")
+
+    mapper = get_global_mapper()
+    file_id = mapper.generate_id(test_file)
+
+    result = await tool.run({"file_id": file_id}, MagicMock())
+
+    assert "Hello, world!" in result
+    clear_global_mapper()
+
+
+@pytest.mark.asyncio
+async def test_file_id_not_found_error(tool: ReadDocumentTool, tmp_dir: Path) -> None:
+    """Ошибка при неизвестном file_id."""
+    clear_global_mapper()
+    with pytest.raises(ToolError, match="file_id .* не найден"):
+        await tool.run({"file_id": "file_unknown"}, MagicMock())
+    clear_global_mapper()
+
+
+@pytest.mark.asyncio
+async def test_requires_path_or_file_id(tool: ReadDocumentTool, tmp_dir: Path) -> None:
+    """Ошибка при отсутствии path и file_id."""
+    clear_global_mapper()
+    with pytest.raises(ToolError, match="требуется path или file_id"):
+        await tool.run({}, MagicMock())
+    clear_global_mapper()

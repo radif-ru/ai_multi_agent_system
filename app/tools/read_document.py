@@ -20,6 +20,7 @@ try:
 except ImportError:
     pytesseract = None  # type: ignore
 
+from app.security import get_global_mapper
 from app.services.ocr import extract_text, get_default_lang
 from app.tools.base import Tool, ToolContext, truncate_output
 from app.tools.errors import ToolError
@@ -39,9 +40,10 @@ class ReadDocumentTool(Tool):
         "type": "object",
         "properties": {
             "path": {"type": "string"},
+            "file_id": {"type": "string"},
             "max_chars": {"type": "integer", "default": 50000},
         },
-        "required": ["path"],
+        "required": [],
     }
 
     def __init__(
@@ -61,7 +63,17 @@ class ReadDocumentTool(Tool):
         self._ocr_min_text_threshold = ocr_min_text_threshold
 
     async def run(self, args: Mapping[str, Any], ctx: ToolContext) -> str:
-        raw_path = str(args["path"])
+        # Если передан file_id, восстанавливаем путь через FileIdMapper
+        if "file_id" in args and args["file_id"]:
+            mapper = get_global_mapper()
+            path = mapper.get_path(str(args["file_id"]))
+            if path is None:
+                raise ToolError(f"file_id {args['file_id']} не найден")
+            raw_path = str(path)
+        elif "path" in args and args["path"]:
+            raw_path = str(args["path"])
+        else:
+            raise ToolError("требуется path или file_id")
         max_chars = int(args.get("max_chars", 50000))
         return await asyncio.to_thread(self._read_sync, raw_path, max_chars)
 
