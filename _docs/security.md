@@ -136,8 +136,15 @@ dangerous_tools_allowlist: list[str]  # список разрешённых оп
 ### 4.2 Валидация параметров опасных tools
 
 Дополнительная валидация параметров:
-- `http_request` — запрет на `file://`, `ftp://` и другие небезопасные протоколы.
-- `read_file` / `read_document` — запрет на чтение системных путей (`/etc/`, `/sys/`, `/proc/`, `~/.ssh/`), проверка на path traversal (`../`).
+
+**`http_request`:**
+- Запрет на протоколы кроме `http` и `https` (реализовано в строках 44-46 `app/tools/http_request.py`).
+- Проверка `netloc` на валидность URL.
+
+**`read_file` / `read_document`:**
+- Запрет на path traversal через `..` (реализовано в строках 64-65 `read_file.py` и 84-85 `read_document.py`).
+- Запрет на системные пути: `/etc`, `/sys`, `/proc`, `/root/.ssh`, `/home/*/.ssh` (реализовано в строках 71-75 `read_file.py` и 92-96 `read_document.py`).
+- Проверка, что путь находится внутри разрешённой директории (whitelist для `read_file`, `tmp_dir` для `read_document`).
 
 См. задачу 6.2 спринта 05.
 

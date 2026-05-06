@@ -89,6 +89,12 @@ class ReadDocumentTool(Tool):
         except OSError as exc:
             raise ToolError(f"ошибка разрешения пути: {exc}") from exc
 
+        # Запрещаем системные пути
+        system_paths = ["/etc", "/sys", "/proc", "/root/.ssh", "/home/*/.ssh"]
+        for sys_path in system_paths:
+            if str(resolved).startswith(sys_path):
+                raise ToolError("системный путь не разрешён")
+
         # Сначала проверяем существование файла
         if not resolved.exists():
             raise ToolError("файл не найден")

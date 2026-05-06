@@ -68,6 +68,12 @@ class ReadFileTool(Tool):
         except OSError as exc:
             raise ToolError(f"path resolve error: {exc}") from exc
 
+        # Запрещаем системные пути
+        system_paths = ["/etc", "/sys", "/proc", "/root/.ssh", "/home/*/.ssh"]
+        for sys_path in system_paths:
+            if str(resolved).startswith(sys_path):
+                raise ToolError("системный путь не разрешён")
+
         if not any(self._is_within(resolved, root) for root in self._allowed):
             raise ToolError("path not allowed")
 

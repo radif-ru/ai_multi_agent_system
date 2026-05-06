@@ -168,3 +168,14 @@ async def test_requires_path_or_file_id(tool: ReadDocumentTool, tmp_dir: Path) -
     with pytest.raises(ToolError, match="требуется path или file_id"):
         await tool.run({}, MagicMock())
     clear_global_mapper()
+
+
+@pytest.mark.asyncio
+async def test_system_path_rejected(tool: ReadDocumentTool, tmp_dir: Path) -> None:
+    """Запрет на системные пути (/etc, /sys, /proc)."""
+    with pytest.raises(ToolError, match="системный путь не разрешён"):
+        await tool.run({"path": "/etc/passwd"}, MagicMock())
+    with pytest.raises(ToolError, match="системный путь не разрешён"):
+        await tool.run({"path": "/sys/kernel"}, MagicMock())
+    with pytest.raises(ToolError, match="системный путь не разрешён"):
+        await tool.run({"path": "/proc/cpuinfo"}, MagicMock())

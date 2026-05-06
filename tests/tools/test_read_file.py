@@ -105,3 +105,14 @@ async def test_requires_path_or_file_id(tmp_path, ctx):
     with pytest.raises(ToolError, match="требуется path или file_id"):
         await tool.run({}, ctx)
     clear_global_mapper()
+
+
+async def test_system_path_rejected(tmp_path, ctx):
+    """Запрет на системные пути (/etc, /sys, /proc)."""
+    tool = ReadFileTool(allowed_dirs=[tmp_path])
+    with pytest.raises(ToolError, match="системный путь не разрешён"):
+        await tool.run({"path": "/etc/passwd"}, ctx)
+    with pytest.raises(ToolError, match="системный путь не разрешён"):
+        await tool.run({"path": "/sys/kernel"}, ctx)
+    with pytest.raises(ToolError, match="системный путь не разрешён"):
+        await tool.run({"path": "/proc/cpuinfo"}, ctx)
