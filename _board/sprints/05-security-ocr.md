@@ -238,7 +238,7 @@ Tool по аналогии с `DescribeImageTool`:
 
 ### Задача 4.2. Интегрировать `FileIdMapper` в хендлеры файлов
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** medium
 - **Объём:** S
 - **Зависит от:** Задача 4.1
@@ -445,7 +445,7 @@ Tool по аналогии с `DescribeImageTool`:
 | 3.1 | Создать `app/security/` с `InputSanitizer`                           | high      | S     | Done   | —          |
 | 3.2 | Интегрировать `InputSanitizer` в Telegram-хендлеры                   | high      | XS    | Done   | 3.1        |
 | 4.1 | Создать `FileIdMapper` для маскирования путей                        | medium    | S     | Done   | —          |
-| 4.2 | Интегрировать `FileIdMapper` в хендлеры файлов                        | medium    | S     | ToDo   | 4.1        |
+| 4.2 | Интегрировать `FileIdMapper` в хендлеры файлов                        | medium    | S     | Progress | 4.1        |
 | 5.1 | Обновить `_prompts/agent_system.md` с правилами безопасности          | high      | XS    | ToDo   | —          |
 | 6.1 | Добавить allowlist для опасных tools                                 | high      | S     | ToDo   | —          |
 | 6.2 | Усилить валидацию параметров опасных tools                            | medium    | S     | ToDo   | 6.1        |
