@@ -374,7 +374,7 @@ Tool по аналогии с `DescribeImageTool`:
 
 ### Задача 7.2. Интегрировать `ResponseSanitizer` в executor
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** medium
 - **Объём:** XS
 - **Зависит от:** Задача 7.1
@@ -387,11 +387,11 @@ Tool по аналогии с `DescribeImageTool`:
 
 #### Definition of Done
 
-- [ ] `final_answer` проходит через `sanitize_response` перед возвращением.
-- [ ] Unit-тест: ответ с путём маскируется.
-- [ ] **Документация обновлена**: `_docs/security.md` — описание интеграции; `_docs/architecture.md` — упоминание.
-- [ ] **Тесты добавлены / обновлены**: см. выше.
-- [ ] `git status` чист.
+- [x] `final_answer` проходит через `sanitize_response` перед возвращением.
+- [x] Unit-тест: ответ с путём маскируется.
+- [x] **Документация обновлена**: `_docs/security.md` — описание интеграции; `_docs/architecture.md` — упоминание.
+- [x] **Тесты добавлены / обновлены**: см. выше.
+- [x] `git status` чист.
 
 ## 11. Этап 8. Документация и закрытие
 
@@ -450,7 +450,7 @@ Tool по аналогии с `DescribeImageTool`:
 | 6.1 | Добавить allowlist для опасных tools                                 | high      | S     | Done   | —          |
 | 6.2 | Усилить валидацию параметров опасных tools                            | medium    | S     | Done   | 6.1        |
 | 7.1 | Создать `ResponseSanitizer` для фильтрации ответов                   | medium    | S     | Done   | —          |
-| 7.2 | Интегрировать `ResponseSanitizer` в executor                          | medium    | XS    | Progress   | 7.1        |
+| 7.2 | Интегрировать `ResponseSanitizer` в executor                          | medium    | XS    | Done   | 7.1        |
 | 8.1 | Финальная ревизия документации                                       | medium    | XS    | ToDo   | 7.2, 2.2   |
 
 > Обновляется при каждом переходе статуса и при добавлении/удалении задач.
@@ -469,3 +469,4 @@ Tool по аналогии с `DescribeImageTool`:
 - **2026-05-06** — закрыта задача 6.1: добавлен allowlist для опасных tools (`http_request`, `read_file`, `read_document`) в конфигурацию и проверка в `ToolRegistry.execute`.
 - **2026-05-06** — закрыта задача 6.2: усилена валидация параметров опасных tools — добавлен запрет на системные пути (`/etc`, `/sys`, `/proc`, `~/.ssh`) в `read_file` и `read_document`.
 - **2026-05-06** — закрыта задача 7.1: создан модуль `app/security/response_sanitizer.py` с функцией `sanitize_response` для маскирования путей к файлам, конфигурационных ключей и фрагментов системного промпта в ответах модели.
+- **2026-05-06** — закрыта задача 7.2: интегрирован `ResponseSanitizer` в executor для фильтрации `final_answer` перед возвращением пользователю.
