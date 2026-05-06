@@ -159,7 +159,7 @@ Tool по аналогии с `DescribeImageTool`:
 
 ### Задача 3.1. Создать `app/security/` с `InputSanitizer`
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** —
@@ -180,11 +180,11 @@ Tool по аналогии с `DescribeImageTool`:
 
 #### Definition of Done
 
-- [ ] Файлы созданы, импорт работает.
-- [ ] Unit-тесты покрывают: базовые паттерны детектируются, нормальный текст не изменяется.
-- [ ] **Документация обновлена**: создан `_docs/security.md` с описанием `InputSanitizer`.
-- [ ] **Тесты добавлены / обновлены**: см. выше.
-- [ ] `git status` чист.
+- [x] Файлы созданы, импорт работает.
+- [x] Unit-тесты покрывают: базовые паттерны детектируются, нормальный текст не изменяется.
+- [x] **Документация обновлена**: создан `_docs/security.md` с описанием `InputSanitizer`.
+- [x] **Тесты добавлены / обновлены**: см. выше.
+- [x] `git status` чист.
 
 ### Задача 3.2. Интегрировать `InputSanitizer` в Telegram-хендлеры
 
@@ -442,7 +442,7 @@ Tool по аналогии с `DescribeImageTool`:
 | 1.1 | Выделить OCR-логику в `app/services/ocr.py`                            | high      | S     | Done   | —          |
 | 2.1 | Новый tool `ocr_image` для произвольных изображений в `tmp/`           | high      | S     | Done   | 1.1        |
 | 2.2 | Skill `_skills/ocr/SKILL.md` с правилами выбора OCR vs Vision          | medium    | XS    | Done   | 2.1        |
-| 3.1 | Создать `app/security/` с `InputSanitizer`                           | high      | S     | Progress | —          |
+| 3.1 | Создать `app/security/` с `InputSanitizer`                           | high      | S     | Done   | —          |
 | 3.2 | Интегрировать `InputSanitizer` в Telegram-хендлеры                   | high      | XS    | ToDo   | 3.1        |
 | 4.1 | Создать `FileIdMapper` для маскирования путей                        | medium    | S     | ToDo   | —          |
 | 4.2 | Интегрировать `FileIdMapper` в хендлеры файлов                        | medium    | S     | ToDo   | 4.1        |
@@ -461,3 +461,4 @@ Tool по аналогии с `DescribeImageTool`:
 - **2026-05-06** — закрыта задача 1.1: создан сервис `app/services/ocr.py`, рефакторинг `read_document` для использования сервиса.
 - **2026-05-06** — закрыта задача 2.1: создан tool `ocr_image` для распознавания текста с одиночных изображений.
 - **2026-05-06** — закрыта задача 2.2: создан skill `_skills/ocr/SKILL.md` с правилами выбора OCR vs Vision.
+- **2026-05-06** — закрыта задача 3.1: создан модуль `app/security/` с `InputSanitizer` для защиты от prompt injection.
