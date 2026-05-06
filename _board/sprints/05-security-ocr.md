@@ -213,7 +213,7 @@ Tool по аналогии с `DescribeImageTool`:
 
 ### Задача 4.1. Создать `FileIdMapper` для маскирования путей
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** medium
 - **Объём:** S
 - **Зависит от:** —
@@ -230,11 +230,11 @@ Tool по аналогии с `DescribeImageTool`:
 
 #### Definition of Done
 
-- [ ] Класс реализован, импорт работает.
-- [ ] Unit-тесты: генерация уникальных ID, восстановление пути.
-- [ ] **Документация обновлена**: `_docs/security.md` — описание `FileIdMapper`.
-- [ ] **Тесты добавлены / обновлены**: см. выше.
-- [ ] `git status` чист.
+- [x] Класс реализован, импорт работает.
+- [x] Unit-тесты: генерация уникальных ID, восстановление пути.
+- [x] **Документация обновлена**: `_docs/security.md` — описание `FileIdMapper`.
+- [x] **Тесты добавлены / обновлены**: см. выше.
+- [x] `git status` чист.
 
 ### Задача 4.2. Интегрировать `FileIdMapper` в хендлеры файлов
 
@@ -444,7 +444,7 @@ Tool по аналогии с `DescribeImageTool`:
 | 2.2 | Skill `_skills/ocr/SKILL.md` с правилами выбора OCR vs Vision          | medium    | XS    | Done   | 2.1        |
 | 3.1 | Создать `app/security/` с `InputSanitizer`                           | high      | S     | Done   | —          |
 | 3.2 | Интегрировать `InputSanitizer` в Telegram-хендлеры                   | high      | XS    | Done   | 3.1        |
-| 4.1 | Создать `FileIdMapper` для маскирования путей                        | medium    | S     | Progress | —          |
+| 4.1 | Создать `FileIdMapper` для маскирования путей                        | medium    | S     | Done   | —          |
 | 4.2 | Интегрировать `FileIdMapper` в хендлеры файлов                        | medium    | S     | ToDo   | 4.1        |
 | 5.1 | Обновить `_prompts/agent_system.md` с правилами безопасности          | high      | XS    | ToDo   | —          |
 | 6.1 | Добавить allowlist для опасных tools                                 | high      | S     | ToDo   | —          |
@@ -463,3 +463,4 @@ Tool по аналогии с `DescribeImageTool`:
 - **2026-05-06** — закрыта задача 2.2: создан skill `_skills/ocr/SKILL.md` с правилами выбора OCR vs Vision.
 - **2026-05-06** — закрыта задача 3.1: создан модуль `app/security/` с `InputSanitizer` для защиты от prompt injection.
 - **2026-05-06** — закрыта задача 3.2: интегрирован `InputSanitizer` в Telegram-хендлеры и консольный адаптер.
+- **2026-05-06** — закрыта задача 4.1: создан класс `FileIdMapper` для маскирования путей к файлам.
