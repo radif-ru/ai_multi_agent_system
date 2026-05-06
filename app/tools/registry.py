@@ -14,6 +14,9 @@ from app.tools.errors import ArgsValidationError, ToolError, ToolNotFound
 
 logger = logging.getLogger(__name__)
 
+# Список опасных tools, требующих явного разрешения через allowlist
+_DANGEROUS_TOOLS = {"http_request", "read_file", "read_document"}
+
 
 _PY_TYPES: dict[str, tuple[type, ...]] = {
     "string": (str,),
@@ -103,6 +106,14 @@ class ToolRegistry:
         except ToolNotFound:
             self._log(name, started, "error", "not_found")
             raise
+
+        # Проверка allowlist для опасных tools
+        if name in _DANGEROUS_TOOLS:
+            allowlist = ctx.settings.dangerous_tools_allowlist or []
+            if name not in allowlist:
+                self._log(name, started, "error", "not_allowed")
+                raise ToolError(f"Tool '{name}' не разрешён в настройках безопасности")
+
         try:
             _validate_args(tool.args_schema, args)
         except ArgsValidationError as exc:

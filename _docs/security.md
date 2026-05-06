@@ -125,7 +125,11 @@ def sanitize_response(text: str) -> str
 dangerous_tools_allowlist: list[str]  # список разрешённых опасных tools
 ```
 
-Если tool в списке опасных и не в allowlist — `ToolRegistry.execute` возвращает ошибку в observation.
+**Реализация:**
+- Список опасных tools определён в `app/tools/registry.py` как `_DANGEROUS_TOOLS = {"http_request", "read_file", "read_document"}`.
+- В `ToolRegistry.execute` после получения tool проверяется: если tool в `_DANGEROUS_TOOLS` и не в `ctx.settings.dangerous_tools_allowlist` — возвращается `ToolError("Tool '{name}' не разрешён в настройках безопасности")`.
+- По умолчанию `dangerous_tools_allowlist` пустой (все опасные tools разрешены для MVP).
+- Обычные tools не проверяются по allowlist.
 
 См. задачу 6.1 спринта 05.
 

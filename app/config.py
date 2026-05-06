@@ -95,6 +95,11 @@ class Settings(BaseSettings):
         default_factory=lambda: ["duckduckgo"]
     )
 
+    # --- Security ---
+    dangerous_tools_allowlist: Annotated[list[str], NoDecode] = Field(
+        default_factory=list
+    )
+
     @field_validator("ollama_available_models", mode="before")
     @classmethod
     def _parse_models_csv(cls, v):
