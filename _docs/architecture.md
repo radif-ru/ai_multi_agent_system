@@ -213,6 +213,11 @@ class Executor:
 
 Адаптер **не знает** про executor / tools / memory напрямую — только про `core.handle_user_task`, `ConversationStore`, `UserSettingsRegistry`, `Archiver`, `UserRepository` (для получения пользователя через `get_or_create`).
 
+### 3.14 Безопасность (`app/security/`)
+
+- `input_sanitizer.py`: функция `sanitize_user_input` для защиты от prompt injection. Детектирует подозрительные паттерны (ignore instructions, repeat system prompt и т.д.) и возвращает очищенный текст или текст с предупреждением.
+- Интегрирован в Telegram-хендлеры и консольный адаптер перед вызовом `core.handle_user_task`. См. `_docs/security.md`.
+
 ## 4. Поток обработки текстового сообщения (без команды)
 
 1. aiogram получает `Message` через polling.

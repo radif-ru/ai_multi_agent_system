@@ -30,6 +30,7 @@ from app.adapters.telegram.files import FileTooLargeError, download_telegram_fil
 from app.adapters.telegram.utils import format_for_telegram
 from app.core.events import MessageReceived, ResponseGenerated
 from app.core.orchestrator import handle_user_task
+from app.security import sanitize_user_input
 from app.services.llm import LLMBadResponse, LLMTimeout, LLMUnavailable
 from app.services.transcribe import (
     Transcriber,
@@ -151,9 +152,12 @@ def build_text_handler(
 
         model = user_settings.get_model(user_id)
 
+        # Санитайзинг пользовательского ввода
+        sanitized_text = sanitize_user_input(text, user_id=user_id, mode="warn")
+
         try:
             reply = await handle_user_task(
-                text,
+                sanitized_text,
                 user_id=user_id,
                 chat_id=chat_id,
                 conversations=conversations,
@@ -268,9 +272,12 @@ async def handle_document(
     conversations.save_file_context(user_id, message.message_id, "document", goal)
     model = user_settings.get_model(user_id)
 
+    # Санитайзинг пользовательского ввода
+    sanitized_goal = sanitize_user_input(goal, user_id=user_id, mode="warn")
+
     try:
         reply = await handle_user_task(
-            goal,
+            sanitized_goal,
             user_id=user_id,
             chat_id=chat_id,
             conversations=conversations,
@@ -409,9 +416,12 @@ async def handle_voice(
     conversations.save_file_context(user_id, message.message_id, "voice", goal)
     model = user_settings.get_model(user_id)
 
+    # Санитайзинг пользовательского ввода
+    sanitized_goal = sanitize_user_input(goal, user_id=user_id, mode="warn")
+
     try:
         reply = await handle_user_task(
-            goal,
+            sanitized_goal,
             user_id=user_id,
             chat_id=chat_id,
             conversations=conversations,
@@ -559,9 +569,12 @@ async def handle_photo(
     conversations.save_file_context(user_id, message.message_id, "image", goal)
     model = user_settings.get_model(user_id)
 
+    # Санитайзинг пользовательского ввода
+    sanitized_goal = sanitize_user_input(goal, user_id=user_id, mode="warn")
+
     try:
         reply = await handle_user_task(
-            goal,
+            sanitized_goal,
             user_id=user_id,
             chat_id=chat_id,
             conversations=conversations,
