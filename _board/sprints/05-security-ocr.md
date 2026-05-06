@@ -296,7 +296,7 @@ Tool по аналогии с `DescribeImageTool`:
 
 ### Задача 6.1. Добавить allowlist для опасных tools
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** —
@@ -313,12 +313,12 @@ Tool по аналогии с `DescribeImageTool`:
 
 #### Definition of Done
 
-- [ ] `dangerous_tools_allowlist` добавлен в `Settings`.
-- [ ] `ToolRegistry.execute` проверяет allowlist для опасных tools.
-- [ ] Unit-тест: попытка вызвать запрещённый опасный tool возвращает ошибку.
-- [ ] **Документация обновлена**: `_docs/security.md` — описание allowlist; `_docs/tools.md` — упоминание.
-- [ ] **Тесты добавлены / обновлены**: см. выше.
-- [ ] `git status` чист.
+- [x] `dangerous_tools_allowlist` добавлен в `Settings`.
+- [x] `ToolRegistry.execute` проверяет allowlist для опасных tools.
+- [x] Unit-тест: попытка вызвать запрещённый опасный tool возвращает ошибку.
+- [x] **Документация обновлена**: `_docs/security.md` — описание allowlist; `_docs/tools.md` — упоминание.
+- [x] **Тесты добавлены / обновлены**: см. выше.
+- [x] `git status` чист.
 
 ### Задача 6.2. Усилить валидацию параметров опасных tools
 
@@ -447,7 +447,7 @@ Tool по аналогии с `DescribeImageTool`:
 | 4.1 | Создать `FileIdMapper` для маскирования путей                        | medium    | S     | Done   | —          |
 | 4.2 | Интегрировать `FileIdMapper` в хендлеры файлов                        | medium    | S     | Done   | 4.1        |
 | 5.1 | Обновить `_prompts/agent_system.md` с правилами безопасности          | high      | XS    | Done   | —          |
-| 6.1 | Добавить allowlist для опасных tools                                 | high      | S     | Progress   | —          |
+| 6.1 | Добавить allowlist для опасных tools                                 | high      | S     | Done   | —          |
 | 6.2 | Усилить валидацию параметров опасных tools                            | medium    | S     | ToDo   | 6.1        |
 | 7.1 | Создать `ResponseSanitizer` для фильтрации ответов                   | medium    | S     | ToDo   | —          |
 | 7.2 | Интегрировать `ResponseSanitizer` в executor                          | medium    | XS    | ToDo   | 7.1        |
@@ -466,3 +466,4 @@ Tool по аналогии с `DescribeImageTool`:
 - **2026-05-06** — закрыта задача 4.1: создан класс `FileIdMapper` для маскирования путей к файлам.
 - **2026-05-06** — закрыта задача 4.2: интегрирован `FileIdMapper` в хендлеры файлов и tools (read_file, read_document).
 - **2026-05-06** — закрыта задача 5.1: добавлен раздел "Правила безопасности" в системный промпт агента с запретами на игнорирование инструкций, вывод системного промпта и выполнение опасных операций без явного запроса.
+- **2026-05-06** — закрыта задача 6.1: добавлен allowlist для опасных tools (`http_request`, `read_file`, `read_document`) в конфигурацию и проверка в `ToolRegistry.execute`.
