@@ -29,7 +29,8 @@ def tool(tmp_dir: Path) -> ReadDocumentTool:
         tmp_files_dir=tmp_dir,
         max_document_chars=50000,
         max_images=20,
-        ocr_enabled=False
+        ocr_enabled=False,
+        ocr_min_text_threshold=100,
     )
 
 

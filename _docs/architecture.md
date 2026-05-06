@@ -105,6 +105,7 @@ Telegram-адаптер принимает текст, оборачивает е
 - **Временные файлы**: `TMP_BASE_DIR` (default `data/tmp`). Для каждого пользователя создаётся отдельный подкаталог по `user_id`.
 - **Whisper (STT)**: `WHISPER_MODEL` (default `base`), `WHISPER_LANGUAGE` (default `ru`).
 - **Vision**: `VISION_MODEL` (default `gemma3:4b`). См. `_docs/vision-models.md` — сравнение лёгких моделей для локального запуска.
+- **OCR**: `OCR_DEFAULT_LANG` (default `rus+eng`), `OCR_MIN_TEXT_THRESHOLD` (default `100`). OCR делегируется сервису `app/services/ocr.py`.
 
 Валидация: `OLLAMA_DEFAULT_MODEL ∈ OLLAMA_AVAILABLE_MODELS`, `HISTORY_SUMMARY_THRESHOLD ≤ HISTORY_MAX_MESSAGES`, оба `> 0`, `EMBEDDING_DIMENSIONS > 0`, путь `AGENT_SYSTEM_PROMPT_PATH` существует.
 
