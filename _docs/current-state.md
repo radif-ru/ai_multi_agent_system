@@ -66,6 +66,13 @@
   - `summarizer_subscriber.py` — подписчик on_response_generated_summarize для in-session суммаризации.
   - `tmp_cleanup.py` — подписчик on_conversation_archived_cleanup для очистки временных изображений.
 
+### 1.6 Безопасность
+
+- **InputSanitizer** — `app/security/input_sanitizer.py` — функция `sanitize_user_input` для защиты от prompt injection. Детектирует подозрительные паттерны (ignore instructions, repeat system prompt и т.д.) и возвращает очищенный текст или текст с предупреждением. Интегрирован в Telegram-хендлеры и консольный адаптер перед вызовом `core.handle_user_task`.
+- **FileIdMapper** — `app/security/file_id_mapper.py` — класс для маскирования путей к файлам во избежание data leakage. Генерирует временные ID для файлов и умеет восстанавливать путь по ID. Интегрирован в хендлеры файлов и tools (read_file, read_document).
+- **ResponseSanitizer** — `app/security/response_sanitizer.py` — функция `sanitize_response` для фильтрации системной информации в ответах модели. Маскирует пути к файлам, конфигурационные ключи и фрагменты системного промпта. Интегрирован в executor для фильтрации `final_answer` перед возвращением пользователю.
+- **Защита tools** — allowlist для опасных tools (http_request, read_file, read_document) в конфигурации и дополнительная валидация параметров (запрет на системные пути, path traversal).
+
 ## 2. Известные проблемы и легаси
 
 > Пусто на момент закрытия Спринта 00. Записи появляются по мере обнаружения нюансов в Спринтах 01+.

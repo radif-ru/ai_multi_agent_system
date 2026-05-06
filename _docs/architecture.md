@@ -61,6 +61,8 @@ Telegram-адаптер принимает текст, оборачивает е
 - UserRepository — хранилище пользователей с get_or_create
 - ConversationStore — in-memory история диалогов
 - SemanticMemory — долгосрочная семантическая память (sqlite-vec)
+- Security — модуль безопасности (InputSanitizer, FileIdMapper, ResponseSanitizer)
+- OcrService — сервис OCR для распознавания текста с изображений
 ```
 
 Обратный путь: финальный ответ Executor → Core → Telegram-адаптер → `bot.send_message` → пользователь. Ошибка любого слоя → понятное сообщение пользователю + запись в лог.
