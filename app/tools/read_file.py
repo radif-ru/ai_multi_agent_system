@@ -9,7 +9,7 @@ import asyncio
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from app.tools.base import MAX_TOOL_OUTPUT_CHARS, Tool, ToolContext, truncate_output
+from app.tools.base import Tool, ToolContext, truncate_output
 from app.tools.errors import ToolError
 
 DEFAULT_MAX_FILE_BYTES: int = 1024 * 1024  # 1 MiB
@@ -32,7 +32,7 @@ class ReadFileTool(Tool):
         allowed_dirs: Iterable[str | Path] | None = None,
         *,
         max_bytes: int = DEFAULT_MAX_FILE_BYTES,
-        max_output_chars: int = MAX_TOOL_OUTPUT_CHARS,
+        max_output_chars: int = 50000,
     ) -> None:
         if allowed_dirs is None:
             allowed_dirs = [Path("data")]

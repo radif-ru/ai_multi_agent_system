@@ -7,6 +7,7 @@ ConsoleAdapter — REPL-цикл, который читает ввод поль�
 
 from __future__ import annotations
 
+import inspect
 import re
 import sys
 from typing import TYPE_CHECKING, Any
@@ -89,6 +90,8 @@ class ConsoleAdapter:
         conversations: Any,
         archiver: Any,
         core_handle_user_task: Any,
+        users: Any,
+        event_bus: Any = None,
     ) -> None:
         """Инициализировать консольный адаптер.
 
@@ -103,6 +106,8 @@ class ConsoleAdapter:
             conversations: хранилище диалогов
             archiver: архиватор сессий
             core_handle_user_task: функция core.handle_user_task для текстовых сообщений
+            users: репозиторий пользователей
+            event_bus: событийная шина
         """
         self.user_id = user_id
         self.chat_id = chat_id
@@ -114,14 +119,25 @@ class ConsoleAdapter:
         self.conversations = conversations
         self.archiver = archiver
         self.core_handle_user_task = core_handle_user_task
+        self.users = users
+        self.event_bus = event_bus
 
         from app.commands import CommandRegistry
 
         self.command_registry = CommandRegistry()
 
-    def _build_context(self) -> "CommandContext":
+    async def _build_context(self) -> "CommandContext":
         """Построить контекст команды."""
         from app.commands.context import CommandContext
+
+        # Получаем user для публикации событий
+        user_obj = None
+        if self.users is not None:
+            user_obj, _ = await self.users.get_or_create(
+                channel="console",
+                external_id=str(self.user_id),
+                display_name="Console User",
+            )
 
         return CommandContext(
             user_id=self.user_id,
@@ -133,6 +149,9 @@ class ConsoleAdapter:
             skills=self.skills,
             conversations=self.conversations,
             archiver=self.archiver,
+            users=self.users,
+            user=user_obj,
+            channel="console",
         )
 
     async def run(self) -> None:
@@ -172,7 +191,7 @@ class ConsoleAdapter:
         command_name = parts[0][1:]  # убираем слеш
         args = parts[1] if len(parts) > 1 else ""
 
-        ctx = self._build_context()
+        ctx = await self._build_context()
 
         try:
             # Для команды /new передаём callback для прогресса
@@ -192,10 +211,18 @@ class ConsoleAdapter:
 
     async def _handle_text(self, text: str) -> None:
         """Обработать текстовое сообщение."""
-        ctx = self._build_context()
+        ctx = await self._build_context()
+        user = ctx.user
 
-        # Дописываем сообщение в историю
-        self.conversations.add_user_message(self.user_id, text)
+        # Публикуем MessageReceived
+        if self.event_bus and user:
+            from app.core.events import MessageReceived
+            await self.event_bus.publish(MessageReceived(
+                user=user,
+                text=text,
+                conversation_id=str(self.chat_id),
+                channel="console"
+            ))
 
         try:
             response = await self.core_handle_user_task(
@@ -206,18 +233,18 @@ class ConsoleAdapter:
                 model=self.user_settings.get_model(self.user_id),
                 system_prompt=self.user_settings.get_prompt(self.user_id),
             )
+
+            # Публикуем ResponseGenerated
+            if self.event_bus and user:
+                from app.core.events import ResponseGenerated
+                await self.event_bus.publish(ResponseGenerated(
+                    user=user,
+                    text=response,
+                    conversation_id=str(self.chat_id),
+                    channel="console"
+                ))
+
             print(format_console_output(response))
-
-            # Дописываем ответ ассистента в историю
-            self.conversations.add_assistant_message(self.user_id, response)
-
-            # Условная in-session суммаризация
-            history = self.conversations.get_history(self.user_id)
-            if len(history) >= self.settings.history_summary_threshold:
-                from app.services.summarizer import Summarizer
-
-                summarizer = Summarizer(llm=None)  # будет заполнен через DI
-                # TODO: реализовать суммаризацию для консоли
         except Exception as exc:  # noqa: BLE001
             # Выводим детали ошибки для отладки
             print(f"{Colors.RED}Ошибка: {exc}{Colors.RESET}")

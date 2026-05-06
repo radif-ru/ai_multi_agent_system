@@ -10,7 +10,7 @@ from typing import Any, Mapping
 
 import pytest
 
-from app.tools.base import MAX_TOOL_OUTPUT_CHARS, Tool
+from app.tools.base import Tool
 from app.tools.errors import ArgsValidationError, ToolError, ToolNotFound
 from app.tools.registry import ToolRegistry
 
@@ -97,10 +97,11 @@ async def test_execute_tool_error_propagates_and_logs_error(ctx, caplog):
 
 
 async def test_execute_truncates_output(ctx):
-    long = "x" * (MAX_TOOL_OUTPUT_CHARS + 100)
-    reg = ToolRegistry([_EchoTool(output=long)])
+    limit = 50000
+    long = "x" * (limit + 100)
+    reg = ToolRegistry([_EchoTool(output=long)], max_output_chars=limit)
     out = await reg.execute("echo", {"text": "ignored"}, ctx)
-    assert len(out) == MAX_TOOL_OUTPUT_CHARS
+    assert len(out) == limit
     assert out.endswith("[truncated]")
 
 

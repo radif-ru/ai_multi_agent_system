@@ -11,7 +11,7 @@
 
 ## 1. Что работает
 
-> На момент закрытия Спринта 03 (Баги и консольный режим) реализованы все задачи Этапов 1–5 Спринта 02 и Этапа 4 Спринта 03: агентный цикл, память, файловые входы (Document, Voice, Photo), авто-подгрузка архива, полное архивирование сессии, изоляция файлов по пользователям, сохранение контекста файлов для reply, инструмент weather, консольный адаптер.
+> На момент закрытия Спринта 04 (События и пользователи) реализованы все задачи спринта: модуль Users с UserRepository, событийная шина EventBus с событиями UserCreated, MessageReceived, ResponseGenerated, ConversationArchived, подписчики для записи в ConversationStore, in-session суммаризации и очистки tmp-изображений. Также сохранены все задачи Этапов 1–5 Спринта 02 и Этапа 4 Спринта 03: агентный цикл, память, файловые входы (Document, Voice, Photo), авто-подгрузка архива, полное архивирование сессии, изоляция файлов по пользователям, сохранение контекста файлов для reply, инструмент weather, консольный адаптер.
 
 Шаблон записи (для будущих спринтов):
 
@@ -39,7 +39,7 @@
 - **Handler Photo** — `app/adapters/telegram/handlers/messages.py` — обрабатывает `Photo` сообщения. Скачивает файл, описывает через `Vision` (Ollama vision API), передаёт описание в агентный цикл. Файл не удаляется сразу — живёт до `/new` или TTL cleanup.
 - **Transcriber** — `app/services/transcribe.py` — обёртка над `faster-whisper` для транскрипции речи. Опциональная зависимость.
 - **Vision** — `app/services/vision.py` — обёртка над `OllamaClient.chat` с поддержкой параметра `images` для описания изображений.
-- **ReadDocumentTool** — `app/tools/read_document.py` — tool для чтения документов из временной директории (PDF/TXT/MD). Защита от path traversal, усечение вывода. OCR (опционально): если включён `READ_DOCUMENT_OCR_ENABLED` и установлен tesseract-ocr, для PDF с малым количеством текста (< 100 символов) извлекается текст из изображений через pytesseract. OCR текст кешируется в файл `.ocr.txt` рядом с PDF. Поддержка кириллицы через `tesseract-ocr-rus`. Установка: `sudo apt-get install tesseract-ocr tesseract-ocr-rus`.
+- **ReadDocumentTool** — `app/tools/read_document.py` — tool для чтения документов из временной директории (PDF/TXT/MD/JPG/PNG). Защита от path traversal, усечение вывода. OCR (опционально): если включён `DOCUMENT_OCR_ENABLED` и установлен tesseract-ocr, для PDF с малым количеством текста (< 100 символов) и для отдельных изображений извлекается текст через pytesseract. OCR текст кешируется в файл `.ocr.txt` рядом с исходным файлом. Поддержка кириллицы через `tesseract-ocr-rus`. Установка: `sudo apt-get install tesseract-ocr tesseract-ocr-rus`.
 - **DescribeImageTool** — `app/tools/describe_image.py` — tool для повторного описания изображений по пути к файлу. Используется для уточнения деталей после первичного описания.
 - **WeatherTool** — `app/tools/weather.py` — tool для получения погоды через wttr.in с fallback на WebSearchTool при недоступности сервиса.
 
@@ -50,6 +50,20 @@
   - **Messages** — `app/adapters/telegram/handlers/messages.py` — обработчик текста и файлов, вызов `core.handle_user_task`, поддержка reply на файлы (фото, документы, голосовые).
   - **Errors** — `app/adapters/telegram/handlers/errors.py` — глобальный error handler.
 - **Консольный адаптер** — `app/adapters/console/adapter.py` — REPL-цикл с теми же командами, что и Telegram-адаптер (кроме файловых операций). Точка входа — `app/console_main.py`. См. `_docs/console-adapter.md`.
+
+### 1.5 Пользователи и события
+
+- **UserRepository** — `app/users/repository.py` — хранилище пользователей с методом `get_or_create(channel, external_id, display_name)`. Публикует событие `UserCreated` при создании нового пользователя. Интегрирован в точки входа (main.py, console_main.py) и хендлеры.
+- **EventBus** — `app/core/events.py` — событийная шина для pub/sub между компонентами. Поддерживает регистрацию подписчиков и публикацию событий с гарантией порядка вызова (FIFO регистрации).
+- **События спринта 04:**
+  - `UserCreated` — публикуется при создании нового пользователя.
+  - `MessageReceived` — публикуется хендлерами при получении сообщения пользователя. Подписчики: conversation_subscriber.on_message_received (запись в ConversationStore).
+  - `ResponseGenerated` — публикуется хендлерами после генерации ответа LLM. Подписчики: conversation_subscriber.on_response_generated (запись в ConversationStore), summarizer_subscriber.on_response_generated_summarize (in-session суммаризация).
+  - `ConversationArchived` — публикуется Archiver при успешном архивировании сессии. Подписчики: on_conversation_archived_cleanup (очистка tmp-изображений).
+- **Подписчики:**
+  - `conversation_subscriber.py` — подписчики on_message_received и on_response_generated для записи в ConversationStore.
+  - `summarizer_subscriber.py` — подписчик on_response_generated_summarize для in-session суммаризации.
+  - `tmp_cleanup.py` — подписчик on_conversation_archived_cleanup для очистки временных изображений.
 
 ## 2. Известные проблемы и легаси
 
@@ -91,6 +105,7 @@
 - **Обработка длинных ответов**: handler `messages` сам режет ответ через `split_long_message`. Telegram обрежет всё, что > 4096, отдельной ошибкой `BadRequest` — это исключено резкой на стороне бота.
 - **`parse_mode=ParseMode.HTML`** установлен по умолчанию (`DefaultBotProperties` в `main.py`). Все хендлеры должны экранировать пользовательский ввод (`html.escape`) перед вставкой.
 - **Автоматическая суммаризация контекста**: Executor проверяет размер контекста перед отправкой в LLM. Если превышает `AGENT_MAX_CONTEXT_CHARS` (default 8000), история суммаризируется через `Summarizer` для предотвращения пустых ответов при больших контекстах (например, при обработке PDF с OCR текстом).
+- **Порядок подписчиков EventBus**: подписчики вызываются последовательно в порядке регистрации (FIFO). Для события `ResponseGenerated` важно, чтобы `conversation_subscriber.on_response_generated` регистрировался первым, чтобы к моменту суммаризации ответ уже был записан в ConversationStore. Это гарантируется порядком регистрации в точках входа (main.py, console_main.py).
 
 ## 4. Что точно не сломано
 

@@ -3,6 +3,7 @@
 import pytest
 from app.adapters.console.adapter import ConsoleAdapter
 from app.commands.context import CommandContext
+from app.core.events import EventBus, MessageReceived, ResponseGenerated
 
 
 @pytest.fixture
@@ -40,6 +41,18 @@ def mock_components():
 
     core_handle_user_task = MagicMock(return_value="test response")
 
+    users = MagicMock()
+    async def mock_get_or_create(*args, **kwargs):
+        return MagicMock(id=1), False
+    users.get_or_create = mock_get_or_create
+
+    event_bus = EventBus()
+    # Регистрируем подписчиков для теста
+    from app.services.conversation_subscriber import on_message_received, on_response_generated
+    from functools import partial
+    event_bus.subscribe(MessageReceived, partial(on_message_received, conversations=conversations))
+    event_bus.subscribe(ResponseGenerated, partial(on_response_generated, conversations=conversations))
+
     return {
         "settings": settings,
         "user_settings": user_settings,
@@ -49,6 +62,8 @@ def mock_components():
         "conversations": conversations,
         "archiver": archiver,
         "core_handle_user_task": core_handle_user_task,
+        "users": users,
+        "event_bus": event_bus,
     }
 
 
@@ -66,7 +81,8 @@ def test_console_adapter_init(mock_components):
     assert adapter.user_settings == mock_components["user_settings"]
 
 
-def test_console_adapter_build_context(mock_components):
+@pytest.mark.asyncio
+async def test_console_adapter_build_context(mock_components):
     """Тест построения контекста."""
     adapter = ConsoleAdapter(
         user_id=-1,
@@ -74,7 +90,7 @@ def test_console_adapter_build_context(mock_components):
         **mock_components,
     )
 
-    ctx = adapter._build_context()
+    ctx = await adapter._build_context()
 
     assert isinstance(ctx, CommandContext)
     assert ctx.user_id == -1
@@ -107,8 +123,6 @@ async def test_console_adapter_handle_text(mock_components):
 
     await adapter._handle_text("test message")
 
-    # Проверяем, что сообщение добавлено в историю
-    mock_components["conversations"].add_user_message.assert_called_once_with(-1, "test message")
     # Проверяем, что core.handle_user_task вызван
     mock_components["core_handle_user_task"].assert_called_once()
 

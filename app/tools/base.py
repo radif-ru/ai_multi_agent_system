@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Protocol, runtime_checkable
 
-MAX_TOOL_OUTPUT_CHARS: int = 4000
 TRUNCATION_SUFFIX: str = "... [truncated]"
 
 
@@ -36,7 +35,7 @@ class Tool(Protocol):
     async def run(self, args: Mapping[str, Any], ctx: ToolContext) -> str: ...
 
 
-def truncate_output(text: str, limit: int = MAX_TOOL_OUTPUT_CHARS) -> str:
+def truncate_output(text: str, limit: int = 50000) -> str:
     """Усечение строки до `limit` символов с маркером."""
 
     if len(text) <= limit:

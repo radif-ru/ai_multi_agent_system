@@ -48,15 +48,18 @@ class ConversationStore:
 
 ### 2.3 In-session суммаризация (порог)
 
-Срабатывает в обработчике сообщения после ответа LLM:
+Триггерится подписчиком на событие `ResponseGenerated` после успешной генерации ответа LLM (см. `events.md`):
 
 ```python
-if len(store.get_history(user_id)) >= settings.history_summary_threshold:
-    summary = await summarizer.summarize(history[:-2], model=...)
-    store.replace_with_summary(user_id, summary, kept_tail=2)
+# В app/services/summarizer_subscriber.py
+async def on_response_generated_summarize(event: ResponseGenerated, ...):
+    history = conversations.get_history(user_id)
+    if len(history) >= settings.history_summary_threshold:
+        summary = await summarizer.summarize(history[:-2], model=...)
+        conversations.replace_with_summary(user_id, summary, kept_tail=2)
 ```
 
-Падение суммаризации → `WARNING summarize failed ...`, история остаётся. См. `architecture.md` §4.
+Подписчик регистрируется в `main.py` и `console_main.py` **после** подписчика записи в `ConversationStore`, чтобы к моменту суммаризации ответ ассистента уже был записан в стор. Падение суммаризации → `WARNING in-session суммаризация не удалась ...`, история остаётся, другие подписчики не страдают. См. `architecture.md` §4 и `events.md`.
 
 ### 2.4 Подгрузка истории в LLM
 
@@ -68,10 +71,10 @@ if len(store.get_history(user_id)) >= settings.history_summary_threshold:
 
 Порядок и инвариант:
 
-1. Адаптер (Telegram-handler `messages.py`) вызывает `ConversationStore.add_user_message(user_id, text)` **до** `core.handle_user_task` — то есть текущий запрос уже лежит последним элементом в `history`.
+1. Адаптер (Telegram-handler `messages.py`) публикует событие `MessageReceived` **до** `core.handle_user_task` — подписчик события вызывает `ConversationStore.add_user_message(user_id, text)`, то есть текущий запрос уже лежит последним элементом в `history`.
 2. `core.handle_user_task` достаёт `history = conversations.get_history(user_id)` и передаёт его в `Executor.run` целиком.
 3. `Executor.run` собирает `messages = [system] + history`. Если последний элемент `history` уже совпадает с `{"role": "user", "content": goal}` — дубликат не добавляется; иначе (например, тестовый сценарий без адаптера) `goal` дописывается отдельным `user`-сообщением.
-4. Внутрицикловые `assistant`/`Observation`-пары копятся в локальном списке `messages` Executor'а и **не** пишутся в `ConversationStore`. В долгую краткосрочную историю попадает только финальный ответ ассистента — его дописывает адаптер после возврата `Executor.run` (`add_assistant_message`).
+4. Внутрицикловые `assistant`/`Observation`-пары копятся в локальном списке `messages` Executor'а и **не** пишутся в `ConversationStore`. В долгую краткосрочную историю попадает только финальный ответ ассистента — его дописывает подписчик события `ResponseGenerated` после возврата `Executor.run` (вызывает `add_assistant_message`).
 
 ```
 ConversationStore                       Executor.run
@@ -81,7 +84,7 @@ ConversationStore                       Executor.run
                                                    user: «Как меня зовут?»]
        ▲
        │
-       └── add_assistant_message(«Тебя зовут Радиф») ◄── финальный ответ Executor.run
+       └── подписчик ResponseGenerated вызывает add_assistant_message(«Тебя зовут Радиф») ◄── финальный ответ Executor.run
 ```
 
 Лимит длины истории защищён существующим `HISTORY_MAX_MESSAGES` (FIFO в `ConversationStore`) и `HISTORY_SUMMARY_THRESHOLD` (in-session суммаризация — см. §2.3).
@@ -94,7 +97,7 @@ ConversationStore                       Executor.run
 
 Инварианты:
 
-1. `add_user_message(user_id, text)` и `add_assistant_message(user_id, text)` дублируют запись: одновременно в `_messages` (как раньше) и в `_session_log`.
+1. `add_user_message(user_id, text)` и `add_assistant_message(user_id, text)` дублируют запись: одновременно в `_messages` (как раньше) и в `_session_log`. Эти методы вызываются подписчиками событий `MessageReceived` и `ResponseGenerated` соответственно.
 2. `add_system_message` и `replace_with_summary` — **не трогают** `_session_log`. Это оптимизации контекста для LLM, они не относятся к исходному диалогу.
 3. `get_session_log(user_id)` возвращает независимую копию (внешние мутации не влияют на стор).
 4. `clear(user_id)` и `rotate_conversation_id(user_id)` **обнуляют** лог пользователя — новая сессия начинается с пустого лога.
@@ -149,6 +152,8 @@ ConversationStore                       Executor.run
 Реализация — `app/services/archiver.py::Archiver`.
 
 На вход `Archiver.archive(history, ...)` подаётся именно **полный лог сессии** (`ConversationStore.get_session_log(user_id)`, см. §2.5), а не in-session `get_history()` — иначе суммаризатор увидит уже усечённую `replace_with_summary` верхушку и ранние факты будут потеряны.
+
+После успешного завершения архивирования `Archiver` публикует событие `ConversationArchived` (см. `events.md`), на которое могут подписываться побочные эффекты (например, очистка временных файлов). При неуспехе архивирования событие не публикуется.
 
 ```
 история сессии        +- Summarizer.summarize ----------+
@@ -248,7 +253,7 @@ LIMIT ?;
 
 Алгоритм:
 
-1. `core.handle_user_task` обнаруживает, что после `add_user_message` история содержит ровно один элемент (новая или сброшенная сессия).
+1. `core.handle_user_task` обнаруживает, что после публикации события `MessageReceived` (подписчик которого вызывает `add_user_message`) история содержит ровно один элемент (новая или сброшенная сессия).
 2. Если `Settings.session_bootstrap_enabled` и `SemanticMemory` доступна — вызывает `OllamaClient.embed(text, model=embedding_model)`.
 3. `SemanticMemory.search(embedding, top_k=Settings.session_bootstrap_top_k, scope_user_id=user_id)` возвращает релевантные чанки.
 4. Если найденных чанков нет — авто-подгрузка пропускается (пустой архив, новый пользователь).

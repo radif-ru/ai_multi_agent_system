@@ -25,7 +25,12 @@ def tmp_dir(tmp_path: Path) -> Path:
 @pytest.fixture
 def tool(tmp_dir: Path) -> ReadDocumentTool:
     """Экземпляр tool для тестов."""
-    return ReadDocumentTool(tmp_files_dir=tmp_dir)
+    return ReadDocumentTool(
+        tmp_files_dir=tmp_dir,
+        max_document_chars=50000,
+        max_images=20,
+        ocr_enabled=False
+    )
 
 
 @pytest.mark.asyncio

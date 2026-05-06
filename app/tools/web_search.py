@@ -9,7 +9,7 @@ import asyncio
 import json
 from typing import Any, Mapping
 
-from app.tools.base import MAX_TOOL_OUTPUT_CHARS, Tool, ToolContext, truncate_output
+from app.tools.base import Tool, ToolContext, truncate_output
 from app.tools.errors import ToolError
 
 DEFAULT_TOP_K: int = 5
@@ -34,7 +34,7 @@ class WebSearchTool(Tool):
         self,
         *,
         default_top_k: int = DEFAULT_TOP_K,
-        max_output_chars: int = MAX_TOOL_OUTPUT_CHARS,
+        max_output_chars: int = 50000,
     ) -> None:
         self._default_top_k = default_top_k
         self._max_output_chars = max_output_chars

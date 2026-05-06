@@ -8,11 +8,15 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import Awaitable, Callable, Sequence
+from typing import TYPE_CHECKING, Awaitable, Callable, Sequence
 
 from app.services.llm import OllamaClient
 from app.services.memory import SemanticMemory
 from app.services.summarizer import Summarizer
+
+if TYPE_CHECKING:
+    from app.core.events import EventBus
+    from app.users.models import User
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +53,7 @@ class Archiver:
         chunk_size: int,
         chunk_overlap: int,
         concurrency_limit: int = 5,
+        event_bus: "EventBus | None" = None,
     ) -> None:
         self._llm = llm
         self._summarizer = summarizer
@@ -58,6 +63,7 @@ class Archiver:
         self._chunk_size = chunk_size
         self._chunk_overlap = chunk_overlap
         self._concurrency_limit = concurrency_limit
+        self._event_bus = event_bus
 
     async def archive(
         self,
@@ -67,6 +73,8 @@ class Archiver:
         user_id: int,
         chat_id: int,
         progress_callback: Callable[[str], Awaitable[None] | None] | None = None,
+        user: "User | None" = None,
+        channel: str | None = None,
     ) -> int:
         """Засуммаризовать историю и записать чанки в долгосрочную память.
 
@@ -172,4 +180,18 @@ class Archiver:
             len(inserted_ids),
             int(total_dur * 1000),
         )
+
+        # Публикуем событие ConversationArchived при успешном архивировании
+        if self._event_bus is not None and user is not None and channel is not None:
+            from app.core.events import ConversationArchived
+
+            await self._event_bus.publish(
+                ConversationArchived(
+                    user=user,
+                    conversation_id=conversation_id,
+                    chunks=len(inserted_ids),
+                    channel=channel,
+                )
+            )
+
         return len(inserted_ids)

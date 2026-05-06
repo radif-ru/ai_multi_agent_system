@@ -73,9 +73,11 @@ class Settings(BaseSettings):
 
     # --- Temporary files ---
     tmp_base_dir: Path = Path("data/tmp")
-    read_document_max_extracted_images: int = 10
-    read_document_max_ocr_images: int = 20
-    read_document_ocr_enabled: bool = False
+    max_tool_output_chars: int = 50000
+    # Настройки для чтения документов
+    max_document_chars: int = 50000
+    document_max_images: int = 20
+    document_ocr_enabled: bool = False
 
     # --- Whisper (speech-to-text) ---
     whisper_model: str = "base"

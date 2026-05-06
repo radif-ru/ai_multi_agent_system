@@ -60,6 +60,8 @@ class _FakeArchiver:
         user_id: int,
         chat_id: int,
         progress_callback: Any | None = None,
+        user: Any = None,
+        channel: str | None = None,
     ) -> int:
         self.calls.append(
             {
@@ -67,6 +69,8 @@ class _FakeArchiver:
                 "conversation_id": conversation_id,
                 "user_id": user_id,
                 "chat_id": chat_id,
+                "user": user,
+                "channel": channel,
             }
         )
         if self.error is not None:

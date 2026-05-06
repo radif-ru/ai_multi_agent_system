@@ -21,17 +21,17 @@ Telegram-адаптер принимает текст, оборачивает е
                 |   aiogram Bot        |<-----> |  ConversationStore         |
                 |   (Dispatcher,       | read/  |  (in-memory per-user       |
                 |    Router, Handlers) | write  |   history, FIFO + summary) |
-                +-----------+----------+        +----------------------------+
-                            |
-                            | task.create(goal, user_id, conversation_id)
-                            v
-                +----------------------+
-                |   Core / Orchestrator|        (в MVP — функция в app/core/orchestrator.py;
-                |   (routing only)     |         в будущем — мульти-процесс или мульти-агент)
-                +-----------+----------+
-                            |
-                            v
-                +----------------------+
+                +-----------+----------+        +------------+---------------+
+                            |                            ^
+                            | task.create(goal, user_id, conversation_id)     |
+                            v                            | events
+                +----------------------+        +----------------------------+
+                |   Core / Orchestrator|        |   EventBus                 |
+                |   (routing only)     |<------>|  (pub/sub)                 |
+                +-----------+----------+        +------------+---------------+
+                            |                            |
+                            v                            | user events
+                +----------------------+               |
                 |   Executor Agent     |  thought → action → observation → ...
                 |   (agent loop)       |
                 +-----+----------+-----+
@@ -55,6 +55,12 @@ Telegram-адаптер принимает текст, оборачивает е
         | qwen3.5:4b +   |
         | nomic-embed... |
         +----------------+
+
+Долгоживущие сервисы (инициализируются при старте):
+- EventBus — событийная шина для pub/sub между компонентами
+- UserRepository — хранилище пользователей с get_or_create
+- ConversationStore — in-memory история диалогов
+- SemanticMemory — долгосрочная семантическая память (sqlite-vec)
 ```
 
 Обратный путь: финальный ответ Executor → Core → Telegram-адаптер → `bot.send_message` → пользователь. Ошибка любого слоя → понятное сообщение пользователю + запись в лог.
@@ -78,8 +84,8 @@ Telegram-адаптер принимает текст, оборачивает е
 
 - Загружает конфигурацию (`Settings`).
 - Поднимает логирование.
-- Создаёт долгоживущие сервисы: `OllamaClient`, `ConversationStore`, `Summarizer`, `SemanticMemory`, `SkillRegistry`, `PromptLoader`, `ToolRegistry`, `Executor`.
-- Создаёт `Bot`, `Dispatcher`, прокидывает зависимости в `dispatcher["..."]` (DI aiogram 3).
+- Создаёт долгоживущие сервисы: `OllamaClient`, `ConversationStore`, `Summarizer`, `SemanticMemory`, `SkillRegistry`, `PromptLoader`, `ToolRegistry`, `Executor`, `UserRepository`.
+- Создаёт `Bot`, `Dispatcher`, прокидывает зависимости в `dispatcher["..."]` (DI aiogram 3), включая `UserRepository` как `dispatcher["users"]`.
 - Регистрирует роутеры адаптера (`commands`, `messages`, `errors`) и middleware (`LoggingMiddleware`).
 - Регистрирует команды в Telegram UI через `bot.set_my_commands(...)`.
 - Запускает polling, в `finally` корректно закрывает клиенты.
@@ -119,7 +125,7 @@ Telegram-адаптер принимает текст, оборачивает е
 
 ### 3.5 Краткосрочная память (`app/services/conversation.py`, `app/services/summarizer.py`)
 
-- **`ConversationStore`** — in-memory `user_id → list[{role, content}]` + `user_id → conversation_id`. API: `get_history`, `get_session_log`, `add_user_message`, `add_assistant_message`, `replace_with_summary(summary, kept_tail=2)`, `clear`, `current_conversation_id`, `rotate_conversation_id`. Жёсткий лимит `Settings.history_max_messages` (FIFO). `get_history` отдаёт **копию**. Внутри стора два буфера: rolling-`_messages` (с in-session compaction для LLM-контекста) и параллельный append-only `_session_log` (полный лог текущей сессии для `/new` → `Archiver`, страховка `Settings.session_log_max_messages`); `replace_with_summary` `_session_log` не трогает. См. `memory.md` §2.5.
+- **`ConversationStore`** — in-memory `user_id → list[{role, content}]` + `user_id → conversation_id`. API: `get_history`, `get_session_log`, `add_user_message`, `add_assistant_message`, `replace_with_summary(summary, kept_tail=2)`, `clear`, `current_conversation_id`, `rotate_conversation_id`. Жёсткий лимит `Settings.history_max_messages` (FIFO). `get_history` отдаёт **копию**. Внутри стора два буфера: rolling-`_messages` (с in-session compaction для LLM-контекста) и параллельный append-only `_session_log` (полный лог текущей сессии для `/new` → `Archiver`, страховка `Settings.session_log_max_messages`); `replace_with_summary` `_session_log` не трогает. См. `memory.md` §2.5. Примечание: методы `add_user_message` и `add_assistant_message` вызываются подписчиками событий `MessageReceived` и `ResponseGenerated`, а не напрямую из хендлеров.
 - **`Summarizer`** — обёртка над `OllamaClient.chat`, сжимает историю в краткое резюме (`Settings.summarization_prompt`). Используется в двух местах:
   1. **In-session** (когда `len(history) >= history_summary_threshold`) — заменяет старую часть истории резюме (`replace_with_summary`).
   2. **При архивировании** (`/new`) — суммирует всю сессию, дальше архиватор режет на чанки и пишет в `SemanticMemory`.
@@ -145,11 +151,16 @@ Telegram-адаптер принимает текст, оборачивает е
 - API: `list_descriptions() -> list[{name, description}]` (для инжекции в системный промпт), `get_body(name) -> str` (для tool `load_skill`).
 - Перезагрузка не требуется в MVP — скиллы читаются один раз при старте процесса. Hot-reload — кандидат на отдельный спринт.
 
-### 3.9 Prompts (`app/services/prompts.py`, `_prompts/`)
+### 3.9 Пользователи (`app/users/`)
+
+- **`User`** — dataclass с полями `id: int` (внутренний автоинкремент), `channel: str` ("telegram" или "console"), `external_id: str` (внешний идентификатор в канале), `display_name: str | None`, `created_at: datetime`.
+- **`UserRepository`** — in-memory репозиторий, единственная точка «получить или создать» пользователя по внешнему ключу. API: `async get_or_create(channel, external_id, display_name) -> tuple[User, bool]`, `async get(user_id) -> User | None`, `async get_by_external(channel, external_id) -> User | None`. Потокобезопасность через `asyncio.Lock`. В будущем будет использоваться для публикации события `UserCreated` и для идентификации пользователей в адаптерах.
+
+### 3.10 Prompts (`app/services/prompts.py`, `_prompts/`)
 
 - **`PromptLoader`** при старте процесса читает `AGENT_SYSTEM_PROMPT_PATH` (`_prompts/agent_system.md`) и `_prompts/summarizer.md`. Хранит их как строки. Plug-точки `{{TOOLS_DESCRIPTION}}` и `{{SKILLS_DESCRIPTION}}` подставляются в момент сборки промпта (при инициализации Executor) — см. `prompts.md` §3.
 
-### 3.10 Core (`app/core/orchestrator.py`)
+### 3.11 Core (`app/core/orchestrator.py`)
 
 В MVP — тонкая прослойка-функция `async def handle_user_task(text: str, *, user_id: int, chat_id: int, conversations, executor, model=None) -> str`, которая:
 
@@ -161,7 +172,7 @@ Telegram-адаптер принимает текст, оборачивает е
 
 В архитектурном смысле это **единственная точка входа от любого адаптера** (Telegram сейчас, web/MAX в будущем). Адаптер не знает про Executor напрямую.
 
-### 3.11 Executor (`app/agents/executor.py`)
+### 3.12 Executor (`app/agents/executor.py`)
 
 Реализует агентный цикл `thought → action → observation`. Контракт — в `agent-loop.md`. Кратко:
 
@@ -188,7 +199,7 @@ class Executor:
 - **Автоматическая суммаризация контекста:** перед отправкой в LLM проверяется размер контекста (суммарно). Если превышает `AGENT_MAX_CONTEXT_CHARS` (default 8000), история автоматически суммаризируется через `Summarizer`. Это предотвращает пустые ответы LLM при больших контекстах (например, при обработке PDF с OCR текстом).
 - **Логирование аргументов tools:** при вызове любого tool логируются все переданные аргументы для отладки.
 
-### 3.12 Telegram-адаптер (`app/adapters/telegram/`)
+### 3.13 Telegram-адаптер (`app/adapters/telegram/`)
 
 - `handlers/commands.py`: `/start`, `/help`, `/models`, `/model`, `/prompt`, `/new`, `/reset`.
 - `handlers/messages.py`: обработчик произвольного текста и файлов — вызывает `core.handle_user_task` и отдаёт результат. Поддерживает три типа файлов:
@@ -199,7 +210,7 @@ class Executor:
 - `middlewares/logging_mw.py`: логирует каждый апдейт.
 - `files.py`: утилита `download_telegram_file` для скачивания файлов из Telegram с проверкой размера и лимитов.
 
-Адаптер **не знает** про executor / tools / memory напрямую — только про `core.handle_user_task`, `ConversationStore`, `UserSettingsRegistry`, `Archiver`.
+Адаптер **не знает** про executor / tools / memory напрямую — только про `core.handle_user_task`, `ConversationStore`, `UserSettingsRegistry`, `Archiver`, `UserRepository` (для получения пользователя через `get_or_create`).
 
 ## 4. Поток обработки текстового сообщения (без команды)
 
@@ -210,16 +221,16 @@ class Executor:
    1. Проверяет длину ввода (`MAX_INPUT_LENGTH = 4000`); при превышении — подсказка и выход.
    2. **Reply-обработка:** если сообщение является ответом (`message.reply_to_message`), текст оригинального сообщения включается в контекст в формате `[В ответ на: <текст оригинала>]\n<текст ответа>`. Длинные оригиналы обрезаются до 500 символов. Это позволяет агенту понимать контекст ответа.
    3. Берёт `model` и `system_prompt` из `UserSettingsRegistry` (per-user override).
-   4. Дописывает сообщение пользователя в `ConversationStore`.
-   5. Запускает `bot.send_chat_action(ChatAction.TYPING)`.
-   6. Вызывает `core.handle_user_task(text, user_id=..., chat_id=...)`.
+   4. Получает пользователя через `UserRepository.get_or_create`.
+   5. Публикует событие `MessageReceived` через EventBus (подписчики записывают сообщение в ConversationStore).
+   6. Запускает `bot.send_chat_action(ChatAction.TYPING)`.
+   7. Вызывает `core.handle_user_task(text, user_id=..., chat_id=...)`.
 5. Core берёт `conversation_id` из `ConversationStore` и вызывает `Executor.run(...)`.
 6. Executor крутит цикл (см. §3.11) до финального ответа или лимита шагов.
 7. Core возвращает финальный текст в handler.
 8. Handler:
-   1. Дописывает ответ ассистента в `ConversationStore`.
-   2. **Условная in-session суммаризация**: если `len(history) >= history_summary_threshold`, вызывает `Summarizer.summarize(history[:-2])` и пишет результат через `replace_with_summary(..., kept_tail=2)`. Падение суммаризации → `WARNING`, ответ пользователю не страдает.
-   3. Отправляет ответ пользователю (`message.answer`), при необходимости разбивая на части > 4096 символов.
+   1. Публикует событие `ResponseGenerated` через EventBus (подписчики записывают ответ в ConversationStore и выполняют in-session суммаризацию).
+   2. Отправляет ответ пользователю (`message.answer`), при необходимости разбивая на части > 4096 символов.
 9. При ошибке любого слоя — человекочитаемое сообщение пользователю + запись в лог.
 
 ## 5. Поток `/new` (архивирование сессии)
@@ -236,6 +247,7 @@ class Executor:
    4. `SemanticMemory.insert(chunk, embedding, metadata)` — `metadata` включает `conversation_id`, `chat_id`, `chunk_index`.
       - Лог: `archive stage=database chunks=N dur_ms=N`
    5. **Прогресс**: при `progress_callback` пользователю показываются этапы («Суммирую…», «Создаю эмбеддинги…»).
+   6. **Публикация события:** при успешном завершении архивирования публикуется событие `ConversationArchived` через EventBus (подписчики выполняют побочные эффекты, например, очистку временных файлов).
 4. `ConversationStore.clear(user_id)` + `rotate_conversation_id(user_id)`.
 5. Пользователю — сообщение «Архивировано N чанков, новая сессия открыта».
 6. Если суммаризация / эмбеддинг упали — `WARNING`, история не очищается (чтобы не потерять контекст), пользователь получает сообщение «Архивирование не удалось: <error>. Сессия сохранена, попробуйте /new ещё раз позже».
@@ -289,11 +301,15 @@ class Executor:
 ### 6.5 Tool `read_document`
 
 - **`ReadDocumentTool`** (`app/tools/read_document.py`): tool для чтения документов из временной директории.
-- Поддерживаемые форматы: PDF (через `pypdf`), TXT, MD.
+- Поддерживаемые форматы: PDF (через `pypdf`), TXT, MD, JPG, PNG, BMP, TIFF, WEBP.
 - Защита от path traversal: файлы читаются только из `Settings.tmp_base_dir`.
-- Усечение вывода до `max_chars` (default 8000).
-- **OCR (опционально):** если включён `READ_DOCUMENT_OCR_ENABLED` и установлен tesseract-ocr, для PDF с малым количеством текста (< 100 символов) извлекается текст из изображений через pytesseract. OCR текст кешируется в файл `.ocr.txt` рядом с PDF для ускорения повторного чтения. Поддержка кириллицы через `tesseract-ocr-rus`.
-- **Извлечение изображений из PDF:** tool извлекает изображения из PDF (до `READ_DOCUMENT_MAX_EXTRACTED_IMAGES` по умолчанию 10, при OCR включённом до `READ_DOCUMENT_MAX_OCR_IMAGES` по умолчанию 20). Изображения сохраняются во временной директории. Если OCR не сработал, возвращается информация о картинках для описания через `describe_image`.
+- Усечение вывода до `max_chars` (default 50000).
+- **OCR (опционально):** если включён `DOCUMENT_OCR_ENABLED` и установлен tesseract-ocr:
+  - Для PDF с малым количеством текста (< 100 символов) извлекается текст из изображений через pytesseract.
+  - Для отдельных изображений (JPG, PNG и др.) выполняется OCR напрямую.
+  - OCR текст кешируется в файл `.ocr.txt` рядом с исходным файлом для ускорения повторного чтения.
+  - Поддержка кириллицы через `tesseract-ocr-rus`.
+- **Извлечение изображений из PDF:** tool извлекает изображения из PDF (до `DOCUMENT_MAX_IMAGES` по умолчанию 20). Изображения сохраняются во временной директории. Если OCR не сработал, возвращается информация о картинках для описания через `describe_image`.
 
 ## 7. Обработка ошибок
 

@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from aiogram import Bot, Dispatcher
@@ -42,6 +43,8 @@ from app.tools.read_file import ReadFileTool
 from app.tools.registry import ToolRegistry
 from app.tools.web_search import WebSearchTool
 from app.tools.weather import WeatherTool
+from app.users.repository import UserRepository
+from app.core.events import EventBus, MessageReceived, ResponseGenerated
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +76,8 @@ class _Components:
     tools: ToolRegistry
     archiver: Archiver
     executor: Executor
+    users: UserRepository
+    event_bus: EventBus
 
 
 async def _build_components(settings: Settings) -> _Components:
@@ -111,31 +116,22 @@ async def _build_components(settings: Settings) -> _Components:
     tools = ToolRegistry(
         [
             CalculatorTool(),
-            ReadFileTool(),
+            ReadFileTool(max_output_chars=settings.max_tool_output_chars),
             ReadDocumentTool(
                 tmp_files_dir=settings.tmp_base_dir,
                 max_file_size_mb=settings.telegram_max_file_mb,
-                max_extracted_images=settings.read_document_max_extracted_images,
-                max_ocr_images=settings.read_document_max_ocr_images,
-                ocr_enabled=settings.read_document_ocr_enabled
+                max_document_chars=settings.max_document_chars,
+                max_images=settings.document_max_images,
+                ocr_enabled=settings.document_ocr_enabled
             ),
-            HttpRequestTool(),
-            WebSearchTool(),
-            MemorySearchTool(),
-            LoadSkillTool(),
+            HttpRequestTool(max_output_chars=settings.max_tool_output_chars),
+            WebSearchTool(max_output_chars=settings.max_tool_output_chars),
+            MemorySearchTool(max_output_chars=settings.max_tool_output_chars),
+            LoadSkillTool(max_output_chars=settings.max_tool_output_chars),
             DescribeImageTool(tmp_dir=settings.tmp_base_dir),
-            WeatherTool(),
-        ]
-    )
-    archiver = Archiver(
-        llm=llm,
-        summarizer=summarizer,
-        semantic_memory=semantic_memory,  # type: ignore[arg-type]
-        summarizer_model=settings.ollama_default_model,
-        embedding_model=settings.embedding_model,
-        chunk_size=settings.memory_chunk_size,
-        chunk_overlap=settings.memory_chunk_overlap,
-        concurrency_limit=settings.embedding_concurrency,
+            WeatherTool(max_output_chars=settings.max_tool_output_chars),
+        ],
+        max_output_chars=settings.max_tool_output_chars
     )
     executor = Executor(
         settings=settings,
@@ -147,6 +143,34 @@ async def _build_components(settings: Settings) -> _Components:
         user_settings=user_settings,
         summarizer=summarizer,
     )
+    event_bus = EventBus()
+    users = UserRepository(event_bus=event_bus)
+    archiver = Archiver(
+        llm=llm,
+        summarizer=summarizer,
+        semantic_memory=semantic_memory,  # type: ignore[arg-type]
+        summarizer_model=settings.ollama_default_model,
+        embedding_model=settings.embedding_model,
+        chunk_size=settings.memory_chunk_size,
+        chunk_overlap=settings.memory_chunk_overlap,
+        concurrency_limit=settings.embedding_concurrency,
+        event_bus=event_bus,
+    )
+
+    # Регистрируем подписчиков для записи в ConversationStore
+    from app.core.events import ConversationArchived
+    from app.services.conversation_subscriber import on_message_received, on_response_generated
+    from app.services.summarizer_subscriber import on_response_generated_summarize
+    from app.services.tmp_cleanup import on_conversation_archived_cleanup
+    from functools import partial
+
+    event_bus.subscribe(MessageReceived, partial(on_message_received, conversations=conversations))
+    event_bus.subscribe(ResponseGenerated, partial(on_response_generated, conversations=conversations))
+    # Регистрируем подписчика суммаризации ПОСЛЕ conversation_subscriber, чтобы ответ уже был записан в стор
+    event_bus.subscribe(ResponseGenerated, partial(on_response_generated_summarize, conversations=conversations, summarizer=summarizer, user_settings=user_settings, settings=settings))
+    # Регистрируем подписчика очистки tmp-изображений при успешном архивировании
+    event_bus.subscribe(ConversationArchived, partial(on_conversation_archived_cleanup, tmp_dir=Path(settings.tmp_base_dir)))
+
     return _Components(
         settings=settings,
         llm=llm,
@@ -159,12 +183,16 @@ async def _build_components(settings: Settings) -> _Components:
         tools=tools,
         archiver=archiver,
         executor=executor,
+        users=users,
+        event_bus=event_bus,
     )
 
 
 def _wire_telegram(c: _Components) -> tuple[Bot, Dispatcher]:
     bot = Bot(token=c.settings.telegram_bot_token)
     dispatcher = Dispatcher()
+    dispatcher["users"] = c.users
+    dispatcher["event_bus"] = c.event_bus
     dispatcher.update.middleware(LoggingMiddleware())
     dispatcher.include_router(
         build_commands_router(
@@ -175,6 +203,7 @@ def _wire_telegram(c: _Components) -> tuple[Bot, Dispatcher]:
             skills=c.skills,
             conversations=c.conversations,
             archiver=c.archiver,
+            users=c.users,
         )
     )
     dispatcher.include_router(

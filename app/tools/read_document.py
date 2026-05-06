@@ -29,15 +29,16 @@ logger = logging.getLogger(__name__)
 class ReadDocumentTool(Tool):
     name = "read_document"
     description = (
-        "Прочитать содержимое документа (PDF, TXT, MD) из временной директории. "
+        "Прочитать содержимое документа (PDF, TXT, MD, JPG, PNG) из временной директории. "
         "Для PDF используется текстовое извлечение, для TXT/MD — прямое чтение. "
+        "Для изображений (JPG, PNG) используется OCR через tesseract (если включён). "
         "Возврат — текст, усечённый до лимита."
     )
     args_schema: Mapping[str, Any] = {
         "type": "object",
         "properties": {
             "path": {"type": "string"},
-            "max_chars": {"type": "integer", "default": 8000},
+            "max_chars": {"type": "integer", "default": 50000},
         },
         "required": ["path"],
     }
@@ -46,19 +47,19 @@ class ReadDocumentTool(Tool):
         self,
         tmp_files_dir: Path,
         max_file_size_mb: int = 20,
-        max_extracted_images: int = 3,
-        max_ocr_images: int = 20,
+        max_document_chars: int = 50000,
+        max_images: int = 20,
         ocr_enabled: bool = False,
     ) -> None:
         self._tmp_dir = tmp_files_dir.resolve()
         self._max_file_size = max_file_size_mb * 1024 * 1024
-        self._max_extracted_images = max_extracted_images
-        self._max_ocr_images = max_ocr_images
+        self._max_document_chars = max_document_chars
+        self._max_images = max_images
         self._ocr_enabled = ocr_enabled
 
     async def run(self, args: Mapping[str, Any], ctx: ToolContext) -> str:
         raw_path = str(args["path"])
-        max_chars = int(args.get("max_chars", 8000))
+        max_chars = int(args.get("max_chars", 50000))
         return await asyncio.to_thread(self._read_sync, raw_path, max_chars)
 
     def _read_sync(self, raw_path: str, max_chars: int) -> str:
@@ -99,6 +100,8 @@ class ReadDocumentTool(Tool):
             return self._read_pdf(resolved, max_chars)
         elif suffix in (".txt", ".md"):
             return self._read_text(resolved, max_chars)
+        elif suffix in (".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp"):
+            return self._read_image(resolved, max_chars)
         else:
             raise ToolError(f"неподдерживаемый тип файла: {suffix}")
 
@@ -106,9 +109,8 @@ class ReadDocumentTool(Tool):
         """Извлечь текст и картинки из PDF через pypdf."""
         try:
             reader = PdfReader(path)
-            # Используем другой лимит картинок если OCR включён
-            max_images = self._max_ocr_images if self._ocr_enabled else self._max_extracted_images
-            logger.info("Чтение PDF: %s, страниц=%d, max_chars=%d, max_images=%d, ocr=%s", 
+            max_images = self._max_images
+            logger.info("Чтение PDF: %s, страниц=%d, max_chars=%d, max_images=%d, ocr=%s",
                        path, len(reader.pages), max_chars, max_images, self._ocr_enabled)
             text_parts = []
             total_chars = 0
@@ -252,3 +254,64 @@ class ReadDocumentTool(Tool):
             raise ToolError("файл не является валидным UTF-8 текстом")
         except OSError as exc:
             raise ToolError(f"ошибка чтения файла: {exc}") from exc
+
+    def _read_image(self, path: Path, max_chars: int) -> str:
+        """Распознать текст с изображения через tesseract."""
+        if not self._ocr_enabled:
+            raise ToolError("OCR отключён. Включите DOCUMENT_OCR_ENABLED в настройках.")
+
+        try:
+            import pytesseract
+        except ImportError as exc:
+            raise ToolError("pytesseract не установлен. Установите: pip install pytesseract") from exc
+
+        try:
+            from PIL import Image
+        except ImportError as exc:
+            raise ToolError("PIL не установлен. Установите: pip install Pillow") from exc
+
+        # Проверяем кеш OCR
+        ocr_cache_path = path.with_suffix(".ocr.txt")
+        if ocr_cache_path.exists():
+            logger.info("OCR кеш найден: %s", ocr_cache_path)
+            text = ocr_cache_path.read_text(encoding="utf-8")
+            # Проверяем, что это не просто изображение без текста
+            if len(text.strip()) < 50:
+                logger.warning("OCR извлёк очень мало текста (%d символов), похоже на обычное изображение", len(text))
+                text = f"[OCR извлёк очень мало текста ({len(text)} символов). Если это обычное изображение без текста, загрузите его как изображение в Telegram, а не как файл.]\n\n{text}"
+            return truncate_output(text, max_chars)
+
+        # Выполняем OCR
+        try:
+            img = Image.open(path)
+        except Exception as exc:
+            raise ToolError(f"ошибка открытия изображения: {exc}") from exc
+
+        # Определяем язык
+        try:
+            available_langs = pytesseract.get_languages(config='')
+            ocr_lang = "rus+eng" if "rus" in available_langs else "eng"
+            logger.info("Используем язык OCR: %s", ocr_lang)
+        except Exception:
+            ocr_lang = "eng"
+
+        try:
+            text = pytesseract.image_to_string(img, lang=ocr_lang)
+        except Exception as exc:
+            raise ToolError(f"ошибка OCR: {exc}") from exc
+
+        # Сохраняем в кеш
+        try:
+            ocr_cache_path.write_text(text, encoding="utf-8")
+            logger.info("OCR текст сохранён в кеш: %s", ocr_cache_path)
+        except Exception as exc:
+            logger.warning("Не удалось сохранить OCR кеш: %s", exc)
+
+        logger.info("OCR извлёк текст: %d символов", len(text))
+
+        # Проверяем, что это не просто изображение без текста
+        if len(text.strip()) < 50:
+            logger.warning("OCR извлёк очень мало текста (%d символов), похоже на обычное изображение", len(text))
+            text = f"[OCR извлёк очень мало текста ({len(text)} символов). Если это обычное изображение без текста, загрузите его как изображение в Telegram, а не как файл.]\n\n{text}"
+
+        return truncate_output(text, max_chars)

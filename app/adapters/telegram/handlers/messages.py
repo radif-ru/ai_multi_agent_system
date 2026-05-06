@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
 from typing import TYPE_CHECKING, Awaitable, Callable
 
@@ -27,6 +28,7 @@ from aiogram.types import Message
 
 from app.adapters.telegram.files import FileTooLargeError, download_telegram_file
 from app.adapters.telegram.utils import format_for_telegram
+from app.core.events import MessageReceived, ResponseGenerated
 from app.core.orchestrator import handle_user_task
 from app.services.llm import LLMBadResponse, LLMTimeout, LLMUnavailable
 from app.services.transcribe import (
@@ -87,7 +89,7 @@ def build_text_handler(
 ) -> Callable[[Message], Awaitable[None]]:
     """Собрать async-handler для текстовых сообщений (без `/`-команд)."""
 
-    async def handle_text(message: Message) -> None:
+    async def handle_text(message: Message, **data: dict) -> None:
         text = message.text
         if not text:
             formatted, parse_mode = format_for_telegram(NON_TEXT_REPLY)
@@ -99,6 +101,26 @@ def build_text_handler(
             return
         user_id = message.from_user.id
         chat_id = message.chat.id if message.chat is not None else user_id
+
+        # Получаем или создаём пользователя
+        users = data.get("users")
+        event_bus = data.get("event_bus")
+        if users and hasattr(users, "get_or_create") and inspect.iscoroutinefunction(users.get_or_create):
+            user, created = await users.get_or_create(
+                "telegram",
+                str(user_id),
+                message.from_user.full_name or message.from_user.username or f"User {user_id}",
+            )
+        # user пока используется только для будущих событий, не передаём дальше
+
+        # Публикуем MessageReceived
+        if event_bus and user:
+            await event_bus.publish(MessageReceived(
+                user=user,
+                text=text,
+                conversation_id=str(chat_id),
+                channel="telegram"
+            ))
 
         if len(text) > MAX_INPUT_LENGTH:
             formatted, parse_mode = format_for_telegram(TOO_LONG_INPUT_REPLY)
@@ -127,7 +149,6 @@ def build_text_handler(
                     else:
                         logger.warning("контекст файла не найден для reply_msg_id=%s", reply_msg_id)
 
-        conversations.add_user_message(user_id, text)
         model = user_settings.get_model(user_id)
 
         try:
@@ -158,28 +179,19 @@ def build_text_handler(
             if "empty" in str(exc):
                 error_msg = "Модель не смогла обработать такой большой запрос. Попробуйте отправить файл меньшего размера или задайте более конкретный вопрос."
             else:
-                error_msg = f"Модель ответила в неожиданном формате: {exc}. Попробуйте ещё раз."
+                error_msg = f"Модель ответила в неожиданном формате. Попробуйте ещё раз."
             formatted, parse_mode = format_for_telegram(error_msg)
             await _send_with_fallback(message, formatted, parse_mode)
             return
 
-        conversations.add_assistant_message(user_id, reply)
-
-        history = conversations.get_history(user_id)
-        if len(history) >= settings.history_summary_threshold:
-            try:
-                summary = await summarizer.summarize(
-                    history[:-2], model=model
-                )
-                conversations.replace_with_summary(
-                    user_id, summary, kept_tail=2
-                )
-            except Exception:  # noqa: BLE001
-                logger.warning(
-                    "in-session суммаризация не удалась user=%s",
-                    user_id,
-                    exc_info=True,
-                )
+        # Публикуем ResponseGenerated
+        if event_bus and user:
+            await event_bus.publish(ResponseGenerated(
+                user=user,
+                text=reply,
+                conversation_id=str(chat_id),
+                channel="telegram"
+            ))
 
         for part in split_long_message(reply, TELEGRAM_MAX_MESSAGE_LENGTH):
             formatted, parse_mode = format_for_telegram(part)
@@ -198,6 +210,7 @@ async def handle_document(
     executor: "Executor",
     llm: "OllamaClient | None" = None,
     semantic_memory: "SemanticMemory | None" = None,
+    **data: dict,
 ) -> None:
     """Обработчик документов (PDF, TXT, MD)."""
     if message.from_user is None or message.document is None:
@@ -207,6 +220,16 @@ async def handle_document(
     chat_id = message.chat.id if message.chat is not None else user_id
     document = message.document
     caption = message.caption or ""
+
+    # Получаем или создаём пользователя
+    users = data.get("users")
+    event_bus = data.get("event_bus")
+    if users and hasattr(users, "get_or_create") and inspect.iscoroutinefunction(users.get_or_create):
+        user, _ = await users.get_or_create(
+            "telegram",
+            str(user_id),
+            message.from_user.full_name or message.from_user.username or f"User {user_id}",
+        )
 
     # Скачиваем файл
     try:
@@ -232,7 +255,15 @@ async def handle_document(
     # Формируем обогащённый goal
     goal = f"Пользователь прислал документ {file_path}. Caption: {caption}. Прочитай через read_document и ответь по сути. Важно: для read_document используй ТОЛЬКО путь {file_path} без изменений, не меняй его и не используй относительные пути."
 
-    conversations.add_user_message(user_id, goal)
+    # Публикуем MessageReceived
+    if event_bus and user:
+        await event_bus.publish(MessageReceived(
+            user=user,
+            text=goal,
+            conversation_id=str(chat_id),
+            channel="telegram"
+        ))
+
     # Сохраняем контекст файла по message_id для ответов на конкретный файл
     conversations.save_file_context(user_id, message.message_id, "document", goal)
     model = user_settings.get_model(user_id)
@@ -265,15 +296,14 @@ async def handle_document(
         await _send_with_fallback(message, formatted, parse_mode)
         return
 
-    conversations.add_assistant_message(user_id, reply)
-
-    history = conversations.get_history(user_id)
-    if len(history) >= settings.history_summary_threshold:
-        try:
-            summary = await summarizer.summarize(history[:-2], model=model)
-            conversations.replace_with_summary(user_id, summary, kept_tail=2)
-        except Exception:  # noqa: BLE001
-            logger.warning("in-session суммаризация не удалась user=%s", user_id, exc_info=True)
+    # Публикуем ResponseGenerated
+    if event_bus and user:
+        await event_bus.publish(ResponseGenerated(
+            user=user,
+            text=reply,
+            conversation_id=str(chat_id),
+            channel="telegram"
+        ))
 
     for part in split_long_message(reply, TELEGRAM_MAX_MESSAGE_LENGTH):
         formatted, parse_mode = format_for_telegram(part)
@@ -292,6 +322,7 @@ async def handle_voice(
     executor: "Executor",
     llm: "OllamaClient | None" = None,
     semantic_memory: "SemanticMemory | None" = None,
+    **data: dict,
 ) -> None:
     """Обработчик голосовых сообщений (Voice/Audio)."""
     if message.from_user is None or message.voice is None:
@@ -300,6 +331,16 @@ async def handle_voice(
     user_id = message.from_user.id
     chat_id = message.chat.id if message.chat is not None else user_id
     voice = message.voice
+
+    # Получаем или создаём пользователя
+    users = data.get("users")
+    event_bus = data.get("event_bus")
+    if users and hasattr(users, "get_or_create") and inspect.iscoroutinefunction(users.get_or_create):
+        user, _ = await users.get_or_create(
+            "telegram",
+            str(user_id),
+            message.from_user.full_name or message.from_user.username or f"User {user_id}",
+        )
 
     # Проверяем доступность transcriber
     if not is_transcriber_available():
@@ -354,9 +395,16 @@ async def handle_voice(
 
     # Формируем обогащённый goal с путём к файлу и транскрипцией
     goal = f"Голосовое сообщение: {file_path}\nТранскрипция: {text}"
-    
-    # Передаём goal в историю и для обработки
-    conversations.add_user_message(user_id, goal)
+
+    # Публикуем MessageReceived
+    if event_bus and user:
+        await event_bus.publish(MessageReceived(
+            user=user,
+            text=goal,
+            conversation_id=str(chat_id),
+            channel="telegram"
+        ))
+
     # Сохраняем контекст голосового файла по message_id для ответов на конкретный файл
     conversations.save_file_context(user_id, message.message_id, "voice", goal)
     model = user_settings.get_model(user_id)
@@ -389,15 +437,14 @@ async def handle_voice(
         await _send_with_fallback(message, formatted, parse_mode)
         return
 
-    conversations.add_assistant_message(user_id, reply)
-
-    history = conversations.get_history(user_id)
-    if len(history) >= settings.history_summary_threshold:
-        try:
-            summary = await summarizer.summarize(history[:-2], model=model)
-            conversations.replace_with_summary(user_id, summary, kept_tail=2)
-        except Exception:  # noqa: BLE001
-            logger.warning("in-session суммаризация не удалась user=%s", user_id, exc_info=True)
+    # Публикуем ResponseGenerated
+    if event_bus and user:
+        await event_bus.publish(ResponseGenerated(
+            user=user,
+            text=reply,
+            conversation_id=str(chat_id),
+            channel="telegram"
+        ))
 
     for part in split_long_message(reply, TELEGRAM_MAX_MESSAGE_LENGTH):
         formatted, parse_mode = format_for_telegram(part)
@@ -414,6 +461,7 @@ async def handle_photo(
     executor: "Executor",
     llm: "OllamaClient | None" = None,
     semantic_memory: "SemanticMemory | None" = None,
+    **data: dict,
 ) -> None:
     """Обработчик фотографий (vision)."""
     if message.from_user is None or message.photo is None:
@@ -423,6 +471,16 @@ async def handle_photo(
     chat_id = message.chat.id if message.chat is not None else user_id
     photo = message.photo[-1]  # Берём последнее (самое большое) фото
     caption = message.caption or ""
+
+    # Получаем или создаём пользователя
+    users = data.get("users")
+    event_bus = data.get("event_bus")
+    if users and hasattr(users, "get_or_create") and inspect.iscoroutinefunction(users.get_or_create):
+        user, _ = await users.get_or_create(
+            "telegram",
+            str(user_id),
+            message.from_user.full_name or message.from_user.username or f"User {user_id}",
+        )
 
     # Проверяем доступность vision-модели
     if not settings.vision_model:
@@ -487,7 +545,16 @@ async def handle_photo(
     # Передаём описание с путём к файлу для уточняющих вопросов
     # Файл не удаляем сразу - он живёт до /new или TTL cleanup
     goal = f"Изображение: {file_path}\nОписание: {description}"
-    conversations.add_user_message(user_id, goal)
+
+    # Публикуем MessageReceived
+    if event_bus and user:
+        await event_bus.publish(MessageReceived(
+            user=user,
+            text=goal,
+            conversation_id=str(chat_id),
+            channel="telegram"
+        ))
+
     # Сохраняем контекст файла по message_id для ответов на конкретный файл
     conversations.save_file_context(user_id, message.message_id, "image", goal)
     model = user_settings.get_model(user_id)
@@ -520,15 +587,14 @@ async def handle_photo(
         await _send_with_fallback(message, formatted, parse_mode)
         return
 
-    conversations.add_assistant_message(user_id, reply)
-
-    history = conversations.get_history(user_id)
-    if len(history) >= settings.history_summary_threshold:
-        try:
-            summary = await summarizer.summarize(history[:-2], model=model)
-            conversations.replace_with_summary(user_id, summary, kept_tail=2)
-        except Exception:  # noqa: BLE001
-            logger.warning("in-session суммаризация не удалась user=%s", user_id, exc_info=True)
+    # Публикуем ResponseGenerated
+    if event_bus and user:
+        await event_bus.publish(ResponseGenerated(
+            user=user,
+            text=reply,
+            conversation_id=str(chat_id),
+            channel="telegram"
+        ))
 
     for part in split_long_message(reply, TELEGRAM_MAX_MESSAGE_LENGTH):
         formatted, parse_mode = format_for_telegram(part)

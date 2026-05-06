@@ -87,9 +87,9 @@ async def run(
 ) -> str:
     # `history` — копия `ConversationStore.get_history(user_id)`,
     # последний элемент которой — текущий user-message с текстом `goal`
-    # (адаптер вызывает `add_user_message` ДО `core.handle_user_task`,
-    # см. `memory.md` §2.4). Чтобы не дублировать `goal`, добавляем его
-    # отдельным элементом только если в конце истории его нет.
+    # (адаптер публикует событие MessageReceived, подписчик которого
+    # вызывает `add_user_message`, см. `memory.md` §2.4). Чтобы не дублировать `goal`,
+    # добавляем его отдельным элементом только если в конце истории его нет.
     history = list(history or [])
     messages: list[dict[str, str]] = [
         {"role": "system", "content": self._build_system_prompt()},

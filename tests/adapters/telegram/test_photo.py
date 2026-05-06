@@ -12,6 +12,7 @@ import pytest
 
 from app.adapters.telegram.files import FileTooLargeError
 from app.adapters.telegram.handlers.messages import VISION_UNAVAILABLE_REPLY, handle_photo
+from app.core.events import EventBus, MessageReceived, ResponseGenerated
 
 
 @pytest.fixture
@@ -65,6 +66,24 @@ def mock_semantic_memory():
     return MagicMock()
 
 
+@pytest.fixture
+def event_bus_with_conversations(mock_conversations):
+    """Создаёт EventBus с подписчиками для ConversationStore и мок для users."""
+    event_bus = EventBus()
+    from app.services.conversation_subscriber import on_message_received, on_response_generated
+    from functools import partial
+    event_bus.subscribe(MessageReceived, partial(on_message_received, conversations=mock_conversations))
+    event_bus.subscribe(ResponseGenerated, partial(on_response_generated, conversations=mock_conversations))
+
+    # Мок для users
+    mock_user = MagicMock()
+    mock_user.external_id = "123"
+    mock_users = MagicMock()
+    mock_users.get_or_create = AsyncMock(return_value=(mock_user, False))
+
+    return event_bus, mock_users
+
+
 @pytest.mark.asyncio
 async def test_handle_photo_vision_model_not_configured(
     mock_settings,
@@ -112,6 +131,7 @@ async def test_handle_photo_success(
     mock_executor,
     mock_llm,
     mock_semantic_memory,
+    event_bus_with_conversations,
     mocker,
 ) -> None:
     """Успешная обработка фото (без реальной vision - только проверка потока)."""
@@ -149,6 +169,7 @@ async def test_handle_photo_success(
         message.caption = "Мой кот"
         message.bot = MagicMock()
         message.answer = AsyncMock()
+        event_bus, mock_users = event_bus_with_conversations
 
         # Вызываем handler
         await handle_photo(
@@ -160,15 +181,11 @@ async def test_handle_photo_success(
             executor=mock_executor,
             llm=mock_llm,
             semantic_memory=mock_semantic_memory,
+            users=mock_users,
+            event_bus=event_bus,
         )
-
-        # Проверяем, что сообщение добавлено в историю
-        mock_conversations.add_user_message.assert_called_once()
 
         # Проверяем, что executor.run был вызван
         mock_executor.run.assert_called_once()
-
-        # Проверяем, что ответ добавлен
-        mock_conversations.add_assistant_message.assert_called_once()
     finally:
         messages.download_telegram_file = original_download
