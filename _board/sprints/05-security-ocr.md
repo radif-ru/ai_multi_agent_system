@@ -267,7 +267,7 @@ Tool по аналогии с `DescribeImageTool`:
 
 ### Задача 5.1. Обновить `_prompts/agent_system.md` с правилами безопасности
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** high
 - **Объём:** XS
 - **Зависит от:** —
@@ -446,7 +446,7 @@ Tool по аналогии с `DescribeImageTool`:
 | 3.2 | Интегрировать `InputSanitizer` в Telegram-хендлеры                   | high      | XS    | Done   | 3.1        |
 | 4.1 | Создать `FileIdMapper` для маскирования путей                        | medium    | S     | Done   | —          |
 | 4.2 | Интегрировать `FileIdMapper` в хендлеры файлов                        | medium    | S     | Done   | 4.1        |
-| 5.1 | Обновить `_prompts/agent_system.md` с правилами безопасности          | high      | XS    | ToDo   | —          |
+| 5.1 | Обновить `_prompts/agent_system.md` с правилами безопасности          | high      | XS    | Progress | —          |
 | 6.1 | Добавить allowlist для опасных tools                                 | high      | S     | ToDo   | —          |
 | 6.2 | Усилить валидацию параметров опасных tools                            | medium    | S     | ToDo   | 6.1        |
 | 7.1 | Создать `ResponseSanitizer` для фильтрации ответов                   | medium    | S     | ToDo   | —          |
