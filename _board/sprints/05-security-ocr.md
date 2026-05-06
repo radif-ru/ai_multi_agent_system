@@ -188,7 +188,7 @@ Tool по аналогии с `DescribeImageTool`:
 
 ### Задача 3.2. Интегрировать `InputSanitizer` в Telegram-хендлеры
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** high
 - **Объём:** XS
 - **Зависит от:** Задача 3.1
@@ -443,7 +443,7 @@ Tool по аналогии с `DescribeImageTool`:
 | 2.1 | Новый tool `ocr_image` для произвольных изображений в `tmp/`           | high      | S     | Done   | 1.1        |
 | 2.2 | Skill `_skills/ocr/SKILL.md` с правилами выбора OCR vs Vision          | medium    | XS    | Done   | 2.1        |
 | 3.1 | Создать `app/security/` с `InputSanitizer`                           | high      | S     | Done   | —          |
-| 3.2 | Интегрировать `InputSanitizer` в Telegram-хендлеры                   | high      | XS    | ToDo   | 3.1        |
+| 3.2 | Интегрировать `InputSanitizer` в Telegram-хендлеры                   | high      | XS    | Progress | 3.1        |
 | 4.1 | Создать `FileIdMapper` для маскирования путей                        | medium    | S     | ToDo   | —          |
 | 4.2 | Интегрировать `FileIdMapper` в хендлеры файлов                        | medium    | S     | ToDo   | 4.1        |
 | 5.1 | Обновить `_prompts/agent_system.md` с правилами безопасности          | high      | XS    | ToDo   | —          |
