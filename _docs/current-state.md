@@ -39,8 +39,9 @@
 - **Handler Photo** — `app/adapters/telegram/handlers/messages.py` — обрабатывает `Photo` сообщения. Скачивает файл, описывает через `Vision` (Ollama vision API), передаёт описание в агентный цикл. Файл не удаляется сразу — живёт до `/new` или TTL cleanup.
 - **Transcriber** — `app/services/transcribe.py` — обёртка над `faster-whisper` для транскрипции речи. Опциональная зависимость.
 - **Vision** — `app/services/vision.py` — обёртка над `OllamaClient.chat` с поддержкой параметра `images` для описания изображений.
-- **ReadDocumentTool** — `app/tools/read_document.py` — tool для чтения документов из временной директории (PDF/TXT/MD/JPG/PNG). Защита от path traversal, усечение вывода. OCR (опционально): если включён `DOCUMENT_OCR_ENABLED` и установлен tesseract-ocr, для PDF с малым количеством текста (< 100 символов) и для отдельных изображений извлекается текст через pytesseract. OCR текст кешируется в файл `.ocr.txt` рядом с исходным файлом. Поддержка кириллицы через `tesseract-ocr-rus`. Установка: `sudo apt-get install tesseract-ocr tesseract-ocr-rus`.
+- **ReadDocumentTool** — `app/tools/read_document.py` — tool для чтения документов из временной директории (PDF/TXT/MD/JPG/PNG). Защита от path traversal, усечение вывода. OCR делегируется сервису `app/services/ocr.py` (pytesseract). OCR текст кешируется в файл `.ocr.txt` рядом с исходным файлом. Поддержка кириллицы через `tesseract-ocr-rus`. Установка: `sudo apt-get install tesseract-ocr tesseract-ocr-rus`.
 - **DescribeImageTool** — `app/tools/describe_image.py` — tool для повторного описания изображений по пути к файлу. Используется для уточнения деталей после первичного описания.
+- **OcrImageTool** — `app/tools/ocr_image.py` — tool для распознавания текста с одиночных изображений через OCR. Используется для точной транскрипции текста (сканы документов, чеки, таблицы). OCR делегируется сервису `app/services/ocr.py`. Кеш OCR в `<file>.ocr.txt`. Обрезка вывода до 8000 символов.
 - **WeatherTool** — `app/tools/weather.py` — tool для получения погоды через wttr.in с fallback на WebSearchTool при недоступности сервиса.
 
 ### 1.4 Адаптеры

@@ -38,6 +38,7 @@ from app.tools.describe_image import DescribeImageTool
 from app.tools.http_request import HttpRequestTool
 from app.tools.load_skill import LoadSkillTool
 from app.tools.memory_search import MemorySearchTool
+from app.tools.ocr_image import OcrImageTool
 from app.tools.read_document import ReadDocumentTool
 from app.tools.read_file import ReadFileTool
 from app.tools.registry import ToolRegistry
@@ -122,13 +123,15 @@ async def _build_components(settings: Settings) -> _Components:
                 max_file_size_mb=settings.telegram_max_file_mb,
                 max_document_chars=settings.max_document_chars,
                 max_images=settings.document_max_images,
-                ocr_enabled=settings.document_ocr_enabled
+                ocr_enabled=settings.document_ocr_enabled,
+                ocr_min_text_threshold=settings.ocr_min_text_threshold,
             ),
             HttpRequestTool(max_output_chars=settings.max_tool_output_chars),
             WebSearchTool(max_output_chars=settings.max_tool_output_chars),
             MemorySearchTool(max_output_chars=settings.max_tool_output_chars),
             LoadSkillTool(max_output_chars=settings.max_tool_output_chars),
             DescribeImageTool(tmp_dir=settings.tmp_base_dir),
+            OcrImageTool(tmp_dir=settings.tmp_base_dir, max_output_chars=settings.max_tool_output_chars),
             WeatherTool(max_output_chars=settings.max_tool_output_chars),
         ],
         max_output_chars=settings.max_tool_output_chars
