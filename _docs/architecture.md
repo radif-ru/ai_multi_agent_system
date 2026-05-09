@@ -218,7 +218,7 @@ class Executor:
 ### 3.14 Безопасность (`app/security/`)
 
 - `input_sanitizer.py`: функция `sanitize_user_input` для защиты от prompt injection. Детектирует подозрительные паттерны (ignore instructions, repeat system prompt и т.д.) и возвращает очищенный текст или текст с предупреждением.
-- `file_id_mapper.py`: класс `FileIdMapper` для маскирования путей к файлам во избежание data leakage. Генерирует временные ID для файлов и умеет восстанавливать путь по ID.
+- `file_id_mapper.py`: класс `FileIdMapper` для маскирования путей к файлам во избежание data leakage. Генерирует временные ID для файлов и умеет восстанавливать путь по ID. Использует общую таблицу `file_contexts` из ConversationStore для персистентности между перезапусками агента.
 - `response_sanitizer.py`: функция `sanitize_response` для фильтрации системной информации в ответах модели. Маскирует пути к файлам, конфигурационные ключи и фрагменты системного промпта.
 - Интеграция:
   - `InputSanitizer` — в Telegram-хендлеры и консольный адаптер перед вызовом `core.handle_user_task`.

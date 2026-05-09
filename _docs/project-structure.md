@@ -1,6 +1,6 @@
 # Структура проекта
 
-Целевая структура репозитория после реализации MVP (Спринт 01). На момент Спринта 00 (Bootstrap) большинство `app/`-модулей — пустые файлы с одной декларацией пакета; реальный код появляется задачами Спринта 01.
+Целевая структура репозитория после реализации Спринта 05 (Безопасность и OCR). На момент Спринта 00 (Bootstrap) большинство `app/`-модулей — пустые файлы с одной декларацией пакета; реальный код появляется задачами Спринта 01+.
 
 ```
 ai-multi-agent-system/
@@ -52,7 +52,9 @@ ai-multi-agent-system/
 │   └── summarizer.md         # промпт для in-memory суммаризации и архивирования
 │
 ├── data/                     # runtime-данные (в .gitignore): sqlite-vec БД, …
-│   └── memory.db             # путь по умолчанию для MEMORY_DB_PATH
+│   ├── memory.db             # путь по умолчанию для MEMORY_DB_PATH
+│   ├── file_contexts.db      # контексты файлов и маппинги file_id → path
+│   └── tmp/                  # временные файлы (изолированы по user_id)
 │
 ├── logs/                     # файлы логов (в .gitignore)
 │   └── agent.log
@@ -66,7 +68,8 @@ ai-multi-agent-system/
 │   │
 │   ├── core/
 │   │   ├── __init__.py
-│   │   └── orchestrator.py   # handle_user_task(text, user_id, chat_id) — единая точка входа от любого адаптера
+│   │   ├── orchestrator.py   # handle_user_task(text, user_id, chat_id) — единая точка входа от любого адаптера
+│   │   └── events.py         # EventBus: событийная шина для pub/sub между компонентами
 │   │
 │   ├── agents/
 │   │   ├── __init__.py
@@ -80,26 +83,41 @@ ai-multi-agent-system/
 │   │   ├── registry.py       # ToolRegistry: list_descriptions, execute
 │   │   ├── calculator.py
 │   │   ├── read_file.py
+│   │   ├── read_document.py  # чтение документов (PDF/TXT/MD/JPG/PNG) с OCR
+│   │   ├── describe_image.py # описание изображений через Vision
+│   │   ├── ocr_image.py      # OCR для одиночных изображений
 │   │   ├── http_request.py
 │   │   ├── web_search.py
 │   │   ├── memory_search.py
-│   │   └── load_skill.py
+│   │   ├── load_skill.py
+│   │   └── weather.py        # погода через wttr.in
 │   │
 │   ├── services/
 │   │   ├── __init__.py
 │   │   ├── llm.py            # OllamaClient (.chat, .embed) + LLMError + estimate_tokens
-│   │   ├── conversation.py   # ConversationStore: in-memory история per-user, conversation_id
+│   │   ├── conversation.py   # ConversationStore: in-memory история per-user, conversation_id, file_contexts (SQLite)
 │   │   ├── summarizer.py     # Summarizer: сжатие истории через LLM
 │   │   ├── memory.py         # SemanticMemory: sqlite-vec обёртка (init/insert/search)
 │   │   ├── archiver.py       # Archiver: оркестратор /new (summary → chunk → embed → insert)
 │   │   ├── skills.py         # SkillRegistry: парсинг _skills/, описания и тела
 │   │   ├── prompts.py        # PromptLoader: чтение _prompts/, подстановка плейсхолдеров
-│   │   └── model_registry.py # UserSettingsRegistry: per-user model + system_prompt
+│   │   ├── model_registry.py # UserSettingsRegistry: per-user model + system_prompt
+│   │   ├── transcribe.py     # Transcriber: обёртка над faster-whisper для транскрипции речи
+│   │   ├── vision.py         # Vision: обёртка над OllamaClient.chat с поддержкой images
+│   │   ├── ocr.py            # OCR: обёртка над pytesseract для распознавания текста
+│   │   ├── conversation_subscriber.py # подписчики EventBus для записи в ConversationStore
+│   │   ├── summarizer_subscriber.py # подписчик для in-session суммаризации
+│   │   ├── tmp_cleanup.py    # подписчик для очистки tmp-изображений при /new
+│   │   └── session_bootstrap.py # авто-подгрузка контекста из SemanticMemory при старте сессии
 │   │
 │   ├── adapters/
 │   │   ├── __init__.py
+│   │   ├── console/
+│   │   │   ├── __init__.py
+│   │   │   └── adapter.py       # REPL-цикл с теми же командами, что и Telegram-адаптер
 │   │   └── telegram/
 │   │       ├── __init__.py
+│   │       ├── files.py          # download_telegram_file: скачивание файлов из Telegram
 │   │       ├── handlers/
 │   │       │   ├── __init__.py
 │   │       │   ├── commands.py   # /start, /help, /models, /model, /prompt, /new, /reset
@@ -110,6 +128,16 @@ ai-multi-agent-system/
 │   ├── middlewares/
 │   │   ├── __init__.py
 │   │   └── logging_mw.py     # LoggingMiddleware (user/chat/type/dur_ms/status)
+│   │
+│   ├── security/
+│   │   ├── __init__.py
+│   │   ├── input_sanitizer.py # sanitize_user_input: защита от prompt injection
+│   │   ├── file_id_mapper.py  # FileIdMapper: маскирование путей к файлам
+│   │   └── response_sanitizer.py # sanitize_response: фильтрация системной информации
+│   │
+│   ├── users/
+│   │   ├── __init__.py
+│   │   └── repository.py     # UserRepository: хранилище пользователей с get_or_create
 │   │
 │   └── utils/
 │       ├── __init__.py
@@ -132,6 +160,7 @@ ai-multi-agent-system/
     │   ├── test_registry.py
     │   ├── test_calculator.py
     │   ├── test_read_file.py
+    │   ├── test_read_document.py
     │   ├── test_http_request.py
     │   ├── test_web_search.py
     │   ├── test_memory_search.py
@@ -146,12 +175,23 @@ ai-multi-agent-system/
     │   ├── test_skills.py
     │   ├── test_prompts.py
     │   └── test_model_registry.py
+    ├── security/
+    │   ├── __init__.py
+    │   └── test_file_id_mapper.py
+    ├── core/
+    │   ├── __init__.py
+    │   └── test_orchestrator.py
     └── adapters/
+        ├── console/
+        │   └── __init__.py
         └── telegram/
             ├── __init__.py
             ├── test_commands.py
             ├── test_messages.py
-            └── test_errors.py
+            ├── test_documents.py
+            ├── test_voice.py
+            ├── test_photo.py
+            └── test_events.py
 ```
 
 ## Назначение ключевых модулей
@@ -176,22 +216,40 @@ ai-multi-agent-system/
 | `app/config.py` | Класс `Settings(BaseSettings)`, парсинг `.env`, валидация. |
 | `app/logging_config.py` | Функция `setup_logging(settings)` → `dictConfig`. |
 | `app/core/orchestrator.py` | `async handle_user_task(...)` — единая точка входа от любого адаптера; вызывает `Executor`. |
+| `app/core/events.py` | `EventBus`: событийная шина для pub/sub между компонентами (UserCreated, MessageReceived, ResponseGenerated, ConversationArchived). |
 | `app/agents/executor.py` | Агентный цикл `thought → action → observation`. |
 | `app/agents/protocol.py` | Парсер JSON ответа модели, dataclass `AgentDecision`, `parse_agent_response(...)`. |
 | `app/tools/base.py` | `Tool` Protocol, `ToolContext` Protocol, `MAX_TOOL_OUTPUT_CHARS`. |
 | `app/tools/registry.py` | `ToolRegistry`: `get`, `list_descriptions`, `execute` (валидация args, логирование, усечение). |
 | `app/tools/calculator.py`, `read_file.py`, `http_request.py`, `web_search.py`, `memory_search.py`, `load_skill.py` | MVP-tools (см. `tools.md` §4). |
+| `app/tools/read_document.py` | Чтение документов (PDF/TXT/MD/JPG/PNG) с OCR через pytesseract. |
+| `app/tools/describe_image.py` | Описание изображений через Vision API. |
+| `app/tools/ocr_image.py` | OCR для одиночных изображений. |
+| `app/tools/weather.py` | Погода через wttr.in с fallback на WebSearchTool. |
 | `app/services/llm.py` | `OllamaClient` (async) с `chat` и `embed`, `estimate_tokens`, иерархия `LLMError`. |
-| `app/services/conversation.py` | `ConversationStore`: in-memory история per-user (`user_id → list`), `conversation_id`, FIFO-обрезка. |
+| `app/services/conversation.py` | `ConversationStore`: in-memory история per-user (`user_id → list`), `conversation_id`, FIFO-обрезка, file_contexts (SQLite). |
 | `app/services/summarizer.py` | `Summarizer`: тонкая обёртка над `OllamaClient.chat`. Используется и для in-session порога, и для `/new`. |
 | `app/services/memory.py` | `SemanticMemory`: обёртка над `sqlite3 + sqlite_vec.load`; `init`, `insert`, `search`. |
 | `app/services/archiver.py` | `Archiver`: оркестратор `/new` (см. `memory.md` §3.3). |
 | `app/services/skills.py` | `SkillRegistry`: парсинг `_skills/`, `list_descriptions`, `get_body`. |
 | `app/services/prompts.py` | `PromptLoader`: чтение `_prompts/`, подстановка плейсхолдеров. |
 | `app/services/model_registry.py` | `UserSettingsRegistry`: per-user активная модель + system_prompt (in-memory). |
+| `app/services/transcribe.py` | `Transcriber`: обёртка над faster-whisper для транскрипции голосовых сообщений. |
+| `app/services/vision.py` | `Vision`: обёртка над OllamaClient.chat с поддержкой параметра `images`. |
+| `app/services/ocr.py` | `OCR`: обёртка над pytesseract для распознавания текста с изображений. |
+| `app/services/conversation_subscriber.py` | Подписчики EventBus для записи в ConversationStore. |
+| `app/services/summarizer_subscriber.py` | Подписчик для in-session суммаризации. |
+| `app/services/tmp_cleanup.py` | Подписчик для очистки tmp-изображений при /new. |
+| `app/services/session_bootstrap.py` | Авто-подгрузка контекста из SemanticMemory при старте сессии. |
+| `app/security/input_sanitizer.py` | `sanitize_user_input`: защита от prompt injection. |
+| `app/security/file_id_mapper.py` | `FileIdMapper`: маскирование путей к файлам, персистентность через SQLite. |
+| `app/security/response_sanitizer.py` | `sanitize_response`: фильтрация системной информации в ответах модели. |
+| `app/users/repository.py` | `UserRepository`: хранилище пользователей с get_or_create, публикует UserCreated. |
 | `app/adapters/telegram/handlers/commands.py` | Router с `/start`, `/help`, `/models`, `/model`, `/prompt`, `/new`, `/reset`. |
-| `app/adapters/telegram/handlers/messages.py` | Router с обработчиком `F.text & ~F.text.startswith('/')` → `core.handle_user_task`. |
+| `app/adapters/telegram/handlers/messages.py` | Router с обработчиком `F.text & ~F.text.startswith('/')` → `core.handle_user_task`, обработка файлов (Document, Voice, Photo). |
+| `app/adapters/telegram/files.py` | `download_telegram_file`: скачивание файлов из Telegram с проверкой размера. |
 | `app/adapters/telegram/handlers/errors.py` | `@router.errors()` — единая точка для необработанных ошибок. |
+| `app/adapters/console/adapter.py` | REPL-цикл с теми же командами, что и Telegram-адаптер (без файловых операций). |
 | `app/middlewares/logging_mw.py` | Логирование каждого апдейта (`user`, `chat`, `type`, `dur_ms`, `status`). |
 | `app/utils/text.py` | `split_long_message` — разбивка длинных ответов LLM по границам строк/пробелов (Telegram limit 4096). |
 | `tests/` | Зеркалирует `app/`, unit-тесты с моками. Сетевых вызовов нет; `sqlite-vec` — на `tmp_path`. |
