@@ -37,6 +37,7 @@ from app.tools.web_search import WebSearchTool
 from app.tools.weather import WeatherTool
 from app.users.repository import UserRepository
 from app.core.events import EventBus, MessageReceived, ResponseGenerated
+from app.security import get_global_mapper, clear_global_mapper
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +69,12 @@ async def _build_components(settings: Settings) -> tuple:
     except MemoryUnavailable as exc:
         logger.error("долгосрочная память недоступна: %s", exc)
         semantic_memory = None
+
+    # Инициализируем FileIdMapper для загрузки существующих маппингов
+    try:
+        get_global_mapper().init()
+    except Exception as exc:  # noqa: BLE001
+        logger.error("ошибка инициализации FileIdMapper: %s", exc)
 
     skills = SkillRegistry("_skills")
     skills.load()
@@ -168,6 +175,11 @@ async def _shutdown(
             await semantic_memory.close()
         except Exception:  # noqa: BLE001
             logger.exception("ошибка при закрытии семантической памяти")
+    try:
+        from app.security import get_global_mapper
+        get_global_mapper().close()
+    except Exception:  # noqa: BLE001
+        logger.exception("ошибка при закрытии FileIdMapper")
 
 
 async def main() -> None:

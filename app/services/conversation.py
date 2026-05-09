@@ -64,6 +64,8 @@ class ConversationStore:
                     message_id INTEGER NOT NULL,
                     file_type TEXT NOT NULL,
                     context TEXT NOT NULL,
+                    file_id TEXT,
+                    file_path TEXT,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (user_id, message_id)
                 )
@@ -136,9 +138,19 @@ class ConversationStore:
     # -- file contexts ----------------------------------------------------
 
     def save_file_context(
-        self, user_id: int, message_id: int, file_type: str, context: str
+        self, user_id: int, message_id: int, file_type: str, context: str,
+        file_id: str | None = None, file_path: Path | None = None
     ) -> None:
-        """Сохранить контекст файла для ответов на конкретный файл."""
+        """Сохранить контекст файла для ответов на конкретный файл.
+
+        Args:
+            user_id: ID пользователя.
+            message_id: ID сообщения в Telegram.
+            file_type: Тип файла (document, image, voice).
+            context: Контекст файла (текст goal).
+            file_id: Временный идентификатор файла (опционально).
+            file_path: Путь к файлу (опционально).
+        """
         # Сохраняем в памяти для быстрого доступа
         if user_id not in self._file_contexts:
             self._file_contexts[user_id] = {}
@@ -148,13 +160,13 @@ class ConversationStore:
             with sqlite3.connect(self._file_contexts_db) as conn:
                 conn.execute(
                     """
-                    INSERT OR REPLACE INTO file_contexts (user_id, message_id, file_type, context)
-                    VALUES (?, ?, ?, ?)
+                    INSERT OR REPLACE INTO file_contexts (user_id, message_id, file_type, context, file_id, file_path)
+                    VALUES (?, ?, ?, ?, ?, ?)
                     """,
-                    (user_id, message_id, file_type, context),
+                    (user_id, message_id, file_type, context, file_id, str(file_path) if file_path else None),
                 )
                 conn.commit()
-            logger.info("сохранён контекст файла user_id=%s message_id=%s file_type=%s", user_id, message_id, file_type)
+            logger.info("сохранён контекст файла user_id=%s message_id=%s file_type=%s file_id=%s", user_id, message_id, file_type, file_id)
         except Exception as exc:  # noqa: BLE001
             logger.error("ошибка сохранения контекста в БД: %s", exc)
 

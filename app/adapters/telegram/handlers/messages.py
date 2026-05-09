@@ -287,7 +287,7 @@ async def handle_document(
         ))
 
     # Сохраняем контекст файла по message_id для ответов на конкретный файл
-    conversations.save_file_context(user_id, message.message_id, "document", goal)
+    conversations.save_file_context(user_id, message.message_id, "document", goal, file_id=file_id, file_path=file_path)
     model = user_settings.get_model(user_id)
 
     # Санитайзинг пользовательского ввода
@@ -458,7 +458,7 @@ async def handle_voice(
         ))
 
     # Сохраняем контекст голосового файла по message_id для ответов на конкретный файл
-    conversations.save_file_context(user_id, message.message_id, "voice", goal)
+    conversations.save_file_context(user_id, message.message_id, "voice", goal, file_id=file_id, file_path=file_path)
     model = user_settings.get_model(user_id)
 
     # Санитайзинг пользовательского ввода
@@ -575,7 +575,7 @@ async def handle_photo(
         ))
 
     # Сохраняем контекст файла по message_id для ответов на конкретный файл
-    conversations.save_file_context(user_id, message.message_id, "image", goal)
+    conversations.save_file_context(user_id, message.message_id, "image", goal, file_id=file_id, file_path=file_path)
     model = user_settings.get_model(user_id)
 
     # Санитайзинг пользовательского ввода
