@@ -46,7 +46,7 @@ class DescribeImageTool(Tool):
             raw_path = str(args["image_path"])
         else:
             raise ToolError("требуется image_path или file_id")
-        
+
         caption = str(args.get("caption", ""))
 
         # Валидация пути (синхронная)

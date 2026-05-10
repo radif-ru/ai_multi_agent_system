@@ -110,21 +110,21 @@ def parse_agent_response(text: str) -> AgentDecision:
 
     if has_final:
         return _parse_final(payload)
-    
+
     # Если action: null, считаем что это попытка вернуть final_answer
     if "action" in payload and payload["action"] is None:
         if "thought" in payload and payload["thought"]:
             logger.warning("LLM вернул action: null, используем thought как final_answer")
             return AgentDecision(kind="final", final_answer=payload["thought"])
         raise LLMBadResponse("action: null without thought")
-    
+
     # Если есть только thought без action/args, но thought содержит final_answer - попробуем извлечь
     if "thought" in payload and "action" not in payload and "args" not in payload:
         thought = payload["thought"]
         if isinstance(thought, str) and "final_answer" in thought.lower():
             logger.warning("LLM вернул thought с final_answer без action, пробуем извлечь")
             return _parse_final(payload)
-    
+
     return _parse_action(payload)
 
 

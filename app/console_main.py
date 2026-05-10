@@ -37,7 +37,7 @@ from app.tools.web_search import WebSearchTool
 from app.tools.weather import WeatherTool
 from app.users.repository import UserRepository
 from app.core.events import EventBus, MessageReceived, ResponseGenerated
-from app.security import get_global_mapper, clear_global_mapper
+from app.security import get_global_mapper
 
 logger = logging.getLogger(__name__)
 
@@ -140,9 +140,21 @@ async def _build_components(settings: Settings) -> tuple:
     event_bus.subscribe(MessageReceived, partial(on_message_received, conversations=conversations))
     event_bus.subscribe(ResponseGenerated, partial(on_response_generated, conversations=conversations))
     # Регистрируем подписчика суммаризации ПОСЛЕ conversation_subscriber, чтобы ответ уже был записан в стор
-    event_bus.subscribe(ResponseGenerated, partial(on_response_generated_summarize, conversations=conversations, summarizer=summarizer, user_settings=user_settings, settings=settings))
+    event_bus.subscribe(
+        ResponseGenerated,
+        partial(
+            on_response_generated_summarize,
+            conversations=conversations,
+            summarizer=summarizer,
+            user_settings=user_settings,
+            settings=settings,
+        ),
+    )
     # Регистрируем подписчика очистки tmp-изображений при успешном архивировании
-    event_bus.subscribe(ConversationArchived, partial(on_conversation_archived_cleanup, tmp_dir=Path(settings.tmp_base_dir)))
+    event_bus.subscribe(
+        ConversationArchived,
+        partial(on_conversation_archived_cleanup, tmp_dir=Path(settings.tmp_base_dir)),
+    )
 
     return (
         settings,

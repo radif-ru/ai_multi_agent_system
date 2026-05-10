@@ -166,7 +166,10 @@ class ConversationStore:
                     (user_id, message_id, file_type, context, file_id, str(file_path) if file_path else None),
                 )
                 conn.commit()
-            logger.info("сохранён контекст файла user_id=%s message_id=%s file_type=%s file_id=%s", user_id, message_id, file_type, file_id)
+            logger.info(
+                "сохранён контекст файла user_id=%s message_id=%s file_type=%s file_id=%s",
+                user_id, message_id, file_type, file_id,
+            )
         except Exception as exc:  # noqa: BLE001
             logger.error("ошибка сохранения контекста в БД: %s", exc)
 

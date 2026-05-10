@@ -7,15 +7,13 @@ ConsoleAdapter — REPL-цикл, который читает ввод поль�
 
 from __future__ import annotations
 
-import inspect
 import re
-import sys
 from typing import TYPE_CHECKING, Any
 
 from app.security import sanitize_user_input
 
 if TYPE_CHECKING:
-    from app.commands.context import CommandContext, CommandResult
+    from app.commands.context import CommandContext
 
 
 # ANSI-цвета для консольного вывода
@@ -158,7 +156,7 @@ class ConsoleAdapter:
 
     async def run(self) -> None:
         """Запустить REPL-цикл консольного адаптера."""
-        import readline
+        import readline  # noqa: F401  # side-effect: history в input()
 
         print("Консольный режим AI-агента. Введите /help для справки, /exit для выхода.")
 

@@ -116,7 +116,10 @@ class EventBus:
         if type_name not in self._subscribers:
             self._subscribers[type_name] = []
         self._subscribers[type_name].append(handler)
-        handler_name = getattr(handler, '__name__', getattr(handler, 'func', lambda: None).__name__ if hasattr(handler, 'func') else str(handler))
+        if hasattr(handler, 'func'):
+            handler_name = getattr(handler, '__name__', handler.func.__name__)
+        else:
+            handler_name = getattr(handler, '__name__', str(handler))
         logger.info(
             "Подписчик зарегистрирован: event_type=%s, handler=%s",
             type_name,

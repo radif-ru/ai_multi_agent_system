@@ -51,7 +51,7 @@ class OcrImageTool(Tool):
             raw_path = str(args["image_path"])
         else:
             raise ToolError("требуется image_path или file_id")
-        
+
         lang = args.get("lang")
         return await asyncio.to_thread(self._run_sync, raw_path, lang)
 

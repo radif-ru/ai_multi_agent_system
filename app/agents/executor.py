@@ -113,7 +113,10 @@ class Executor:
                         {"role": "user", "content": f"Краткая история диалога: {summary}"},
                         goal_msg,
                     ]
-                    logger.info("История суммаризирована, новый размер контекста: %d", sum(len(m.get("content", "")) for m in messages))
+                    logger.info(
+                        "История суммаризирована, новый размер контекста: %d",
+                        sum(len(m.get("content", "")) for m in messages),
+                    )
                 except Exception as exc:
                     logger.warning("Не удалось суммаризировать историю: %s", exc)
 

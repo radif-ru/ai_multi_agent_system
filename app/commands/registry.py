@@ -9,12 +9,12 @@
 from __future__ import annotations
 
 import logging
-import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from app.commands.context import CommandContext, CommandResult
+    from app.services.conversation import ConversationStore
 
 logger = logging.getLogger(__name__)
 

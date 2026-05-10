@@ -6,16 +6,11 @@
 from __future__ import annotations
 
 import logging
-import tempfile
 import uuid
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from aiogram import Bot
 from aiogram.types import File
-
-if TYPE_CHECKING:
-    from app.config import Settings
 
 logger = logging.getLogger(__name__)
 
