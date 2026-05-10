@@ -37,10 +37,10 @@
 |--------|:------:|:------------------------------:|------|
 | 00. Bootstrap | Closed | 0 / 0 / 5 | `sprints/00-bootstrap.md` |
 | 01. MVP Agent | Closed | 0 / 0 / 28 | `sprints/01-mvp-agent.md` |
-| 02. Память и файловые входы | Closed | 0 / 0 / 19 | `sprints/02-memory-and-files.md` |
-| 03. Исправление багов и консольный режим | Closed | 0 / 0 / 30 | `sprints/03-bugs-and-console.md` |
+| 02. Память и файловые входы | Closed | 0 / 0 / 18 | `sprints/02-memory-and-files.md` |
+| 03. Исправление багов и консольный режим | Closed | 0 / 0 / 25 | `sprints/03-bugs-and-console.md` |
 | 04. Событийная модель и модуль Users | Closed | 0 / 0 / 9 | `sprints/04-events-and-users.md` |
-| 05. Усиление безопасности и OCR-рефакторинг | Closed | 0 / 0 / 9 | `sprints/05-security-ocr.md` |
+| 05. Усиление безопасности и OCR-рефакторинг | Closed | 0 / 0 / 13 | `sprints/05-security-ocr.md` |
 | 06. Надёжность диалога и observability | Active | 20 / 0 / 0 | `sprints/06-reliability-and-observability.md` |
 
 > Таблицу обновлять одновременно с переходами статусов в файлах спринтов (см. `process.md` §7.3 и §7.9).
