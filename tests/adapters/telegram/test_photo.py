@@ -10,7 +10,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.adapters.telegram.files import FileTooLargeError
 from app.adapters.telegram.handlers.messages import handle_photo
 from app.core.events import EventBus, MessageReceived, ResponseGenerated
 
@@ -141,7 +140,7 @@ async def test_handle_photo_success(
 
         # Проверяем, что handle_user_task был вызван
         messages.handle_user_task.assert_called_once()
-        
+
         # Проверяем, что в goal есть file_id
         call_args = messages.handle_user_task.call_args
         goal = call_args[0][0]  # Первый позиционный аргумент - это goal

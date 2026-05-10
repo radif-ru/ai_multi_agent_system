@@ -1,6 +1,5 @@
 """Тесты для InputSanitizer."""
 
-import pytest
 
 from app.security.input_sanitizer import sanitize_user_input
 

@@ -16,7 +16,6 @@ from app.adapters.telegram.handlers.messages import (
     VOICE_TRANSCRIPTION_UNAVAILABLE_REPLY,
     handle_voice,
 )
-from app.services.transcribe import TranscriberUnavailableError
 
 
 @pytest.fixture

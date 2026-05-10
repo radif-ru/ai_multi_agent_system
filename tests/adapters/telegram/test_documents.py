@@ -162,7 +162,6 @@ async def test_handle_document_too_large(
     mock_semantic_memory,
 ) -> None:
     """Превышение лимита размера файла."""
-    from app.adapters.telegram import handlers
     from app.adapters.telegram.handlers import messages
 
     original_download = messages.download_telegram_file
@@ -210,7 +209,6 @@ async def test_handle_document_download_error(
     mock_semantic_memory,
 ) -> None:
     """Ошибка при скачивании файла."""
-    from app.adapters.telegram import handlers
     from app.adapters.telegram.handlers import messages
 
     original_download = messages.download_telegram_file

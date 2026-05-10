@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 
 from app.services.ocr import extract_text, get_default_lang
 
@@ -33,14 +32,14 @@ def test_extract_text_with_empty_cache(tmp_path: Path) -> None:
     cache_path.write_text("   ", encoding="utf-8")  # Только пробелы
 
     # Если pytesseract не установлен, вернёт пустую строку
-    result = extract_text([Path("test.jpg")], cache_path=cache_path)
+    extract_text([Path("test.jpg")], cache_path=cache_path)
     # Не проверяем результат, так как зависит от наличия pytesseract
 
 
 def test_extract_text_no_cache(tmp_path: Path) -> None:
     """OCR без кеша."""
     # Если pytesseract не установлен, вернёт пустую строку
-    result = extract_text([Path("test.jpg")], cache_path=tmp_path / "cache.txt")
+    extract_text([Path("test.jpg")], cache_path=tmp_path / "cache.txt")
     # Не проверяем результат, так как зависит от наличия pytesseract
 
 

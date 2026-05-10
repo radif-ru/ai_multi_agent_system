@@ -1,11 +1,10 @@
 """Тесты app.services.tmp_cleanup."""
 
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 
-from app.core.events import ConversationArchived, EventBus
+from app.core.events import ConversationArchived
 from app.services.tmp_cleanup import _cleanup_tmp_images, on_conversation_archived_cleanup
 from app.users.models import User
 

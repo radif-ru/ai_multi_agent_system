@@ -4,7 +4,6 @@ from pathlib import Path
 import tempfile
 import sqlite3
 
-import pytest
 
 from app.security.file_id_mapper import (
     FileIdMapper,

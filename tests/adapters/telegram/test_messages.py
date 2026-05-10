@@ -14,7 +14,6 @@ import pytest
 
 from app.adapters.telegram.handlers import messages as messages_module
 from app.adapters.telegram.handlers.messages import (
-    LLM_BAD_RESPONSE_REPLY,
     LLM_TIMEOUT_REPLY,
     LLM_UNAVAILABLE_REPLY,
     MAX_INPUT_LENGTH,
@@ -303,4 +302,3 @@ async def test_no_reply_without_reply_to_message(patch_handle_user_task, event_b
     assert len(history) == 2
     assert "[В ответ на:" not in history[0]["content"]
     answer.assert_awaited_once_with("ответ", parse_mode=None)
-

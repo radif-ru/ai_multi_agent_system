@@ -245,17 +245,17 @@ async def test_archive_publishes_event_on_success(llm, summarizer, mocker, user)
     summary = "x" * 3000
     mocker.patch.object(summarizer, "summarize", return_value=summary)
     mocker.patch.object(llm, "embed", return_value=[0.1, 0.2])
-    
+
     event_bus = EventBus()
     published_events = []
-    
+
     async def capture_event(event):
         published_events.append(event)
-    
+
     event_bus.subscribe(ConversationArchived, capture_event)
-    
+
     archiver = make_archiver(llm, summarizer, mem, event_bus=event_bus)
-    
+
     await archiver.archive(
         [{"role": "user", "content": "hi"}],
         conversation_id="conv",
@@ -264,7 +264,7 @@ async def test_archive_publishes_event_on_success(llm, summarizer, mocker, user)
         user=user,
         channel="telegram",
     )
-    
+
     assert len(published_events) == 1
     event = published_events[0]
     assert isinstance(event, ConversationArchived)
@@ -278,17 +278,17 @@ async def test_archive_does_not_publish_event_on_failure(llm, summarizer, mocker
     """При неудачном архивировании событие не публикуется."""
     mem = FakeMemory()
     mocker.patch.object(summarizer, "summarize", side_effect=LLMUnavailable("down"))
-    
+
     event_bus = EventBus()
     published_events = []
-    
+
     async def capture_event(event):
         published_events.append(event)
-    
+
     event_bus.subscribe(ConversationArchived, capture_event)
-    
+
     archiver = make_archiver(llm, summarizer, mem, event_bus=event_bus)
-    
+
     with pytest.raises(LLMUnavailable):
         await archiver.archive(
             [{"role": "user", "content": "hi"}],
@@ -298,7 +298,7 @@ async def test_archive_does_not_publish_event_on_failure(llm, summarizer, mocker
             user=user,
             channel="telegram",
         )
-    
+
     assert len(published_events) == 0
 
 
@@ -308,9 +308,9 @@ async def test_archive_does_not_publish_event_without_event_bus(llm, summarizer,
     summary = "x" * 3000
     mocker.patch.object(summarizer, "summarize", return_value=summary)
     mocker.patch.object(llm, "embed", return_value=[0.1, 0.2])
-    
+
     archiver = make_archiver(llm, summarizer, mem, event_bus=None)
-    
+
     await archiver.archive(
         [{"role": "user", "content": "hi"}],
         conversation_id="conv",
@@ -319,5 +319,5 @@ async def test_archive_does_not_publish_event_without_event_bus(llm, summarizer,
         user=user,
         channel="telegram",
     )
-    
+
     # Не должно падать, событие просто не публикуется
