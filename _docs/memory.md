@@ -327,14 +327,62 @@ LIMIT ?;
 
 Точка реализации — `app/services/session_bootstrap.py` (отдельный модуль), вызывается из `core.handle_user_task`. Tool `memory_search` остаётся доступен агенту: авто-подгрузка не отменяет ручной поиск, а покрывает типовой кейс «первый ход после `/new`».
 
-## 4. Что НЕ хранится (по дизайну)
+## 4. Журнал диалога (`dialog_journal`)
 
-- **Сырые сообщения диалога** — только саммари, и только при `/new` (CON-1).
+Сейчас рабочая копия диалога живёт только в RAM `ConversationStore._session_log` (см. §2.5). При **краше**, **рестарте процесса** или **прерывании пользователем** до вызова `/new` сессия теряется до того, как успеет попасть в `memory_chunks`.
+
+Решение — параллельный append-only журнал в той же `data/memory.db`, в который пишется каждое сообщение сессии (текст пользователя, ответ агента, метаданные файлов/голосовых/фото). При следующем старте бота фоновая задача находит «зависшие» сессии (`archived_at IS NULL`) и архивирует их через тот же `Archiver`, что и `/new`.
+
+Реализация — `app/services/dialog_journal.py::DialogJournal`. Соединение отдельное от `SemanticMemory` (журналу не нужно расширение `sqlite-vec`).
+
+### 4.1 Схема
+
+```sql
+CREATE TABLE IF NOT EXISTS dialog_journal (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL,
+    chat_id         INTEGER NOT NULL,
+    conversation_id TEXT    NOT NULL,
+    role            TEXT    NOT NULL,    -- "user" | "assistant" | "system"
+    kind            TEXT    NOT NULL,    -- "text" | "document" | "voice" | "image" | "system"
+    content         TEXT    NOT NULL,    -- для файлов — goal/transcript/описание; сырой бинарь не пишется
+    file_id         TEXT,                -- для kind ∈ {document, voice, image} — id из FileIdMapper
+    file_path       TEXT,                -- абсолютный путь во временной директории
+    created_at      TEXT    NOT NULL,    -- ISO 8601
+    archived_at     TEXT                  -- NULL = долг; ISO 8601 = сессия уже в memory_chunks
+);
+CREATE INDEX IF NOT EXISTS ix_journal_pending  ON dialog_journal(user_id, conversation_id, archived_at);
+CREATE INDEX IF NOT EXISTS ix_journal_created  ON dialog_journal(created_at);
+```
+
+### 4.2 API
+
+| Метод | Описание |
+|-------|----------|
+| `init()` | Создать таблицу и индексы (идемпотентно). |
+| `append(user_id, chat_id, conversation_id, role, kind, content, file_id=None, file_path=None)` | Append-only запись одной строки. Валидирует `role` и `kind`. |
+| `pending_conversations() -> list[(user_id, chat_id, conversation_id)]` | Все сессии, в которых есть хотя бы одна строка с `archived_at IS NULL`. Упорядочены по `MIN(created_at)`. |
+| `read_conversation(user_id, conversation_id) -> list[dict]` | Все строки одной сессии в хронологическом порядке. |
+| `mark_archived(user_id, conversation_id) -> int` | Проставить `archived_at = now()` всем строкам сессии с `archived_at IS NULL`. Возвращает количество затронутых строк. |
+
+### 4.3 Инвариант
+
+Строка с `archived_at IS NULL` — это **незавершённый долг**. Он гасится одним из путей:
+
+1. Команда пользователя `/new` — `Archiver.archive(...)` отрабатывает синхронно в обработчике, после успеха `mark_archived(...)` помечает сессию (см. задачу 3.5 спринта 06).
+2. Фоновая задача `recover_pending_journals(...)` при старте процесса (см. задачу 3.4) — обходит `pending_conversations()` и поднимает их через тот же `Archiver`.
+3. Команда `/reset` — сессия отбрасывается без архивирования (намеренное действие пользователя). Журнал в этом случае помечается `archived_at` без переноса в `memory_chunks` (см. задачу 3.5).
+
+Сырой бинарь файлов в журнал не попадает — только метаданные (`file_id`, `file_path`, transcript для voice, описание/OCR для image, goal для document). Это согласовано с CON-1 «приватный след должен быть минимальным».
+
+## 5. Что НЕ хранится (по дизайну)
+
+- **Сырые сообщения диалога в `memory_chunks`** — туда идут только саммари при `/new` или фоновом восстановлении (CON-1). Полный диалог временно хранится в `dialog_journal` до архивации.
 - **Системные промпты** — они в `_prompts/`, не в БД.
 - **Вызовы tools и observations** — они в логах, не в архивной памяти.
 - **Учётные записи Telegram / профили пользователей** — для MVP не нужны (`user_id` Telegram достаточно как ключ).
 
-## 5. Что **может** появиться в архиве в будущем (НЕ MVP)
+## 6. Что **может** появиться в архиве в будущем (НЕ MVP)
 
 (см. `roadmap.md`)
 
@@ -343,7 +391,7 @@ LIMIT ?;
 - **TTL и очистка**: автоматическое удаление чанков старше N дней.
 - **Поиск с metadata-фильтрами** (по дате, conversation_id и т. п.) через `WHERE` в SQL — `sqlite-vec` это поддерживает, но контракт tool `memory_search` пока не использует.
 
-## 6. Тестируемые свойства
+## 7. Тестируемые свойства
 
 (Чек-лист для `tests/services/test_memory.py` и `tests/services/test_archiver.py` в Спринте 01.)
 
