@@ -26,6 +26,7 @@ from app.logging_config import setup_logging
 from app.middlewares.logging_mw import LoggingMiddleware
 from app.services.archiver import Archiver
 from app.services.conversation import ConversationStore
+from app.services.dialog_journal import DialogJournal
 from app.services.llm import OllamaClient
 from app.services.memory import MemoryUnavailable, SemanticMemory
 from app.services.model_registry import UserSettingsRegistry
@@ -71,6 +72,7 @@ class _Components:
     conversations: ConversationStore
     summarizer: Summarizer
     semantic_memory: SemanticMemory | None
+    dialog_journal: DialogJournal | None
     skills: SkillRegistry
     prompts: PromptLoader
     user_settings: UserSettingsRegistry
@@ -105,6 +107,16 @@ async def _build_components(settings: Settings) -> _Components:
     except MemoryUnavailable as exc:
         logger.error("долгосрочная память недоступна: %s", exc)
         semantic_memory = None
+
+    # Журнал диалога для восстановления при рестарте (спринт 06 §3)
+    dialog_journal: DialogJournal | None = DialogJournal(
+        db_path=settings.memory_db_path
+    )
+    try:
+        await dialog_journal.init()
+    except Exception as exc:  # noqa: BLE001
+        logger.error("dialog_journal: инициализация не удалась, журнал выключен: %s", exc)
+        dialog_journal = None
 
     # Инициализируем FileIdMapper для загрузки существующих маппингов
     try:
@@ -169,12 +181,32 @@ async def _build_components(settings: Settings) -> _Components:
     # Регистрируем подписчиков для записи в ConversationStore
     from app.core.events import ConversationArchived
     from app.services.conversation_subscriber import on_message_received, on_response_generated
+    from app.services.dialog_journal_subscriber import (
+        on_message_received_journal, on_response_generated_journal,
+    )
     from app.services.summarizer_subscriber import on_response_generated_summarize
     from app.services.tmp_cleanup import on_conversation_archived_cleanup
     from functools import partial
 
     event_bus.subscribe(MessageReceived, partial(on_message_received, conversations=conversations))
     event_bus.subscribe(ResponseGenerated, partial(on_response_generated, conversations=conversations))
+    # Подписчики dialog_journal — СНАЧАЛА ПОСЛЕ conversation_subscriber, чтобы
+    # current_conversation_id() видел свежий cid после add_user_message
+    if dialog_journal is not None:
+        event_bus.subscribe(
+            MessageReceived,
+            partial(
+                on_message_received_journal,
+                conversations=conversations, journal=dialog_journal,
+            ),
+        )
+        event_bus.subscribe(
+            ResponseGenerated,
+            partial(
+                on_response_generated_journal,
+                conversations=conversations, journal=dialog_journal,
+            ),
+        )
     # Регистрируем подписчика суммаризации ПОСЛЕ conversation_subscriber, чтобы ответ уже был записан в стор
     event_bus.subscribe(
         ResponseGenerated,
@@ -198,6 +230,7 @@ async def _build_components(settings: Settings) -> _Components:
         conversations=conversations,
         summarizer=summarizer,
         semantic_memory=semantic_memory,
+        dialog_journal=dialog_journal,
         skills=skills,
         prompts=prompts,
         user_settings=user_settings,
@@ -266,6 +299,11 @@ async def _shutdown(bot: Bot, components: _Components) -> None:
             await components.semantic_memory.close()
         except Exception:  # noqa: BLE001
             logger.exception("ошибка при закрытии семантической памяти")
+    if components.dialog_journal is not None:
+        try:
+            await components.dialog_journal.close()
+        except Exception:  # noqa: BLE001
+            logger.exception("ошибка при закрытии dialog_journal")
     try:
         from app.security import get_global_mapper
         get_global_mapper().close()
