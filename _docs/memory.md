@@ -111,18 +111,18 @@ ConversationStore                       Executor.run
 
 **Проблема**: без контекста файлов при reply на документ/голосовое сообщение агент не видит содержимое файла и не может дать осмысленный ответ.
 
-**Решение**: при обработке файлов сохраняется их контекст в `_file_contexts` по ключу `(user_id, message_id, file_type)`. При reply на файл этот контекст подмешивается в текст сообщения.
+**Решение**: при обработке файлов сохраняется их контекст в `_file_contexts` по ключу `(user_id, message_id)`. При reply на файл этот контекст подмешивается в текст сообщения.
 
 Инварианты:
 
-1. `save_file_context(user_id, message_id, file_type, context)` сохраняет контекст файла в памяти и в БД `files_contexts.db`.
-2. `get_file_context(user_id, message_id, file_type)` сначала ищет в памяти, затем в БД.
-3. При `/new` контекст файлов очищается из памяти и из БД.
+1. `save_file_context(user_id, message_id, file_type, context, file_id=None, file_path=None)` сохраняет контекст файла в памяти и в БД `data/file_contexts.db`.
+2. `get_file_context(user_id, message_id)` сначала ищет в памяти, затем в БД.
+3. При `/new` (через `clear(user_id)`) контекст файлов очищается из памяти и из БД.
 4. Файлы (документы, голосовые) не удаляются сразу после обработки — живут до `/new` или TTL cleanup, как и изображения.
-5. Изоляция файлов по пользователям: файлы сохраняются в отдельные каталоги `data/tmp/{user_id}/` (см. задачу 4.8).
+5. Изоляция файлов по пользователям: файлы сохраняются в отдельные каталоги `data/tmp/{user_id}/`.
 
-**Типы файлов**:
-- `photo` — изображения
+**Типы файлов** (поле `file_type`):
+- `image` — изображения (фото)
 - `document` — документы (PDF, TXT, MD)
 - `voice` — голосовые сообщения
 
@@ -131,6 +131,37 @@ ConversationStore                       Executor.run
 - `handle_document`: сохраняет контекст документа после суммаризации
 - `handle_voice`: сохраняет контекст голосового файла после транскрипции
 - `handle_text`: при reply на файл подмешивает контекст из `_file_contexts`
+
+#### 2.6.1 Схема `data/file_contexts.db`
+
+Та же БД используется одновременно `ConversationStore` (для контекста reply) и `FileIdMapper` (для сопоставления `file_id ↔ file_path` через перезапуски, см. `_docs/security.md`).
+
+```sql
+CREATE TABLE IF NOT EXISTS file_contexts (
+    user_id    INTEGER NOT NULL,
+    message_id INTEGER NOT NULL,
+    file_type  TEXT    NOT NULL,                 -- "image" | "document" | "voice"
+    context    TEXT    NOT NULL,                 -- текст goal, который пойдёт агенту
+    file_id    TEXT,                              -- временный идентификатор (для FileIdMapper)
+    file_path  TEXT,                              -- абсолютный путь во временной директории
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,    -- для отладки/будущего TTL
+    PRIMARY KEY (user_id, message_id)
+);
+```
+
+Аудит использования полей (Спринт 06, задача 2.2):
+
+| Поле | INSERT | SELECT / использование | Статус |
+|------|:------:|------------------------|--------|
+| `user_id` | да | PK + `WHERE user_id=?` в `get_file_context`, `clear` | используется по горячему пути. |
+| `message_id` | да | PK + `WHERE message_id=?` в `get_file_context` | используется по горячему пути. |
+| `file_type` | да | — | пишется для отладочного лога; в SELECT не участвует. Оставляем — стоимость колонки нулевая, а для последующих фильтров (например, «удалить только voice старше N часов») она пригодится. |
+| `context` | да | `SELECT context` в `get_file_context` | используется. |
+| `file_id` | да | `SELECT file_id, file_path` в `FileIdMapper.init` и `get_path` | используется (восстановление маппинга через перезапуски). |
+| `file_path` | да | `SELECT file_path` в `FileIdMapper.get_path` | используется. |
+| `created_at` | DEFAULT | — | для отладки и будущего TTL. |
+
+Вердикт: схема стабильна, мёртвых полей нет; колонки `file_type` и `created_at` персистятся «про запас» — их хранение оправдано (минимальная цена, понятная польза для логов и будущего cleanup).
 
 ## 3. Долгосрочная память (sqlite-vec)
 
