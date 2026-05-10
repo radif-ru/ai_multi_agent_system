@@ -14,5 +14,3 @@ exclude =
     dist,
     data,
     logs
-per-file-ignores =
-    tests/*:E501

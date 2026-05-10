@@ -46,7 +46,10 @@ async def test_download_telegram_file_success(mock_bot, tmp_dir):
     mock_bot.download_file = AsyncMock(side_effect=mock_download)
 
     # Вызов
-    result = await download_telegram_file(mock_bot, "file123", max_size_mb=20, tmp_dir=tmp_dir, user_id=None, mime_type="application/pdf")
+    result = await download_telegram_file(
+        mock_bot, "file123", max_size_mb=20, tmp_dir=tmp_dir,
+        user_id=None, mime_type="application/pdf",
+    )
 
     # Проверки
     assert isinstance(result, Path)
@@ -109,7 +112,10 @@ async def test_download_telegram_file_no_size_info(mock_bot, tmp_dir):
     mock_bot.download_file = AsyncMock(side_effect=mock_download)
 
     # Вызов - должно сработать без проверки размера
-    result = await download_telegram_file(mock_bot, "file000", max_size_mb=20, tmp_dir=tmp_dir, user_id=None, mime_type="text/plain")
+    result = await download_telegram_file(
+        mock_bot, "file000", max_size_mb=20, tmp_dir=tmp_dir,
+        user_id=None, mime_type="text/plain",
+    )
 
     # Проверки
     assert isinstance(result, Path)

@@ -169,7 +169,9 @@ def test_persistence_across_restarts():
         # Сохраняем в БД через INSERT (имитация ConversationStore)
         with sqlite3.connect(db_path) as conn:
             conn.execute(
-                "INSERT INTO file_contexts (user_id, message_id, file_type, context, file_id, file_path) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO file_contexts "
+                "(user_id, message_id, file_type, context, file_id, file_path) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
                 (1, 1, "test", "test context", file_id, str(test_file)),
             )
             conn.commit()
@@ -197,7 +199,9 @@ def test_get_path_from_db_when_not_in_memory():
         file_id = mapper1.generate_id(test_file)
         with sqlite3.connect(db_path) as conn:
             conn.execute(
-                "INSERT INTO file_contexts (user_id, message_id, file_type, context, file_id, file_path) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO file_contexts "
+                "(user_id, message_id, file_type, context, file_id, file_path) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
                 (1, 1, "test", "test context", file_id, str(test_file)),
             )
             conn.commit()
