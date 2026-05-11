@@ -676,7 +676,7 @@ def build_document_handler(
 ) -> Callable[[Message], Awaitable[None]]:
     """Собрать async-handler для документов."""
 
-    async def handler(message: Message) -> None:
+    async def handler(message: Message, **data: dict) -> None:
         await handle_document(
             message,
             settings=settings,
@@ -686,6 +686,7 @@ def build_document_handler(
             executor=executor,
             llm=llm,
             semantic_memory=semantic_memory,
+            **data,
         )
 
     return handler
@@ -703,7 +704,7 @@ def build_voice_handler(
 ) -> Callable[[Message], Awaitable[None]]:
     """Собрать async-handler для голосовых сообщений."""
 
-    async def handler(message: Message) -> None:
+    async def handler(message: Message, **data: dict) -> None:
         await handle_voice(
             message,
             settings=settings,
@@ -713,6 +714,7 @@ def build_voice_handler(
             executor=executor,
             llm=llm,
             semantic_memory=semantic_memory,
+            **data,
         )
 
     return handler
@@ -730,7 +732,7 @@ def build_photo_handler(
 ) -> Callable[[Message], Awaitable[None]]:
     """Собрать async-handler для фотографий."""
 
-    async def handler(message: Message) -> None:
+    async def handler(message: Message, **data: dict) -> None:
         await handle_photo(
             message,
             settings=settings,
@@ -740,6 +742,7 @@ def build_photo_handler(
             executor=executor,
             llm=llm,
             semantic_memory=semantic_memory,
+            **data,
         )
 
     return handler
