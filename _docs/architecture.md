@@ -86,11 +86,12 @@ Telegram-адаптер принимает текст, оборачивает е
 
 - Загружает конфигурацию (`Settings`).
 - Поднимает логирование.
-- Создаёт долгоживущие сервисы: `OllamaClient`, `ConversationStore`, `Summarizer`, `SemanticMemory`, `SkillRegistry`, `PromptLoader`, `ToolRegistry`, `Executor`, `UserRepository`.
+- Создаёт долгоживущие сервисы: `OllamaClient`, `ConversationStore`, `Summarizer`, `SemanticMemory`, `DialogJournal`, `SkillRegistry`, `PromptLoader`, `ToolRegistry`, `Executor`, `UserRepository`.
 - Создаёт `Bot`, `Dispatcher`, прокидывает зависимости в `dispatcher["..."]` (DI aiogram 3), включая `UserRepository` как `dispatcher["users"]`.
 - Регистрирует роутеры адаптера (`commands`, `messages`, `errors`) и middleware (`LoggingMiddleware`).
 - Регистрирует команды в Telegram UI через `bot.set_my_commands(...)`.
-- Запускает polling, в `finally` корректно закрывает клиенты.
+- Сразу после `_build_components` стартует фоновую задачу `recover_pending_journals(...)` через `asyncio.create_task` — восстановление «висящих» сессий из `dialog_journal` идёт параллельно с polling и не блокирует старт бота (см. `memory.md` §4.4).
+- Запускает polling, в `finally` отменяет фоновую задачу восстановления (если ещё не завершилась) и корректно закрывает клиенты, включая `dialog_journal.close()`.
 
 ### 3.2 Конфигурация (`app/config.py`)
 

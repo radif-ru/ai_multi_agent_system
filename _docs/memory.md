@@ -375,6 +375,20 @@ CREATE INDEX IF NOT EXISTS ix_journal_created  ON dialog_journal(created_at);
 
 Сырой бинарь файлов в журнал не попадает — только метаданные (`file_id`, `file_path`, transcript для voice, описание/OCR для image, goal для document). Это согласовано с CON-1 «приватный след должен быть минимальным».
 
+### 4.4 Фоновое восстановление при старте
+
+Реализация — `app/services/journal_recovery.py::recover_pending_journals(journal, archiver)`. Корутина запускается из `app/main.py::main` через `asyncio.create_task` сразу после `_build_components` и параллельно с `_start_polling`, чтобы не задерживать старт polling. Алгоритм:
+
+1. `journal.pending_conversations()` → список «висящих» сессий `(user_id, chat_id, conversation_id)`, упорядоченный по времени появления.
+2. Для каждой сессии — `journal.read_conversation(...)` и преобразование строк в формат `[{role, content}, ...]` (file-метаданные уже зашиты в `content`, см. §4.1; пустые `content` отфильтровываются).
+3. Если после фильтрации история пуста — сессия закрывается напрямую `journal.mark_archived(...)` без вызова `Archiver` (нечего суммаризировать).
+4. Иначе — `Archiver.archive(history, conversation_id=..., user_id=..., chat_id=..., user=None, channel="recovery")` (тот же путь, что и `/new`; событие `ConversationArchived` не публикуется, потому что `user is None`).
+5. На успехе — `journal.mark_archived(user_id, conversation_id)`. На ошибке — лог, `summary["failed"] += 1`, переход к следующей сессии. Одна сломанная сессия не валит остальные и не валит бот.
+
+Сессии обрабатываются последовательно (LLM-нагрузка), без `asyncio.gather` и семафоров. При завершении процесса до окончания восстановления — `recovery_task.cancel()` в `finally` блока `main()`; следующий старт подберёт оставшиеся сессии тем же путём.
+
+**Smoke-сценарий «kill -9 → старт»** (ожидаемое поведение): отправили текст пользователю → подписчик `on_message_received_journal` записал строку в `dialog_journal` (`archived_at IS NULL`); процесс прервали (`kill -9`, краш, рестарт хоста); следующий старт через `python -m app` → `recover_pending_journals` поднимает сессию через `Archiver` → строка получает `archived_at`, чанк попадает в `memory_chunks` и виден в `MemorySearchTool`. Unit-тесты на алгоритм — `tests/services/test_journal_recovery.py`.
+
 ## 5. Что НЕ хранится (по дизайну)
 
 - **Сырые сообщения диалога в `memory_chunks`** — туда идут только саммари при `/new` или фоновом восстановлении (CON-1). Полный диалог временно хранится в `dialog_journal` до архивации.
