@@ -74,13 +74,13 @@ clear_global_mapper()  # Очистить (для тестов)
 ```
 
 **Методы:**
-- `init()` — инициализирует SQLite-соединение и загружает существующие маппинги из таблицы `file_contexts`.
+- `init()` — инициализирует SQLite-соединение к `data/memory.db` и загружает существующие маппинги (`SELECT DISTINCT file_id, file_path FROM dialog_journal`) для файлов, которые ещё существуют на диске.
 - `generate_id(file_path)` — генерирует уникальный временный ID для файла (например, `file_abc123`). При повторном вызове для того же пути возвращает тот же ID.
-- `get_path(file_id)` — возвращает путь по ID или `None`, если ID не найден. Сначала ищет в памяти, при отсутствии — в БД.
-- `clear()` — очищает in-memory кеш маппингов.
+- `get_path(file_id)` — возвращает путь по ID или `None`, если ID не найден. Сначала ищет в памяти, при отсутствии — в `dialog_journal` (`WHERE file_id=? ORDER BY id DESC LIMIT 1`).
+- `clear()` — очищает in-memory кеш маппингов; записи журнала не трогает.
 - `close()` — закрывает SQLite-соединение.
 
-**Хранилище:** общая таблица `file_contexts` из ConversationStore (SQLite) + in-memory кеш для быстрого доступа. Персистентность между перезапусками агента.
+**Хранилище (с задачи 06.3-bis.3):** колонки `file_id`/`file_path` в таблице `dialog_journal` (`data/memory.db`) — единая БД с журналом диалога; запись делает подписчик `on_message_received_journal` при публикации `MessageReceived` из Telegram-хендлеров. In-memory кеш в `FileIdMapper` — для быстрого доступа. Старая БД `data/file_contexts.db` упразднена (см. `_docs/memory.md` §2.6.1, миграция в `app/services/file_contexts_migration.py`).
 
 ### 2.1 Интеграция
 
