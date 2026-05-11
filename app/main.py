@@ -23,6 +23,7 @@ from app.agents.executor import Executor
 from app.config import Settings
 from app.core import orchestrator as _orchestrator  # импорт для DI/тестов
 from app.logging_config import setup_logging
+from app.observability import setup_sentry
 from app.middlewares.logging_mw import LoggingMiddleware
 from app.services.archiver import Archiver
 from app.services.conversation import ConversationStore
@@ -334,6 +335,7 @@ async def main() -> None:
     """Async-точка входа: сборка, запуск polling, корректный shutdown."""
     settings = Settings()
     setup_logging(settings)
+    setup_sentry(settings)
 
     components = await _build_components(settings)
     bot, dispatcher = _wire_telegram(components)

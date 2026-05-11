@@ -16,6 +16,7 @@ from app.agents.executor import Executor
 from app.config import Settings
 from app.core import orchestrator as _orchestrator
 from app.logging_config import setup_logging
+from app.observability import setup_sentry
 from app.services.archiver import Archiver
 from app.services.conversation import ConversationStore
 from app.services.dialog_journal import DialogJournal
@@ -246,6 +247,7 @@ async def main() -> None:
     settings = Settings()
     # Отключаем консольный вывод логов чтобы не смешивать с ответами агента
     setup_logging(settings, console_output=False)
+    setup_sentry(settings)
 
     (
         settings,
