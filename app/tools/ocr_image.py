@@ -10,7 +10,7 @@ import logging
 from pathlib import Path
 from typing import Any, Mapping
 
-from app.security import get_global_mapper
+from app.security import file_id_not_found_message, get_global_mapper
 from app.services.ocr import extract_text
 from app.tools.base import Tool, ToolContext, truncate_output
 from app.tools.errors import ToolError
@@ -45,7 +45,7 @@ class OcrImageTool(Tool):
             mapper = get_global_mapper()
             path = mapper.get_path(str(args["file_id"]))
             if path is None:
-                raise ToolError(f"file_id {args['file_id']} не найден")
+                raise ToolError(file_id_not_found_message(str(args['file_id'])))
             raw_path = str(path)
         elif "image_path" in args and args["image_path"]:
             raw_path = str(args["image_path"])

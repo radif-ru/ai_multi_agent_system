@@ -9,7 +9,7 @@ import asyncio
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from app.security import get_global_mapper
+from app.security import file_id_not_found_message, get_global_mapper
 from app.tools.base import Tool, ToolContext, truncate_output
 from app.tools.errors import ToolError
 
@@ -50,7 +50,7 @@ class ReadFileTool(Tool):
             mapper = get_global_mapper()
             path = mapper.get_path(str(args["file_id"]))
             if path is None:
-                raise ToolError(f"file_id {args['file_id']} не найден")
+                raise ToolError(file_id_not_found_message(str(args['file_id'])))
             raw = str(path)
         elif "path" in args and args["path"]:
             raw = str(args["path"])
