@@ -156,7 +156,7 @@ async def test_file_id_reads_txt_file(tool: ReadDocumentTool, tmp_dir: Path) -> 
 async def test_file_id_not_found_error(tool: ReadDocumentTool, tmp_dir: Path) -> None:
     """Ошибка при неизвестном file_id."""
     clear_global_mapper()
-    with pytest.raises(ToolError, match="file_id .* не найден"):
+    with pytest.raises(ToolError, match="file_id .* недоступен"):
         await tool.run({"file_id": "file_unknown"}, MagicMock())
     clear_global_mapper()
 
