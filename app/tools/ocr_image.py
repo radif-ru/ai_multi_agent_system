@@ -84,9 +84,9 @@ class OcrImageTool(Tool):
         if resolved.suffix.lower() not in allowed_extensions:
             raise ToolError(f"неподдерживаемое расширение: {resolved.suffix}")
 
-        # Выполняем OCR через сервис с кешем
-        cache_path = resolved.with_suffix(".ocr.txt")
-        text = extract_text(image_paths=[resolved], lang=lang, cache_path=cache_path)
+        # Дисковый кеш `.ocr.txt` убран (задача 06.3-bis.4):
+        # результат OCR попадает в `dialog_journal.content` через goal.
+        text = extract_text(image_paths=[resolved], lang=lang)
 
         if not text:
             return "OCR не нашёл текста на изображении"

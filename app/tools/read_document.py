@@ -194,10 +194,10 @@ class ReadDocumentTool(Tool):
             # Если OCR включен и текста очень мало, извлекаем текст из картинок через сервис
             ocr_successful = False
             if self._ocr_enabled and len(text) < self._ocr_min_text_threshold and image_paths:
-                ocr_cache_path = path.with_suffix(".ocr.txt")
+                # Дисковый кеш `.ocr.txt` убран (задача 06.3-bis.4):
+                # результат OCR попадает в `dialog_journal.content` через goal.
                 ocr_text = extract_text(
                     image_paths=[Path(p) for p in image_paths],
-                    cache_path=ocr_cache_path,
                 )
                 if ocr_text:
                     text += f"\n\n[OCR текст из изображений:]\n{ocr_text}"
@@ -257,9 +257,8 @@ class ReadDocumentTool(Tool):
         if not self._ocr_enabled:
             raise ToolError("OCR отключён. Включите DOCUMENT_OCR_ENABLED в настройках.")
 
-        # Проверяем кеш OCR
-        ocr_cache_path = path.with_suffix(".ocr.txt")
-        text = extract_text(image_paths=[path], cache_path=ocr_cache_path)
+        # Дисковый кеш `.ocr.txt` убран (задача 06.3-bis.4).
+        text = extract_text(image_paths=[path])
 
         if not text:
             raise ToolError("OCR не смог извлечь текст с изображения")
