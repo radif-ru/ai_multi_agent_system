@@ -3,8 +3,10 @@
 Заменяет полные пути к файлам на временные идентификаторы для защиты от
 data leakage. См. задачу 4.1 спринта 05.
 
-Использует общую таблицу file_contexts из ConversationStore для хранения
-маппингов file_id → path.
+Персистентный слой — колонки `file_id`/`file_path` в таблице `dialog_journal`
+(`data/memory.db`); запись делает подписчик `on_message_received_journal`
+(см. задачу 06.3-bis.3 и `_docs/memory.md` §2.6/§4.1). In-memory кеш —
+для быстрых повторных обращений.
 """
 
 from __future__ import annotations
@@ -45,18 +47,19 @@ class FileIdMapper:
     """Маппер временных идентификаторов для файлов.
 
     Генерирует уникальные временные идентификаторы для файлов и умеет
-    восстанавливать путь по идентификатору. Хранилище — общая таблица
-    file_contexts из ConversationStore + in-memory кеш для быстрого доступа.
+    восстанавливать путь по идентификатору. Хранилище — таблица
+    `dialog_journal` в `data/memory.db` (колонки `file_id`/`file_path`) +
+    in-memory кеш для быстрого доступа.
     """
 
     _ID_PREFIX: Final = "file_"
     _ID_LENGTH: Final = 12
 
-    def __init__(self, *, db_path: Path = Path("data/file_contexts.db")) -> None:
+    def __init__(self, *, db_path: Path = Path("data/memory.db")) -> None:
         """Создать маппер с пустым хранилищем.
 
         Args:
-            db_path: Путь к SQLite-файлу file_contexts.db (из ConversationStore).
+            db_path: Путь к SQLite-файлу `data/memory.db` (таблица `dialog_journal`).
         """
         self._id_to_path: dict[str, Path] = {}
         self._path_to_id: dict[Path, str] = {}
@@ -70,10 +73,11 @@ class FileIdMapper:
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(self._db_path)
 
-        # Загружаем существующие маппинги из таблицы file_contexts
+        # Загружаем существующие маппинги из dialog_journal (см. 06.3-bis.3).
         try:
             cursor = self._conn.execute(
-                "SELECT file_id, file_path FROM file_contexts WHERE file_id IS NOT NULL AND file_path IS NOT NULL"
+                "SELECT DISTINCT file_id, file_path FROM dialog_journal "
+                "WHERE file_id IS NOT NULL AND file_path IS NOT NULL"
             )
             for row in cursor:
                 file_id, file_path_str = row
@@ -82,10 +86,15 @@ class FileIdMapper:
                     if path.exists():  # Загружаем только если файл существует
                         self._id_to_path[file_id] = path
                         self._path_to_id[path] = file_id
-            logger.info("FileIdMapper инициализирован: загружено %d маппингов", len(self._id_to_path))
+            logger.info(
+                "FileIdMapper инициализирован: загружено %d маппингов из dialog_journal",
+                len(self._id_to_path),
+            )
         except sqlite3.OperationalError as exc:
-            # Таблица ещё не создана или колонки нет - игнорируем
-            logger.info("FileIdMapper: таблица file_contexts ещё не готова или старая схема: %s", exc)
+            # Таблица ещё не создана (DialogJournal.init() не вызывался).
+            logger.info(
+                "FileIdMapper: таблица dialog_journal ещё не готова: %s", exc,
+            )
 
     def close(self) -> None:
         """Закрыть соединение с БД."""
@@ -120,8 +129,9 @@ class FileIdMapper:
         self._id_to_path[file_id] = file_path
         self._path_to_id[file_path] = file_id
 
-        # Сохранение в БД происходит через ConversationStore.save_file_context
-        # при вызове из хендлеров. Здесь только сохраняем в памяти.
+        # Запись в БД делает подписчик `on_message_received_journal` при
+        # публикации `MessageReceived` из Telegram-хендлеров: колонки
+        # `file_id`/`file_path` в `dialog_journal` (см. 06.3-bis.3).
 
         return file_id
 
@@ -139,11 +149,13 @@ class FileIdMapper:
         if path is not None:
             return path
 
-        # Если нет в памяти, ищем в БД
+        # Если нет в памяти, ищем в dialog_journal
         if self._conn is not None:
             try:
                 cursor = self._conn.execute(
-                    "SELECT file_path FROM file_contexts WHERE file_id = ?",
+                    "SELECT file_path FROM dialog_journal "
+                    "WHERE file_id = ? AND file_path IS NOT NULL "
+                    "ORDER BY id DESC LIMIT 1",
                     (file_id,),
                 )
                 row = cursor.fetchone()
@@ -151,13 +163,12 @@ class FileIdMapper:
                     path_str = row[0]
                     if path_str:
                         path = Path(path_str)
-                        if path.exists():  # Возвращаем только если файл существует
-                            # Кешируем в памяти
+                        if path.exists():
                             self._id_to_path[file_id] = path
                             self._path_to_id[path] = file_id
                             return path
             except Exception as exc:  # noqa: BLE001
-                logger.error("ошибка чтения маппинга из БД: %s", exc)
+                logger.error("ошибка чтения маппинга из dialog_journal: %s", exc)
 
         return None
 
@@ -168,5 +179,5 @@ class FileIdMapper:
         """
         self._id_to_path.clear()
         self._path_to_id.clear()
-        # Очистка БД происходит через ConversationStore.clear()
-        # при вызове /new или reset. Здесь только очищаем память.
+        # Записи в `dialog_journal` живут до `mark_archived(...)` после
+        # успешного `/new`; здесь сбрасываем только in-memory кеш.
