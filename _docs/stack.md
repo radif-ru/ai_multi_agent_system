@@ -53,7 +53,8 @@
 
 - Стандартный **`logging`** + `logging.handlers.RotatingFileHandler`.
 - Конфигурация через `dictConfig` в `app/logging_config.py`.
-- Формат: `%(asctime)s | %(levelname)s | %(name)s | %(message)s`.
+- Формат — **структурный JSON**: поля `timestamp`, `level`, `service`, `name`, `message`, `trace_id`, `user_id`, опционально `extra`/`exc_info`/`stack_info`. Детали — в `_docs/observability.md` §1.
+- `trace_id` и `user_id` прокидываются автоматически через `contextvars` (см. `app/utils/tracing.py`, `_docs/observability.md` §2).
 - Уровень — из `LOG_LEVEL` (`INFO` по умолчанию).
 - Файл — из `LOG_FILE` (например, `logs/agent.log`), каталог `logs/` в `.gitignore`.
 

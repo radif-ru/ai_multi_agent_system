@@ -35,6 +35,7 @@ AI-агент с локальной LLM (Ollama), работающий в цик
 - [`commands.md`](./commands.md) — спецификация команд бота и поведения произвольного текста.
 - [`testing.md`](./testing.md) — стратегия и категории тестов, моки, покрытие, обязательность тестов перед коммитом.
 - [`instructions.md`](./instructions.md) — правила разработки: стиль, git, async, ошибки, секреты, тесты, документация.
+- [`observability.md`](./observability.md) — структурные JSON-логи, `trace_id`, маскирование секретов, error tracking (GlitchTip).
 
 ### Справочное
 
