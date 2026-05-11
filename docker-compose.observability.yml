@@ -1,0 +1,103 @@
+# docker-compose.observability.yml
+#
+# Минимальный self-hosted GlitchTip (Sentry-совместимый OSS) для локальной
+# разработки. Поднимает postgres + redis + GlitchTip web + worker + migrate.
+#
+# Запуск:
+#   docker compose -f docker-compose.observability.yml up -d
+#
+# После старта:
+#   1. Открыть http://localhost:8100 и зарегистрировать первого пользователя.
+#   2. Создать организацию и проект типа "Python".
+#   3. Скопировать DSN из Settings → Client Keys (DSN).
+#   4. Прописать DSN в .env бота: SENTRY_DSN=...
+#   5. Перезапустить бота.
+#
+# Остановка:
+#   docker compose -f docker-compose.observability.yml down
+#
+# Остановка с удалением данных:
+#   docker compose -f docker-compose.observability.yml down -v
+#
+# Подробности — _docs/observability.md §5.
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: glitchtip_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: glitchtip
+      POSTGRES_PASSWORD: glitchtip
+      POSTGRES_DB: glitchtip
+    volumes:
+      - glitchtip_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U glitchtip"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: glitchtip_redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  web:
+    image: glitchtip/glitchtip:latest
+    container_name: glitchtip_web
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment: &glitchtip_env
+      DATABASE_URL: postgres://glitchtip:glitchtip@postgres:5432/glitchtip
+      REDIS_URL: redis://redis:6379/0
+      # ВНИМАНИЕ: замените SECRET_KEY на свой перед реальным использованием
+      # (сгенерировать: python -c "import secrets; print(secrets.token_urlsafe(50))").
+      SECRET_KEY: change-me-locally-please-random-string-here
+      PORT: "8000"
+      EMAIL_URL: consolemail://
+      GLITCHTIP_DOMAIN: http://localhost:8100
+      DEFAULT_FROM_EMAIL: noreply@glitchtip.local
+      CELERY_WORKER_AUTOSCALE: "1,3"
+      CELERY_WORKER_MAX_TASKS_PER_CHILD: "10000"
+      ENABLE_OBSERVABILITY_API: "true"
+    ports:
+      - "8100:8000"
+    volumes:
+      - glitchtip_uploads:/code/uploads
+
+  worker:
+    image: glitchtip/glitchtip:latest
+    container_name: glitchtip_worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment: *glitchtip_env
+    command: ./bin/run-celery-with-beat.sh
+    volumes:
+      - glitchtip_uploads:/code/uploads
+
+  migrate:
+    image: glitchtip/glitchtip:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment: *glitchtip_env
+    command: ./manage.py migrate
+    restart: on-failure
+
+volumes:
+  glitchtip_pg_data:
+  glitchtip_uploads:

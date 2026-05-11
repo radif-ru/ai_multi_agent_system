@@ -123,6 +123,52 @@ finally:
 
 `LoggingIntegration(level=INFO, event_level=ERROR)` — все `logger.error(...)` и `logger.exception(...)` автоматически уезжают в GlitchTip как события; уровни `INFO/WARNING` идут в breadcrumbs и доезжают вместе со следующим event.
 
+### Self-hosted GlitchTip: локальный запуск
+
+В репозитории лежит `docker-compose.observability.yml` — минимальный стек (postgres + redis + GlitchTip web + worker + migrate) для локальной разработки. Он не привязан к `docker-compose` самого бота (бот остаётся в этом спринте без контейнера).
+
+Пошагово:
+
+1. Поднять стек:
+
+   ```bash
+   docker compose -f docker-compose.observability.yml up -d
+   ```
+
+   Первый запуск тянет образы (~300 МБ) и выполняет миграции. Готовность:
+
+   ```bash
+   docker compose -f docker-compose.observability.yml logs -f web
+   # ждём "Starting gunicorn" / "Listening at: http://0.0.0.0:8000"
+   ```
+
+2. Открыть <http://localhost:8100>. Зарегистрировать первого пользователя (он автоматически становится superuser).
+
+3. Создать организацию и проект с платформой `Python`. После создания скопировать DSN из **Settings → Client Keys (DSN)**.
+
+4. Прописать DSN в `.env` бота:
+
+   ```dotenv
+   SENTRY_DSN=http://<public_key>@localhost:8100/<project_id>
+   SENTRY_ENVIRONMENT=dev
+   ```
+
+5. Перезапустить бота (`python -m app`) — в логах появится `sentry: инициализирован`.
+
+Остановка без удаления данных:
+
+```bash
+docker compose -f docker-compose.observability.yml down
+```
+
+С удалением postgres/uploads:
+
+```bash
+docker compose -f docker-compose.observability.yml down -v
+```
+
+> **Прод/staging.** Перед выкаткой за пределы `localhost` заменить `SECRET_KEY` на случайный (сгенерировать `python -c "import secrets; print(secrets.token_urlsafe(50))"`), поменять `GLITCHTIP_DOMAIN`, настроить реальный `EMAIL_URL`. Текущий compose предназначен только для разработки.
+
 ### Проверка через ошибки
 
 Smoke-тесты в `tests/observability/test_error_capture.py` подменяют реальный HTTP-transport на in-memory буфер (`_InMemoryTransport`) и прогоняют четыре класса искусственных ошибок:
