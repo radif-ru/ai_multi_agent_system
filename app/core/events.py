@@ -58,6 +58,7 @@ class MessageReceived(Event):
     kind: str = "text"
     file_id: str | None = None
     file_path: str | None = None
+    message_id: int | None = None
 
 
 @dataclass

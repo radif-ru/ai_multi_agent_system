@@ -70,6 +70,18 @@ class DialogJournal:
                 ON dialog_journal(created_at);
             """
         )
+        # Идемпотентная миграция схемы: добавляем колонку message_id, если её нет.
+        # См. задачу 06.3-bis.1: единый ключ (user_id, message_id) для reply
+        # на файлы и для FileIdMapper, чтобы убрать дубль `data/file_contexts.db`.
+        existing_cols = {
+            row[1] for row in conn.execute("PRAGMA table_info(dialog_journal)").fetchall()
+        }
+        if "message_id" not in existing_cols:
+            conn.execute("ALTER TABLE dialog_journal ADD COLUMN message_id INTEGER")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS ix_journal_message "
+            "ON dialog_journal(user_id, message_id) WHERE message_id IS NOT NULL"
+        )
         conn.commit()
         self._conn = conn
 
@@ -91,6 +103,7 @@ class DialogJournal:
         content: str,
         file_id: str | None = None,
         file_path: str | None = None,
+        message_id: int | None = None,
     ) -> int:
         if role not in self._ALLOWED_ROLES:
             raise ValueError(f"role must be one of {self._ALLOWED_ROLES}, got {role!r}")
@@ -98,7 +111,8 @@ class DialogJournal:
             raise ValueError(f"kind must be one of {self._ALLOWED_KINDS}, got {kind!r}")
         return await asyncio.to_thread(
             self._append_sync,
-            user_id, chat_id, conversation_id, role, kind, content, file_id, file_path,
+            user_id, chat_id, conversation_id, role, kind, content,
+            file_id, file_path, message_id,
         )
 
     def _append_sync(
@@ -111,6 +125,7 @@ class DialogJournal:
         content: str,
         file_id: str | None,
         file_path: str | None,
+        message_id: int | None,
     ) -> int:
         conn = self._require_conn()
         try:
@@ -118,12 +133,13 @@ class DialogJournal:
                 """
                 INSERT INTO dialog_journal
                     (user_id, chat_id, conversation_id, role, kind,
-                     content, file_id, file_path, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                     content, file_id, file_path, created_at, message_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                 """,
                 (
                     int(user_id), int(chat_id), str(conversation_id),
                     role, kind, content, file_id, file_path, _now_iso(),
+                    int(message_id) if message_id is not None else None,
                 ),
             )
             conn.commit()
@@ -167,7 +183,8 @@ class DialogJournal:
         conn = self._require_conn()
         rows = conn.execute(
             """
-            SELECT id, role, kind, content, file_id, file_path, created_at, archived_at
+            SELECT id, role, kind, content, file_id, file_path, created_at,
+                   archived_at, message_id
             FROM dialog_journal
             WHERE user_id = ? AND conversation_id = ?
             ORDER BY id ASC;
@@ -184,6 +201,7 @@ class DialogJournal:
                 "file_path": r[5],
                 "created_at": r[6],
                 "archived_at": r[7],
+                "message_id": r[8],
             }
             for r in rows
         ]

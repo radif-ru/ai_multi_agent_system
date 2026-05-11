@@ -118,7 +118,8 @@ def build_text_handler(
                 user=user,
                 text=text,
                 conversation_id=str(chat_id),
-                channel="telegram"
+                channel="telegram",
+                message_id=message.message_id,
             ))
 
         if len(text) > MAX_INPUT_LENGTH:
@@ -304,6 +305,7 @@ async def handle_document(
             kind="document",
             file_id=file_id,
             file_path=str(file_path),
+            message_id=message.message_id,
         ))
 
     # Сохраняем контекст файла по message_id для ответов на конкретный файл
@@ -487,6 +489,7 @@ async def handle_voice(
             kind="voice",
             file_id=file_id,
             file_path=str(file_path),
+            message_id=message.message_id,
         ))
 
     # Сохраняем контекст голосового файла по message_id для ответов на конкретный файл
@@ -612,6 +615,7 @@ async def handle_photo(
             kind="image",
             file_id=file_id,
             file_path=str(file_path),
+            message_id=message.message_id,
         ))
 
     # Сохраняем контекст файла по message_id для ответов на конкретный файл

@@ -59,6 +59,7 @@ async def on_message_received_journal(
             content=event.text,
             file_id=getattr(event, "file_id", None),
             file_path=getattr(event, "file_path", None),
+            message_id=getattr(event, "message_id", None),
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("dialog_journal: не удалось записать MessageReceived: %s", exc)

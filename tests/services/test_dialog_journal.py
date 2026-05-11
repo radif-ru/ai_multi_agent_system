@@ -92,6 +92,20 @@ async def test_append_supports_file_kinds(journal):
     assert rows[0]["file_path"] == "/tmp/x.pdf"
 
 
+async def test_append_persists_message_id(journal):
+    await journal.append(
+        user_id=1, chat_id=10, conversation_id="c1",
+        role="user", kind="document", content="goal",
+        file_id="file_abc", file_path="/tmp/x.pdf", message_id=42,
+    )
+    await journal.append(
+        user_id=1, chat_id=10, conversation_id="c1",
+        role="user", kind="text", content="без id",
+    )
+    rows = await journal.read_conversation(1, "c1")
+    assert [r["message_id"] for r in rows] == [42, None]
+
+
 async def test_append_rejects_invalid_role_or_kind(journal):
     with pytest.raises(ValueError):
         await journal.append(

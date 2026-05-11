@@ -81,6 +81,22 @@ async def _build_components(settings: Settings) -> tuple:
         logger.error("dialog_journal: инициализация не удалась, журнал выключен: %s", exc)
         dialog_journal = None
 
+    # Одноразовая миграция data/file_contexts.db → dialog_journal (этап 06.3-bis.1).
+    if dialog_journal is not None:
+        try:
+            from app.services.file_contexts_migration import (
+                migrate_file_contexts_to_journal,
+            )
+            legacy_db = settings.memory_db_path.parent / "file_contexts.db"
+            moved = migrate_file_contexts_to_journal(
+                legacy_db_path=legacy_db,
+                journal_db_path=settings.memory_db_path,
+            )
+            if moved:
+                logger.info("file_contexts_migration: перенесено %d строк", moved)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("file_contexts_migration: %s", exc)
+
     # Инициализируем FileIdMapper для загрузки существующих маппингов
     try:
         get_global_mapper().init()

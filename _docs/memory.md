@@ -349,18 +349,24 @@ CREATE TABLE IF NOT EXISTS dialog_journal (
     file_id         TEXT,                -- для kind ∈ {document, voice, image} — id из FileIdMapper
     file_path       TEXT,                -- абсолютный путь во временной директории
     created_at      TEXT    NOT NULL,    -- ISO 8601
-    archived_at     TEXT                  -- NULL = долг; ISO 8601 = сессия уже в memory_chunks
+    archived_at     TEXT,                 -- NULL = долг; ISO 8601 = сессия уже в memory_chunks
+    message_id      INTEGER               -- id входящего сообщения адаптера (Telegram message_id);
+                                          -- NULL для ответов ассистента и записей без привязки
 );
 CREATE INDEX IF NOT EXISTS ix_journal_pending  ON dialog_journal(user_id, conversation_id, archived_at);
 CREATE INDEX IF NOT EXISTS ix_journal_created  ON dialog_journal(created_at);
+CREATE INDEX IF NOT EXISTS ix_journal_message  ON dialog_journal(user_id, message_id)
+    WHERE message_id IS NOT NULL;
 ```
+
+Колонка `message_id` добавлена в задаче 06.3-bis.1: она нужна, чтобы свести воедино журнал и старую таблицу `file_contexts` (PK там был `(user_id, message_id)`) — после этапа 3-bis `ConversationStore.get_file_context` и `FileIdMapper` читают из `dialog_journal` по этому же ключу, а `data/file_contexts.db` мигрируется один раз и удаляется. Миграция реализована в `app/services/file_contexts_migration.py::migrate_file_contexts_to_journal(...)`: при старте процесса (см. `app/main.py`/`app/console_main.py`) она читает старую таблицу, добавляет строки в `dialog_journal` с `conversation_id = "legacy"`, `archived_at = now()` (эти строки уже «закрыты» и не подбираются фоновой архивацией) и переименовывает источник в `data/file_contexts.db.migrated-<ts>`.
 
 ### 4.2 API
 
 | Метод | Описание |
 |-------|----------|
 | `init()` | Создать таблицу и индексы (идемпотентно). |
-| `append(user_id, chat_id, conversation_id, role, kind, content, file_id=None, file_path=None)` | Append-only запись одной строки. Валидирует `role` и `kind`. |
+| `append(user_id, chat_id, conversation_id, role, kind, content, file_id=None, file_path=None, message_id=None)` | Append-only запись одной строки. Валидирует `role` и `kind`. `message_id` (опционально) — id входящего сообщения адаптера. |
 | `pending_conversations() -> list[(user_id, chat_id, conversation_id)]` | Все сессии, в которых есть хотя бы одна строка с `archived_at IS NULL`. Упорядочены по `MIN(created_at)`. |
 | `read_conversation(user_id, conversation_id) -> list[dict]` | Все строки одной сессии в хронологическом порядке. |
 | `mark_archived(user_id, conversation_id) -> int` | Проставить `archived_at = now()` всем строкам сессии с `archived_at IS NULL`. Возвращает количество затронутых строк. |

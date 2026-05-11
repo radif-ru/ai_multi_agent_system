@@ -79,7 +79,7 @@ def _make_handler(
 def _make_message(
     *, text: str | None = "привет", user_id: int = 42, chat_id: int = 777
 ) -> tuple[MagicMock, AsyncMock]:
-    msg = MagicMock(spec=["from_user", "chat", "answer", "text", "bot"])
+    msg = MagicMock(spec=["from_user", "chat", "answer", "text", "bot", "message_id"])
     msg.from_user = MagicMock()
     msg.from_user.id = user_id
     msg.chat = MagicMock()
@@ -87,6 +87,7 @@ def _make_message(
     msg.text = text
     msg.answer = AsyncMock()
     msg.bot = MagicMock()
+    msg.message_id = 1
     return msg, msg.answer
 
 
