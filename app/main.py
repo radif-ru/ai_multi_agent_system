@@ -259,6 +259,7 @@ def _wire_telegram(c: _Components) -> tuple[Bot, Dispatcher]:
             conversations=c.conversations,
             archiver=c.archiver,
             users=c.users,
+            journal=c.dialog_journal,
         )
     )
     dispatcher.include_router(

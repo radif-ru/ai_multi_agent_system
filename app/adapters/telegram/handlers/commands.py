@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from app.config import Settings
     from app.services.archiver import Archiver
     from app.services.conversation import ConversationStore
+    from app.services.dialog_journal import DialogJournal
     from app.services.model_registry import UserSettingsRegistry
     from app.services.prompts import PromptLoader
 
@@ -44,6 +45,7 @@ def build_command_handlers(
     conversations: "ConversationStore",
     archiver: "Archiver",
     users: Any = None,
+    journal: "DialogJournal | None" = None,
 ) -> dict[str, Any]:
     """Собрать словарь handler'ов команд.
 
@@ -209,6 +211,7 @@ def build_command_handlers(
             users=users,
             user=user_obj,
             channel="telegram",
+            journal=journal,
         )
 
         # Показываем прогресс для долгих операций
@@ -252,6 +255,7 @@ def build_command_handlers(
             conversations=conversations,
             archiver=archiver,
             users=users,
+            journal=journal,
         )
         result = await registry.execute("reset", ctx)
         await message.answer(result.text)
@@ -279,6 +283,7 @@ def build_commands_router(
     conversations: "ConversationStore",
     archiver: "Archiver",
     users: Any = None,
+    journal: "DialogJournal | None" = None,
 ) -> Router:
     """Собрать aiogram-Router с handler'ами команд.
 
@@ -297,6 +302,7 @@ def build_commands_router(
         conversations=conversations,
         archiver=archiver,
         users=users,
+        journal=journal,
     )
     router = Router(name="commands")
     router.message.register(handlers["start"], Command("start"))
@@ -325,6 +331,7 @@ def _build_context(
     users: Any = None,
     user: Any = None,
     channel: str = "telegram",
+    journal: "DialogJournal | None" = None,
 ) -> CommandContext:
     """Построить контекст команды для Telegram."""
     return CommandContext(
@@ -340,6 +347,7 @@ def _build_context(
         users=users,
         user=user,
         channel=channel,
+        journal=journal,
     )
 
 

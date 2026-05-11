@@ -199,6 +199,7 @@ async def _build_components(settings: Settings) -> tuple:
         executor,
         users,
         event_bus,
+        dialog_journal,
     )
 
 
@@ -243,6 +244,7 @@ async def main() -> None:
         executor,
         users,
         event_bus,
+        dialog_journal,
     ) = await _build_components(settings)
 
     # Функция core.handle_user_task для текстовых сообщений
@@ -280,6 +282,7 @@ async def main() -> None:
         core_handle_user_task=core_handle_user_task,
         users=users,
         event_bus=event_bus,
+        journal=dialog_journal,
     )
 
     try:
