@@ -11,6 +11,13 @@ import re
 from typing import TYPE_CHECKING, Any
 
 from app.security import sanitize_user_input
+from app.utils.tracing import (
+    bind_trace_id,
+    bind_user_id,
+    new_trace_id,
+    reset_trace_id,
+    reset_user_id,
+)
 
 if TYPE_CHECKING:
     from app.commands.context import CommandContext
@@ -182,11 +189,18 @@ class ConsoleAdapter:
                 print("Выход.")
                 break
 
-            # Проверка команды
-            if line.startswith("/"):
-                await self._handle_command(line)
-            else:
-                await self._handle_text(line)
+            # На каждую введённую команду/текст — свежий trace_id и
+            # привязанный user_id в contextvars (см. _docs/observability.md §2).
+            trace_token = bind_trace_id(new_trace_id())
+            user_token = bind_user_id(self.user_id)
+            try:
+                if line.startswith("/"):
+                    await self._handle_command(line)
+                else:
+                    await self._handle_text(line)
+            finally:
+                reset_user_id(user_token)
+                reset_trace_id(trace_token)
 
     async def _handle_command(self, line: str) -> None:
         """Обработать команду."""
