@@ -125,4 +125,11 @@ finally:
 
 ### Проверка через ошибки
 
-(см. задачу 5.3 спринта 06) — тесты в `tests/observability/test_setup_sentry.py` + планируемые smoke-кейсы на четыре класса ошибок (ручная, асинхронная, внешний вызов, данные).
+Smoke-тесты в `tests/observability/test_error_capture.py` подменяют реальный HTTP-transport на in-memory буфер (`_InMemoryTransport`) и прогоняют четыре класса искусственных ошибок:
+
+1. Ручной `raise ValueError(...)`.
+2. Ошибка в `asyncio.create_task(...)`.
+3. Ошибка внешнего вызова (`httpx.TimeoutException`).
+4. Ошибка данных (`json.JSONDecodeError`).
+
+Для каждого сценария проверяется, что событие дошло до transport, `event.exception.values[-1].stacktrace` присутствует, а `event.tags.trace_id` совпадает с установленным через `bind_trace_id(...)`.
