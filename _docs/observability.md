@@ -96,6 +96,33 @@ finally:
 
 Использовать **перед** тем как положить структуру в `extra=` (или при логировании заголовков/конфигов). URL и тела HTTP-ответов по текущим настройкам в логи не пишутся — тем самым заголовок `Authorization` туда не уезжает. Тесты: `tests/utils/test_secrets.py`.
 
-## 5. Error tracking (GlitchTip)
+## 5. Error tracking (GlitchTip / Sentry)
 
-(задачи 5.1–5.3 спринта 06) — `sentry-sdk` с hook'ом `before_send`, прокидывающим `trace_id` и `user_id` в событие. Self-host через `docker-compose.observability.yml`.
+`app/observability/__init__.py::setup_sentry(settings)` — единственная точка инициализации `sentry-sdk`. Вызывается в `app/main.py::main` и `app/console_main.py::main` сразу после `setup_logging(settings)`. Если `SENTRY_DSN` пуст (по умолчанию) — функция ничего не делает, `sentry_sdk.init(...)` не вызывается, сеть не дёргается; бот стартует как обычно.
+
+### Конфигурация (`.env`)
+
+| Переменная | Дефолт | Назначение |
+|---|---|---|
+| `SENTRY_DSN` | *(пусто)* | DSN self-hosted GlitchTip (Sentry-совместимый). Пустое значение = error tracking выключен. |
+| `SENTRY_ENVIRONMENT` | `dev` | Тег `event.environment`: `dev` / `staging` / `prod`. |
+| `SENTRY_TRACES_SAMPLE_RATE` | `0.0` | Доля запросов с performance-трассировкой. По умолчанию только ошибки, без performance. |
+
+Глобальные флаги `send_default_pii=False` и хук `before_send` (см. ниже) — зашиты в коде, не конфигурируются.
+
+### Хук `before_send`
+
+`app.observability._before_send(event, hint)` обогащает каждое событие перед отправкой:
+
+- `trace_id` из `contextvars` (см. §2) → `event.tags.trace_id` и `event.extra.trace_id`;
+- `user_id` из `contextvars` → `event.user.id` (строкой).
+
+Возврат `None` (который бы отменил отправку) не используется: хук не фильтрует события, только обогащает. Если контекст пуст — возвращается исходный event без изменений.
+
+### Интеграции
+
+`LoggingIntegration(level=INFO, event_level=ERROR)` — все `logger.error(...)` и `logger.exception(...)` автоматически уезжают в GlitchTip как события; уровни `INFO/WARNING` идут в breadcrumbs и доезжают вместе со следующим event.
+
+### Проверка через ошибки
+
+(см. задачу 5.3 спринта 06) — тесты в `tests/observability/test_setup_sentry.py` + планируемые smoke-кейсы на четыре класса ошибок (ручная, асинхронная, внешний вызов, данные).
