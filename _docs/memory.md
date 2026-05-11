@@ -107,61 +107,47 @@ ConversationStore                       Executor.run
 
 ### 2.6 Контекст файлов
 
-Для поддержки reply на файлы (фото, документы, голосовые) ведётся контекст файлов `_file_contexts`. Это позволяет агенту понимать, на какой файл пользователь отвечает, даже если файл был загружен ранее в сессии.
+Для поддержки reply на файлы (фото, документы, голосовые) ведётся контекст файлов. Это позволяет агенту понимать, на какой файл пользователь отвечает, даже если файл был загружен ранее в сессии.
 
 **Проблема**: без контекста файлов при reply на документ/голосовое сообщение агент не видит содержимое файла и не может дать осмысленный ответ.
 
-**Решение**: при обработке файлов сохраняется их контекст в `_file_contexts` по ключу `(user_id, message_id)`. При reply на файл этот контекст подмешивается в текст сообщения.
+**Решение (с задачи 06.3-bis.2)**: при обработке файлов (`handle_document`/`handle_voice`/`handle_photo`) Telegram-хендлер публикует событие `MessageReceived` с полями `kind`/`file_id`/`file_path`/`message_id`/`text=<goal>`. Подписчик `on_message_received_journal` пишет запись в таблицу `dialog_journal` (`data/memory.db`, см. §4.1) с полем `message_id`. При reply `ConversationStore.get_file_context(user_id, message_id)` тянет `content` из `dialog_journal` (`SELECT content … WHERE user_id=? AND message_id=? ORDER BY id DESC LIMIT 1`) и подмешивает его в текст входящего сообщения. Словарь `_file_contexts` в `ConversationStore` остаётся как in-memory кеш горячих чтений.
 
 Инварианты:
 
-1. `save_file_context(user_id, message_id, file_type, context, file_id=None, file_path=None)` сохраняет контекст файла в памяти и в БД `data/file_contexts.db`.
-2. `get_file_context(user_id, message_id)` сначала ищет в памяти, затем в БД.
-3. При `/new` (через `clear(user_id)`) контекст файлов очищается из памяти и из БД.
-4. Файлы (документы, голосовые) не удаляются сразу после обработки — живут до `/new` или TTL cleanup, как и изображения.
+1. Запись контекста файла в БД делает **только** подписчик `on_message_received_journal` (никаких `save_file_context` в хендлерах). Источник истины — `dialog_journal`.
+2. `ConversationStore.get_file_context(user_id, message_id)` сначала ищет в кеше `_file_contexts`, затем в `dialog_journal` через `journal_db_path` (передаётся из `app/main.py`/`app/console_main.py`). Если `journal_db_path` не задан — fallback в `None`, контекст не теряется (это путь по умолчанию только в legacy-сценариях).
+3. При `/new` (через `clear(user_id)`) сбрасывается только in-memory кеш. Записи журнала живут до `mark_archived(...)`, который вызывает `cmd_new` после успешного `Archiver.archive(...)` (см. §4.3, задача 06.3.5).
+4. Файлы на диске (документы, голосовые) не удаляются сразу после обработки — живут до `/new` или TTL cleanup, как и изображения.
 5. Изоляция файлов по пользователям: файлы сохраняются в отдельные каталоги `data/tmp/{user_id}/`.
 
-**Типы файлов** (поле `file_type`):
+**Типы файлов** (поле `kind` в `dialog_journal`):
 - `image` — изображения (фото)
 - `document` — документы (PDF, TXT, MD)
 - `voice` — голосовые сообщения
 
 **Использование в handler'ах**:
-- `handle_photo`: сохраняет контекст изображения после описания vision-моделью
-- `handle_document`: сохраняет контекст документа после суммаризации
-- `handle_voice`: сохраняет контекст голосового файла после транскрипции
-- `handle_text`: при reply на файл подмешивает контекст из `_file_contexts`
+- `handle_photo`: публикует `MessageReceived(kind="image", file_id, file_path, message_id, text=goal)`.
+- `handle_document`: публикует `MessageReceived(kind="document", file_id, file_path, message_id, text=goal)`.
+- `handle_voice`: публикует `MessageReceived(kind="voice", file_id, file_path, message_id, text=goal)` после транскрипции.
+- `handle_text`: при reply на файл вызывает `get_file_context(user_id, reply_msg_id)` и подмешивает результат.
 
-#### 2.6.1 Схема `data/file_contexts.db`
+#### 2.6.1 Унифицированное хранение в `dialog_journal`
 
-Та же БД используется одновременно `ConversationStore` (для контекста reply) и `FileIdMapper` (для сопоставления `file_id ↔ file_path` через перезапуски, см. `_docs/security.md`).
+С задачи 06.3-bis.2 контекст файла лежит в той же таблице `dialog_journal` (см. §4.1), что и текст диалога: колонка `message_id` хранит ID сообщения Telegram, `kind` — тип файла, `content` — текст `goal`, `file_id`/`file_path` — данные для `FileIdMapper`. Отдельная база `data/file_contexts.db` упразднена и переименована при одноразовой миграции в `data/file_contexts.db.migrated-<ts>` (см. §4.1 и `app/services/file_contexts_migration.py`).
 
-```sql
-CREATE TABLE IF NOT EXISTS file_contexts (
-    user_id    INTEGER NOT NULL,
-    message_id INTEGER NOT NULL,
-    file_type  TEXT    NOT NULL,                 -- "image" | "document" | "voice"
-    context    TEXT    NOT NULL,                 -- текст goal, который пойдёт агенту
-    file_id    TEXT,                              -- временный идентификатор (для FileIdMapper)
-    file_path  TEXT,                              -- абсолютный путь во временной директории
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,    -- для отладки/будущего TTL
-    PRIMARY KEY (user_id, message_id)
-);
-```
+Аудит использования полей в `dialog_journal` для reply-сценария:
 
-Аудит использования полей (Спринт 06, задача 2.2):
-
-| Поле | INSERT | SELECT / использование | Статус |
-|------|:------:|------------------------|--------|
-| `user_id` | да | PK + `WHERE user_id=?` в `get_file_context`, `clear` | используется по горячему пути. |
-| `message_id` | да | PK + `WHERE message_id=?` в `get_file_context` | используется по горячему пути. |
-| `file_type` | да | — | пишется для отладочного лога; в SELECT не участвует. Оставляем — стоимость колонки нулевая, а для последующих фильтров (например, «удалить только voice старше N часов») она пригодится. |
-| `context` | да | `SELECT context` в `get_file_context` | используется. |
-| `file_id` | да | `SELECT file_id, file_path` в `FileIdMapper.init` и `get_path` | используется (восстановление маппинга через перезапуски). |
-| `file_path` | да | `SELECT file_path` в `FileIdMapper.get_path` | используется. |
-| `created_at` | DEFAULT | — | для отладки и будущего TTL. |
-
-Вердикт: схема стабильна, мёртвых полей нет; колонки `file_type` и `created_at` персистятся «про запас» — их хранение оправдано (минимальная цена, понятная польза для логов и будущего cleanup).
+| Поле | INSERT | SELECT / использование |
+|------|:------:|------------------------|
+| `user_id` | да | `WHERE user_id=?` в `get_file_context`, `FileIdMapper`. |
+| `message_id` | да (`kind ∈ {document,voice,image}`) | `WHERE message_id=?` в `get_file_context`; индекс `ix_journal_message`. |
+| `kind` | да | различает текст и тип файла; пишется подписчиком. |
+| `content` | да | `SELECT content` в `get_file_context` — это `goal`-текст. |
+| `file_id` | да | `SELECT DISTINCT file_id, file_path` в `FileIdMapper.init`. |
+| `file_path` | да | `SELECT file_path` в `FileIdMapper.get_path`. |
+| `created_at` | да | для отладки/TTL. |
+| `archived_at` | через `mark_archived` | помечает строки сессии как закрытые после `/new` (см. §4.3). |
 
 ## 3. Долгосрочная память (sqlite-vec)
 
