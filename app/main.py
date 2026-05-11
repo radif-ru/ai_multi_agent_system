@@ -27,6 +27,7 @@ from app.middlewares.logging_mw import LoggingMiddleware
 from app.services.archiver import Archiver
 from app.services.conversation import ConversationStore
 from app.services.dialog_journal import DialogJournal
+from app.services.journal_recovery import recover_pending_journals
 from app.services.llm import OllamaClient
 from app.services.memory import MemoryUnavailable, SemanticMemory
 from app.services.model_registry import UserSettingsRegistry
@@ -318,10 +319,30 @@ async def main() -> None:
 
     components = await _build_components(settings)
     bot, dispatcher = _wire_telegram(components)
+
+    # Фоновое восстановление «висящих» сессий из dialog_journal.
+    # Запускаем параллельно с polling, чтобы не блокировать старт бота
+    # (см. _docs/memory.md §4 и _docs/architecture.md §3.1).
+    recovery_task: asyncio.Task | None = None
+    if components.dialog_journal is not None:
+        recovery_task = asyncio.create_task(
+            recover_pending_journals(
+                journal=components.dialog_journal,
+                archiver=components.archiver,
+            ),
+            name="journal_recovery",
+        )
+
     try:
         logger.info("Bot started")
         await _start_polling(bot, dispatcher)
     finally:
+        if recovery_task is not None and not recovery_task.done():
+            recovery_task.cancel()
+            try:
+                await recovery_task
+            except (asyncio.CancelledError, Exception):  # noqa: BLE001
+                pass
         await _shutdown(bot, components)
 
 
