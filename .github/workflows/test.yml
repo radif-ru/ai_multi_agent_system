@@ -41,6 +41,8 @@ jobs:
         run: flake8 app tests
 
       - name: Tests (pytest)
+        env:
+          TELEGRAM_BOT_TOKEN: dummy-token-for-ci
         run: |
           set +e
           pytest -v --tb=short -rA 2>&1 | tee pytest.log
