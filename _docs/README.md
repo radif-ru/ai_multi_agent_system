@@ -22,10 +22,12 @@ AI-агент с локальной LLM (Ollama), работающий в цик
 
 - [`architecture.md`](./architecture.md) — компоненты, поток данных, агентный цикл, обработка ошибок, точки расширения под мульти-агент.
 - [`agent-loop.md`](./agent-loop.md) — формат JSON-ответа модели (`{thought, action, args}` / `{final_answer}`), правила цикла, лимиты, защита от зацикливания.
-- [`memory.md`](./memory.md) — краткосрочная in-memory история и долгосрочная семантическая память на `sqlite-vec` (RAG), сценарий `/new`.
+- [`memory.md`](./memory.md) — краткосрочная in-memory история и долгосрочная семантическая память на `sqlite-vec` (RAG), сценарий `/new`, журнал диалога `dialog_journal`.
+- [`events.md`](./events.md) — событийная шина (`EventBus`), типы событий (`UserCreated`, `MessageReceived`, `ResponseGenerated`, `ConversationArchived`), подписчики.
 - [`tools.md`](./tools.md) — реестр tools, контракт нового инструмента, текущий набор (calculator, read_file, http_request, web_search, memory_search, load_skill).
 - [`skills.md`](./skills.md) — формат `_skills/<name>/SKILL.md`, как агент решает их подгрузить, как описание инжектится в промпт.
 - [`prompts.md`](./prompts.md) — формат `_prompts/`, как файлы прокидываются через `.env`-пути.
+- [`security.md`](./security.md) — `InputSanitizer`, `FileIdMapper`, `ResponseSanitizer`, allowlist для опасных tools.
 - [`stack.md`](./stack.md) — стек, версии, зависимости, переменные окружения, локальные требования.
 - [`project-structure.md`](./project-structure.md) — структура репозитория, назначение модулей, правила размещения файлов.
 
