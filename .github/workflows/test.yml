@@ -41,4 +41,15 @@ jobs:
         run: flake8 app tests
 
       - name: Tests (pytest)
-        run: pytest -q
+        run: |
+          set +e
+          pytest -v --tb=short -rA 2>&1 | tee pytest.log
+          status=${PIPESTATUS[0]}
+          {
+            echo '## pytest output'
+            echo
+            echo '```'
+            tail -200 pytest.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
