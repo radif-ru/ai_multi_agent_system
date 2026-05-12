@@ -10,7 +10,7 @@
 
 | ID | Название | Файл | Ветка | Статус | Открыт | Закрыт |
 |:--:|----------|------|-------|:------:|:------:|:------:|
-| 06 | Надёжность диалога и observability | [`sprints/06-reliability-and-observability.md`](./sprints/06-reliability-and-observability.md) | `feature/06-reliability-and-observability` | Active | 2026-05-10 | — |
+| — | — | — | — | — | — | — |
 
 ### Закрытые
 
@@ -22,6 +22,7 @@
 | 03 | Исправление багов и консольный режим | [`sprints/03-bugs-and-console.md`](./sprints/03-bugs-and-console.md) | `feature/03-bugs-and-console` | Closed | 2026-04-30 | 2026-05-04 |
 | 04 | Событийная модель и модуль Users | [`sprints/04-events-and-users.md`](./sprints/04-events-and-users.md) | `feature/04-events-and-users` | Closed | 2026-05-05 | 2026-05-06 |
 | 05 | Усиление безопасности и OCR-рефакторинг | [`sprints/05-security-ocr.md`](./sprints/05-security-ocr.md) | `feature/05-security-ocr` | Closed | 2026-05-06 | 2026-05-06 |
+| 06 | Надёжность диалога и observability | [`sprints/06-reliability-and-observability.md`](./sprints/06-reliability-and-observability.md) | `feature/06-reliability-and-observability` | Closed | 2026-05-10 | 2026-05-12 |
 
 ### Запланированные
 
@@ -41,7 +42,7 @@
 | 03. Исправление багов и консольный режим | Closed | 0 / 0 / 25 | `sprints/03-bugs-and-console.md` |
 | 04. Событийная модель и модуль Users | Closed | 0 / 0 / 9 | `sprints/04-events-and-users.md` |
 | 05. Усиление безопасности и OCR-рефакторинг | Closed | 0 / 0 / 13 | `sprints/05-security-ocr.md` |
-| 06. Надёжность диалога и observability | Active | 0 / 0 / 24 | `sprints/06-reliability-and-observability.md` |
+| 06. Надёжность диалога и observability | Closed | 0 / 0 / 24 | `sprints/06-reliability-and-observability.md` |
 
 > Таблицу обновлять одновременно с переходами статусов в файлах спринтов (см. `process.md` §7.3 и §7.9).
 
