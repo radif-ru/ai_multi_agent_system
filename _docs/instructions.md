@@ -34,7 +34,7 @@
 
 ## 3. Стиль кода
 
-- Python 3.11+, type hints **обязательны** в сервис-слое и публичных функциях.
+- Python 3.14+, type hints **обязательны** в сервис-слое и публичных функциях.
 - Форматирование — `ruff format` (или `black`), длина строки 120.
 - **Линтер — `flake8`** (конфиг в `.flake8` в корне проекта). Обязательно зелёный на изменённых файлах перед коммитом (см. §8.3).
 - Импорты — `ruff` / `isort`-совместимо: stdlib → third-party → local.
@@ -106,7 +106,7 @@
 
 ### 8.4 CI (GitHub Actions)
 
-Workflow `.github/workflows/test.yml` автоматически прогоняет `flake8 app tests` и `pytest -q` на каждый `push` в любую ветку и на `pull_request` в `main`. Job — один: Python 3.11 на `ubuntu-latest`, кеш pip по `requirements.txt`, без матрицы версий и без секретов. Тесты на CI запускаются **без** реальных Ollama/Telegram/сети — все внешние клиенты замоканы, `sqlite-vec` поднимается на `tmp_path`.
+Workflow `.github/workflows/test.yml` автоматически прогоняет `flake8 app tests` и `pytest -q` на каждый `push` в любую ветку и на `pull_request` в `main`. Job — один: Python 3.14 на `ubuntu-latest`, кеш pip по `requirements.txt`, без матрицы версий и без секретов. Тесты на CI запускаются **без** реальных Ollama/Telegram/сети — все внешние клиенты замоканы, `sqlite-vec` поднимается на `tmp_path`.
 
 Правило для веток спринта:
 

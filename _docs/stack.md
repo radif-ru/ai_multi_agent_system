@@ -2,7 +2,7 @@
 
 ## 1. Runtime
 
-- **Python** — 3.11+ (рекомендуется 3.12). Нужен нативный `asyncio`, `tomllib`, совместимость с актуальными aiogram / pydantic / sqlite-vec.
+- **Python** — 3.14+. Нужен нативный `asyncio`, `tomllib`, совместимость с актуальными aiogram / pydantic / sqlite-vec.
 - **OS** — Linux / WSL2 Ubuntu / macOS. Windows нативно — не приоритет (см. ASM-1).
 
 ## 2. Telegram
