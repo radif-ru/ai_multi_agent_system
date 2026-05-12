@@ -43,6 +43,11 @@ class MessageReceived(Event):
     """Событие получения сообщения от пользователя.
 
     Публикуется хендлером при входящем тексте или файле после получения user.
+
+    Поле ``kind`` различает типы входов (для журналирования и аудита):
+    ``"text"`` — обычный текст (default), ``"document"``/``"voice"``/``"image"``
+    — файл соответствующего типа. ``file_id`` и ``file_path`` заполняются
+    только для файлов и пробрасываются в `dialog_journal` (см. `memory.md` §4).
     """
 
     event_type: ClassVar[str] = "message_received"
@@ -50,6 +55,10 @@ class MessageReceived(Event):
     text: str
     conversation_id: str
     channel: str
+    kind: str = "text"
+    file_id: str | None = None
+    file_path: str | None = None
+    message_id: int | None = None
 
 
 @dataclass
@@ -116,7 +125,10 @@ class EventBus:
         if type_name not in self._subscribers:
             self._subscribers[type_name] = []
         self._subscribers[type_name].append(handler)
-        handler_name = getattr(handler, '__name__', getattr(handler, 'func', lambda: None).__name__ if hasattr(handler, 'func') else str(handler))
+        if hasattr(handler, 'func'):
+            handler_name = getattr(handler, '__name__', handler.func.__name__)
+        else:
+            handler_name = getattr(handler, '__name__', str(handler))
         logger.info(
             "Подписчик зарегистрирован: event_type=%s, handler=%s",
             type_name,

@@ -10,6 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from app.tools import ocr_image as ocr_image_module
 from app.tools.ocr_image import OcrImageTool
 from app.tools.errors import ToolError
 
@@ -29,25 +30,30 @@ def tool(tmp_dir: Path) -> OcrImageTool:
 
 
 @pytest.mark.asyncio
-async def test_ocr_image_success(tool: OcrImageTool, tmp_dir: Path) -> None:
-    """Чтение из кеша OCR."""
+async def test_ocr_image_success(
+    tool: OcrImageTool, tmp_dir: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """OCR возвращает распознанный текст; кеш `.ocr.txt` не создаётся."""
     test_file = tmp_dir / "test.jpg"
     test_file.write_bytes(b"fake image")
-
-    # Создаём кеш
-    cache_file = tmp_dir / "test.ocr.txt"
-    cache_file.write_text("recognized text", encoding="utf-8")
+    monkeypatch.setattr(
+        ocr_image_module, "extract_text", lambda **kwargs: "recognized text",
+    )
 
     result = await tool.run({"image_path": str(test_file)}, MagicMock())
 
     assert "recognized text" in result
+    assert not (tmp_dir / "test.ocr.txt").exists()
 
 
 @pytest.mark.asyncio
-async def test_ocr_image_empty_result(tool: OcrImageTool, tmp_dir: Path) -> None:
+async def test_ocr_image_empty_result(
+    tool: OcrImageTool, tmp_dir: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Пустой результат OCR."""
     test_file = tmp_dir / "test.jpg"
     test_file.write_bytes(b"fake image")
+    monkeypatch.setattr(ocr_image_module, "extract_text", lambda **kwargs: "")
 
     result = await tool.run({"image_path": str(test_file)}, MagicMock())
 
@@ -100,30 +106,37 @@ async def test_ocr_image_invalid_extension(tool: OcrImageTool, tmp_dir: Path) ->
 
 
 @pytest.mark.asyncio
-async def test_ocr_image_with_lang(tool: OcrImageTool, tmp_dir: Path) -> None:
-    """OCR с кастомным языком (чтение из кеша)."""
+async def test_ocr_image_with_lang(
+    tool: OcrImageTool, tmp_dir: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """OCR с кастомным языком пробрасывается в extract_text."""
     test_file = tmp_dir / "test.jpg"
     test_file.write_bytes(b"fake image")
+    seen: dict = {}
 
-    # Создаём кеш
-    cache_file = tmp_dir / "test.ocr.txt"
-    cache_file.write_text("recognized text", encoding="utf-8")
+    def fake_extract(**kwargs):
+        seen.update(kwargs)
+        return "recognized text"
+
+    monkeypatch.setattr(ocr_image_module, "extract_text", fake_extract)
 
     result = await tool.run({"image_path": str(test_file), "lang": "fra"}, MagicMock())
 
     assert "recognized text" in result
+    assert seen["lang"] == "fra"
+    assert "cache_path" not in seen
 
 
 @pytest.mark.asyncio
-async def test_ocr_image_truncation(tool: OcrImageTool, tmp_dir: Path) -> None:
+async def test_ocr_image_truncation(
+    tool: OcrImageTool, tmp_dir: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Усечение длинного результата."""
     test_file = tmp_dir / "test.jpg"
     test_file.write_bytes(b"fake image")
-
-    # Создаём кеш с длинным текстом
-    cache_file = tmp_dir / "test.ocr.txt"
-    long_text = "A" * 10000
-    cache_file.write_text(long_text, encoding="utf-8")
+    monkeypatch.setattr(
+        ocr_image_module, "extract_text", lambda **kwargs: "A" * 10000,
+    )
 
     result = await tool.run({"image_path": str(test_file)}, MagicMock())
 

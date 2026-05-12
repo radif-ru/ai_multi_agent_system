@@ -10,7 +10,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.adapters.telegram.files import FileTooLargeError
 from app.adapters.telegram.handlers.messages import handle_photo
 from app.core.events import EventBus, MessageReceived, ResponseGenerated
 
@@ -141,7 +140,7 @@ async def test_handle_photo_success(
 
         # Проверяем, что handle_user_task был вызван
         messages.handle_user_task.assert_called_once()
-        
+
         # Проверяем, что в goal есть file_id
         call_args = messages.handle_user_task.call_args
         goal = call_args[0][0]  # Первый позиционный аргумент - это goal
@@ -150,3 +149,70 @@ async def test_handle_photo_success(
     finally:
         messages.download_telegram_file = original_download
         messages.handle_user_task = original_handle_user_task
+
+
+@pytest.mark.asyncio
+async def test_handle_photo_publishes_event_with_kind_and_file_meta(
+    mock_settings,
+    mock_user_settings,
+    mock_conversations,
+    mock_summarizer,
+    mock_executor,
+    mock_llm,
+    mock_semantic_memory,
+    event_bus_with_conversations,
+    tmp_path: Path,
+) -> None:
+    """В MessageReceived проброшены kind=image, file_id и file_path (для dialog_journal)."""
+    from app.adapters.telegram.handlers import messages
+
+    event_bus, mock_users = event_bus_with_conversations
+    received: list[MessageReceived] = []
+
+    async def recorder(event: MessageReceived) -> None:
+        received.append(event)
+
+    event_bus.subscribe(MessageReceived, recorder)
+
+    test_file = tmp_path / "photo.jpg"
+    test_file.write_bytes(b"fake")
+
+    original_download = messages.download_telegram_file
+    original_handle = messages.handle_user_task
+
+    async def mock_download(bot, file_id, *, max_size_mb, tmp_dir, user_id=None, mime_type=None):
+        return test_file
+
+    messages.download_telegram_file = mock_download
+    messages.handle_user_task = AsyncMock(return_value="ok")
+
+    try:
+        message = MagicMock()
+        message.from_user = MagicMock(id=123)
+        message.chat = MagicMock(id=456)
+        message.photo = [MagicMock(file_id="photo123")]
+        message.caption = ""
+        message.bot = MagicMock()
+        message.answer = AsyncMock()
+
+        await handle_photo(
+            message,
+            settings=mock_settings,
+            user_settings=mock_user_settings,
+            conversations=mock_conversations,
+            summarizer=mock_summarizer,
+            executor=mock_executor,
+            llm=mock_llm,
+            semantic_memory=mock_semantic_memory,
+            users=mock_users,
+            event_bus=event_bus,
+        )
+
+        assert len(received) == 1
+        ev = received[0]
+        assert ev.kind == "image"
+        assert ev.file_id
+        assert ev.file_path == str(test_file)
+    finally:
+        messages.download_telegram_file = original_download
+        messages.handle_user_task = original_handle

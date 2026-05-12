@@ -23,7 +23,7 @@ async def test_handler_publishes_events() -> None:
     bus.subscribe(MessageReceived, message_handler)
     bus.subscribe(ResponseGenerated, response_handler)
 
-    handler = build_text_handler(
+    build_text_handler(
         settings=None,
         user_settings=None,
         conversations=conversations,

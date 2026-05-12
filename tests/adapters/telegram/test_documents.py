@@ -14,6 +14,9 @@ from app.adapters.telegram.files import FileTooLargeError
 from app.adapters.telegram.handlers.messages import (
     FILE_TOO_LARGE_REPLY,
     GENERIC_ERROR_REPLY,
+    build_document_handler,
+    build_photo_handler,
+    build_voice_handler,
     handle_document,
 )
 from app.core.events import EventBus, MessageReceived, ResponseGenerated
@@ -152,6 +155,72 @@ async def test_handle_document_success(
 
 
 @pytest.mark.asyncio
+async def test_handle_document_publishes_event_with_kind_and_file_meta(
+    mock_settings,
+    mock_user_settings,
+    mock_conversations,
+    mock_summarizer,
+    mock_executor,
+    mock_llm,
+    mock_semantic_memory,
+    event_bus_with_conversations,
+    tmp_path: Path,
+) -> None:
+    """В MessageReceived проброшены kind=document, file_id и file_path (для dialog_journal)."""
+    event_bus, mock_users = event_bus_with_conversations
+    received: list[MessageReceived] = []
+
+    async def recorder(event: MessageReceived) -> None:
+        received.append(event)
+
+    event_bus.subscribe(MessageReceived, recorder)
+
+    test_file = tmp_path / "doc.txt"
+    test_file.write_text("hi", encoding="utf-8")
+
+    from app.adapters.telegram.handlers import messages
+    original_download = messages.download_telegram_file
+    original_handle = messages.handle_user_task
+
+    async def mock_download(bot, file_id, *, max_size_mb, tmp_dir, user_id=None, mime_type=None):
+        return test_file
+
+    messages.download_telegram_file = mock_download
+    messages.handle_user_task = AsyncMock(return_value="ok")
+
+    try:
+        message = MagicMock()
+        message.from_user = MagicMock(id=123)
+        message.chat = MagicMock(id=456)
+        message.document = MagicMock(file_id="file123", mime_type="text/plain")
+        message.caption = "Test"
+        message.bot = MagicMock()
+        message.answer = AsyncMock()
+
+        await handle_document(
+            message,
+            settings=mock_settings,
+            user_settings=mock_user_settings,
+            conversations=mock_conversations,
+            summarizer=mock_summarizer,
+            executor=mock_executor,
+            llm=mock_llm,
+            semantic_memory=mock_semantic_memory,
+            users=mock_users,
+            event_bus=event_bus,
+        )
+
+        assert len(received) == 1
+        ev = received[0]
+        assert ev.kind == "document"
+        assert ev.file_id  # сгенерирован mapper'ом
+        assert ev.file_path == str(test_file)
+    finally:
+        messages.download_telegram_file = original_download
+        messages.handle_user_task = original_handle
+
+
+@pytest.mark.asyncio
 async def test_handle_document_too_large(
     mock_settings,
     mock_user_settings,
@@ -162,7 +231,6 @@ async def test_handle_document_too_large(
     mock_semantic_memory,
 ) -> None:
     """Превышение лимита размера файла."""
-    from app.adapters.telegram import handlers
     from app.adapters.telegram.handlers import messages
 
     original_download = messages.download_telegram_file
@@ -210,7 +278,6 @@ async def test_handle_document_download_error(
     mock_semantic_memory,
 ) -> None:
     """Ошибка при скачивании файла."""
-    from app.adapters.telegram import handlers
     from app.adapters.telegram.handlers import messages
 
     original_download = messages.download_telegram_file
@@ -248,3 +315,104 @@ async def test_handle_document_download_error(
         mock_conversations.add_user_message.assert_not_called()
     finally:
         messages.download_telegram_file = original_download
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "builder,attach_kind",
+    [
+        (build_document_handler, "document"),
+        (build_voice_handler, "voice"),
+        (build_photo_handler, "photo"),
+    ],
+)
+async def test_builders_forward_middleware_data_to_publish_event(
+    builder,
+    attach_kind,
+    mock_settings,
+    mock_user_settings,
+    mock_conversations,
+    mock_summarizer,
+    mock_executor,
+    mock_llm,
+    mock_semantic_memory,
+    event_bus_with_conversations,
+    tmp_path: Path,
+) -> None:
+    """Регрессия: builder-обёртки должны пробрасывать **data из aiogram-middleware
+    (users, event_bus) в handle_*; иначе MessageReceived для файлов не публикуется
+    и dialog_journal не пишет file_id/message_id."""
+    event_bus, mock_users = event_bus_with_conversations
+    received: list[MessageReceived] = []
+
+    async def recorder(event: MessageReceived) -> None:
+        received.append(event)
+
+    event_bus.subscribe(MessageReceived, recorder)
+
+    test_file = tmp_path / ("audio.ogg" if attach_kind == "voice" else "doc.txt")
+    test_file.write_bytes(b"x")
+
+    from app.adapters.telegram.handlers import messages as messages_mod
+
+    original_download = messages_mod.download_telegram_file
+    original_handle = messages_mod.handle_user_task
+
+    async def mock_download(bot, file_id, *, max_size_mb, tmp_dir, user_id=None, mime_type=None):
+        return test_file
+
+    messages_mod.download_telegram_file = mock_download
+    messages_mod.handle_user_task = AsyncMock(return_value="ok")
+
+    # voice требует доступного transcriber
+    original_is_avail = messages_mod.is_transcriber_available
+    messages_mod.is_transcriber_available = lambda: True
+
+    class _FakeTranscriber:
+        def __init__(self, *a, **kw): pass
+        def transcribe(self, p): return "текст"
+
+    original_transcriber = messages_mod.Transcriber
+    messages_mod.Transcriber = _FakeTranscriber
+
+    try:
+        message = MagicMock()
+        message.from_user = MagicMock(id=123, full_name="X", username="x")
+        message.chat = MagicMock(id=456)
+        message.message_id = 7777
+        message.caption = ""
+        message.bot = MagicMock()
+        message.answer = AsyncMock()
+        message.reply_to_message = None
+        if attach_kind == "document":
+            message.document = MagicMock(file_id="f", mime_type="text/plain")
+        elif attach_kind == "voice":
+            message.voice = MagicMock(file_id="f", mime_type="audio/ogg")
+            message.document = None
+        else:
+            photo_size = MagicMock(file_id="f")
+            message.photo = [photo_size]
+
+        handler = builder(
+            settings=mock_settings,
+            user_settings=mock_user_settings,
+            conversations=mock_conversations,
+            summarizer=mock_summarizer,
+            executor=mock_executor,
+            llm=mock_llm,
+            semantic_memory=mock_semantic_memory,
+        )
+
+        # aiogram передаёт middleware-данные через **kwargs
+        await handler(message, users=mock_users, event_bus=event_bus)
+
+        assert len(received) == 1, f"MessageReceived не опубликован для {attach_kind}"
+        ev = received[0]
+        assert ev.message_id == 7777
+        assert ev.file_path == str(test_file)
+        assert ev.kind in {"document", "voice", "image"}
+    finally:
+        messages_mod.download_telegram_file = original_download
+        messages_mod.handle_user_task = original_handle
+        messages_mod.is_transcriber_available = original_is_avail
+        messages_mod.Transcriber = original_transcriber

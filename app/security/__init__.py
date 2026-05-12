@@ -6,6 +6,7 @@
 from app.security.file_id_mapper import (
     FileIdMapper,
     clear_global_mapper,
+    file_id_not_found_message,
     get_global_mapper,
 )
 from app.security.input_sanitizer import sanitize_user_input
@@ -14,6 +15,7 @@ from app.security.response_sanitizer import sanitize_response
 __all__ = [
     "FileIdMapper",
     "clear_global_mapper",
+    "file_id_not_found_message",
     "get_global_mapper",
     "sanitize_user_input",
     "sanitize_response",

@@ -51,17 +51,17 @@
 
 ## 3. Acceptance Criteria спринта
 
-- [ ] В коде есть модуль `app/security/` с `InputSanitizer`; он фильтрует подозрительные паттерны в пользовательском вводе.
-- [ ] Пути к файлам в goal маскируются (используются временные идентификаторы).
-- [ ] System prompt (`_prompts/agent_system.md`) содержит раздел "Правила безопасности".
-- [ ] Опасные tools имеют дополнительную валидацию параметров и/или ограничены allowlist.
-- [ ] Ответы модели проверяются на наличие системной информации и фильтруются.
-- [ ] OCR-логика полностью вынесена в `app/services/ocr.py`; `read_document._read_pdf` не содержит прямых вызовов `pytesseract`.
-- [ ] Tool `ocr_image` зарегистрирован в `ToolRegistry`, покрыт unit-тестами.
-- [ ] Skill `_skills/ocr/SKILL.md` создан и виден через `LoadSkillTool`.
-- [ ] `pytest -q` зелёный; добавлены тесты на новый функционал безопасности и OCR.
-- [ ] `_docs/security.md` создан; `_docs/tools.md`, `_docs/skills.md`, `_docs/architecture.md`, `_docs/current-state.md`, `_docs/roadmap.md` актуализированы.
-- [ ] Все задачи спринта — `Done`, сводная таблица актуальна.
+- [x] В коде есть модуль `app/security/` с `InputSanitizer`; он фильтрует подозрительные паттерны в пользовательском вводе.
+- [x] Пути к файлам в goal маскируются (используются временные идентификаторы).
+- [x] System prompt (`_prompts/agent_system.md`) содержит раздел "Правила безопасности".
+- [x] Опасные tools имеют дополнительную валидацию параметров и/или ограничены allowlist.
+- [x] Ответы модели проверяются на наличие системной информации и фильтруются.
+- [x] OCR-логика полностью вынесена в `app/services/ocr.py`; `read_document._read_pdf` не содержит прямых вызовов `pytesseract`.
+- [x] Tool `ocr_image` зарегистрирован в `ToolRegistry`, покрыт unit-тестами.
+- [x] Skill `_skills/ocr/SKILL.md` создан и виден через `LoadSkillTool`.
+- [x] `pytest -q` зелёный; добавлены тесты на новый функционал безопасности и OCR.
+- [x] `_docs/security.md` создан; `_docs/tools.md`, `_docs/skills.md`, `_docs/architecture.md`, `_docs/current-state.md`, `_docs/roadmap.md` актуализированы.
+- [x] Все задачи спринта — `Done`, сводная таблица актуальна.
 
 ## 4. Этап 1. Сервис OCR
 

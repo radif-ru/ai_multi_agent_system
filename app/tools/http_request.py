@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import logging
+import time
 from typing import Any, Mapping
 from urllib.parse import urlparse
 
@@ -12,6 +14,8 @@ import httpx
 
 from app.tools.base import Tool, ToolContext, truncate_output
 from app.tools.errors import ToolError
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_TIMEOUT: float = 30.0
 
@@ -47,6 +51,13 @@ class HttpRequestTool(Tool):
         if not parsed.netloc:
             raise ToolError("invalid URL")
 
+        host = parsed.netloc
+        started = time.monotonic()
+        logger.info(
+            "external.call service=http_request host=%s",
+            host,
+            extra={"service": "http_request", "host": host, "scheme": parsed.scheme},
+        )
         try:
             if self._client is not None:
                 resp = await self._client.get(url)
@@ -56,10 +67,34 @@ class HttpRequestTool(Tool):
                 ) as client:
                     resp = await client.get(url)
         except httpx.TimeoutException as exc:
+            dur_ms = int((time.monotonic() - started) * 1000)
+            logger.error(
+                "external.fail service=http_request host=%s dur_ms=%d error=timeout",
+                host, dur_ms,
+                extra={"service": "http_request", "host": host,
+                       "duration_ms": dur_ms, "status": "timeout",
+                       "error": str(exc)},
+            )
             raise ToolError(f"request timeout: {exc}") from exc
         except httpx.RequestError as exc:
+            dur_ms = int((time.monotonic() - started) * 1000)
+            logger.error(
+                "external.fail service=http_request host=%s dur_ms=%d error=%s",
+                host, dur_ms, exc,
+                extra={"service": "http_request", "host": host,
+                       "duration_ms": dur_ms, "status": "fail",
+                       "error": str(exc)},
+            )
             raise ToolError(f"request failed: {exc}") from exc
 
         body = resp.text or ""
+        dur_ms = int((time.monotonic() - started) * 1000)
+        logger.info(
+            "external.ok service=http_request host=%s dur_ms=%d http_status=%d len_out=%d",
+            host, dur_ms, resp.status_code, len(body),
+            extra={"service": "http_request", "host": host,
+                   "duration_ms": dur_ms, "status": "ok",
+                   "http_status": resp.status_code, "len_out": len(body)},
+        )
         out = f"HTTP {resp.status_code}\n{body}"
         return truncate_output(out, self._max_output_chars)

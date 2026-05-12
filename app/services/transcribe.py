@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 
 try:
@@ -53,23 +54,54 @@ class Transcriber:
         Raises:
             Exception: При ошибке транскрипции.
         """
+        started = time.monotonic()
         logger.info(
-            "transcribe: распознаю %s model=%s language=%s",
-            audio_path,
+            "external.call service=transcribe model=%s language=%s",
             self._model,
             self._language,
+            extra={
+                "service": "transcribe",
+                "model": self._model,
+                "language": self._language,
+            },
         )
 
-        segments, info = self._whisper_model.transcribe(
-            audio_path, language=self._language
+        try:
+            segments, info = self._whisper_model.transcribe(
+                audio_path, language=self._language
+            )
+            text = "".join(s.text for s in segments).strip()
+        except Exception as exc:
+            dur_ms = int((time.monotonic() - started) * 1000)
+            logger.error(
+                "external.fail service=transcribe model=%s dur_ms=%d error=%s",
+                self._model,
+                dur_ms,
+                exc,
+                extra={
+                    "service": "transcribe",
+                    "model": self._model,
+                    "duration_ms": dur_ms,
+                    "status": "fail",
+                    "error": str(exc),
+                },
+            )
+            raise
+
+        dur_ms = int((time.monotonic() - started) * 1000)
+        logger.info(
+            "external.ok service=transcribe model=%s dur_ms=%d len_out=%d",
+            self._model,
+            dur_ms,
+            len(text),
+            extra={
+                "service": "transcribe",
+                "model": self._model,
+                "duration_ms": dur_ms,
+                "status": "ok",
+                "len_out": len(text),
+            },
         )
-
-        text_parts = []
-        for segment in segments:
-            text_parts.append(segment.text)
-
-        text = "".join(text_parts).strip()
-        logger.info("transcribe: распознавание завершено len=%d chars", len(text))
         return text
 
 

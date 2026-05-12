@@ -48,7 +48,7 @@ class WeatherTool(Tool):
             # Формируем команду curl для wttr.in
             # Используем формат 0 для подробных текущих условий
             cmd = ["curl", "-s", f"wttr.in/{location_url}?0"]
-            
+
             # Запускаем команду
             process = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -80,7 +80,7 @@ class WeatherTool(Tool):
                 raise
             # Другие ошибки сети - используем веб-поиск
             return await self._fallback_to_web_search(location, ctx)
-        except Exception as exc:
+        except Exception:
             # При любой другой ошибке используем веб-поиск
             return await self._fallback_to_web_search(location, ctx)
 
@@ -93,7 +93,7 @@ class WeatherTool(Tool):
                     f"Сервис wttr.in недоступен для локации {location}. "
                     f"WebSearchTool не доступен в контексте."
                 )
-            
+
             # Вызываем WebSearchTool для поиска погоды
             web_search_tool = ctx.tools.get("web_search")
             if web_search_tool is None:
@@ -101,13 +101,13 @@ class WeatherTool(Tool):
                     f"Сервис wttr.in недоступен для локации {location}. "
                     f"WebSearchTool не найден в реестре инструментов."
                 )
-            
+
             # Формируем запрос для поиска погоды
             search_query = f"погода {location}"
             search_args = {"query": search_query}
-            
+
             search_result = await web_search_tool.run(search_args, ctx)
-            
+
             return truncate_output(
                 f"[Поиск в веб] Погода для {location}:\n{search_result}",
                 self._max_output_chars

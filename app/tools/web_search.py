@@ -7,10 +7,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
+import time
 from typing import Any, Mapping
 
 from app.tools.base import Tool, ToolContext, truncate_output
 from app.tools.errors import ToolError
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_TOP_K: int = 5
 
@@ -50,6 +54,13 @@ class WebSearchTool(Tool):
         # Читаем поисковик из настроек пользователя
         search_engine = ctx.user_settings.get_search_engine(ctx.user_id)
 
+        started = time.monotonic()
+        logger.info(
+            "external.call service=web_search engine=%s top_k=%d",
+            search_engine, top_k,
+            extra={"service": "web_search", "engine": search_engine,
+                   "top_k": top_k},
+        )
         try:
             raw = await asyncio.to_thread(
                 self._search_sync, query, top_k, search_engine
@@ -57,7 +68,24 @@ class WebSearchTool(Tool):
         except ToolError:
             raise
         except Exception as exc:  # noqa: BLE001
+            dur_ms = int((time.monotonic() - started) * 1000)
+            logger.error(
+                "external.fail service=web_search engine=%s dur_ms=%d error=%s",
+                search_engine, dur_ms, exc,
+                extra={"service": "web_search", "engine": search_engine,
+                       "duration_ms": dur_ms, "status": "fail",
+                       "error": str(exc)},
+            )
             raise ToolError(f"search unavailable: {exc}") from exc
+
+        dur_ms = int((time.monotonic() - started) * 1000)
+        logger.info(
+            "external.ok service=web_search engine=%s dur_ms=%d n_results=%d",
+            search_engine, dur_ms, len(raw),
+            extra={"service": "web_search", "engine": search_engine,
+                   "duration_ms": dur_ms, "status": "ok",
+                   "n_results": len(raw)},
+        )
 
         items = [
             {

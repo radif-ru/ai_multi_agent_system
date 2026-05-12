@@ -9,12 +9,12 @@
 from __future__ import annotations
 
 import logging
-import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from app.commands.context import CommandContext, CommandResult
+    from app.services.conversation import ConversationStore
 
 logger = logging.getLogger(__name__)
 
@@ -162,6 +162,19 @@ async def cmd_new(ctx: "CommandContext", progress_callback: Any | None = None) -
                 "Сессия сохранена, попробуйте /new ещё раз позже."
             )
         )
+
+    # Помечаем все строки сессии в `dialog_journal` как заархивированные:
+    # после успешного `Archiver.archive(...)` чанки уже в `memory_chunks`,
+    # и фоновое восстановление при следующем старте не должно их повторно
+    # поднимать (см. `_docs/memory.md` §4.3 и задачу 06.3.5).
+    if ctx.journal is not None:
+        try:
+            await ctx.journal.mark_archived(ctx.user_id, conversation_id)
+        except Exception:  # noqa: BLE001
+            logger.exception(
+                "/new mark_archived failed user=%s conv=%s",
+                ctx.user_id, conversation_id,
+            )
 
     ctx.conversations.clear(ctx.user_id)
     ctx.conversations.rotate_conversation_id(ctx.user_id)

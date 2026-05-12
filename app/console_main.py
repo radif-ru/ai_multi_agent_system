@@ -16,8 +16,10 @@ from app.agents.executor import Executor
 from app.config import Settings
 from app.core import orchestrator as _orchestrator
 from app.logging_config import setup_logging
+from app.observability import setup_sentry
 from app.services.archiver import Archiver
 from app.services.conversation import ConversationStore
+from app.services.dialog_journal import DialogJournal
 from app.services.llm import OllamaClient
 from app.services.memory import MemoryUnavailable, SemanticMemory
 from app.services.model_registry import UserSettingsRegistry
@@ -37,7 +39,7 @@ from app.tools.web_search import WebSearchTool
 from app.tools.weather import WeatherTool
 from app.users.repository import UserRepository
 from app.core.events import EventBus, MessageReceived, ResponseGenerated
-from app.security import get_global_mapper, clear_global_mapper
+from app.security import get_global_mapper
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +56,7 @@ async def _build_components(settings: Settings) -> tuple:
     conversations = ConversationStore(
         max_messages=settings.history_max_messages,
         session_log_max_messages=settings.session_log_max_messages,
+        journal_db_path=settings.memory_db_path,
     )
     summarizer = Summarizer(
         llm=llm,
@@ -69,6 +72,32 @@ async def _build_components(settings: Settings) -> tuple:
     except MemoryUnavailable as exc:
         logger.error("долгосрочная память недоступна: %s", exc)
         semantic_memory = None
+
+    # Журнал диалога для восстановления при рестарте (спринт 06 §3)
+    dialog_journal: DialogJournal | None = DialogJournal(
+        db_path=settings.memory_db_path
+    )
+    try:
+        await dialog_journal.init()
+    except Exception as exc:  # noqa: BLE001
+        logger.error("dialog_journal: инициализация не удалась, журнал выключен: %s", exc)
+        dialog_journal = None
+
+    # Одноразовая миграция data/file_contexts.db → dialog_journal (этап 06.3-bis.1).
+    if dialog_journal is not None:
+        try:
+            from app.services.file_contexts_migration import (
+                migrate_file_contexts_to_journal,
+            )
+            legacy_db = settings.memory_db_path.parent / "file_contexts.db"
+            moved = migrate_file_contexts_to_journal(
+                legacy_db_path=legacy_db,
+                journal_db_path=settings.memory_db_path,
+            )
+            if moved:
+                logger.info("file_contexts_migration: перенесено %d строк", moved)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("file_contexts_migration: %s", exc)
 
     # Инициализируем FileIdMapper для загрузки существующих маппингов
     try:
@@ -133,16 +162,46 @@ async def _build_components(settings: Settings) -> tuple:
     # Регистрируем подписчиков для записи в ConversationStore
     from app.core.events import ConversationArchived
     from app.services.conversation_subscriber import on_message_received, on_response_generated
+    from app.services.dialog_journal_subscriber import (
+        on_message_received_journal, on_response_generated_journal,
+    )
     from app.services.summarizer_subscriber import on_response_generated_summarize
     from app.services.tmp_cleanup import on_conversation_archived_cleanup
     from functools import partial
 
     event_bus.subscribe(MessageReceived, partial(on_message_received, conversations=conversations))
     event_bus.subscribe(ResponseGenerated, partial(on_response_generated, conversations=conversations))
+    if dialog_journal is not None:
+        event_bus.subscribe(
+            MessageReceived,
+            partial(
+                on_message_received_journal,
+                conversations=conversations, journal=dialog_journal,
+            ),
+        )
+        event_bus.subscribe(
+            ResponseGenerated,
+            partial(
+                on_response_generated_journal,
+                conversations=conversations, journal=dialog_journal,
+            ),
+        )
     # Регистрируем подписчика суммаризации ПОСЛЕ conversation_subscriber, чтобы ответ уже был записан в стор
-    event_bus.subscribe(ResponseGenerated, partial(on_response_generated_summarize, conversations=conversations, summarizer=summarizer, user_settings=user_settings, settings=settings))
+    event_bus.subscribe(
+        ResponseGenerated,
+        partial(
+            on_response_generated_summarize,
+            conversations=conversations,
+            summarizer=summarizer,
+            user_settings=user_settings,
+            settings=settings,
+        ),
+    )
     # Регистрируем подписчика очистки tmp-изображений при успешном архивировании
-    event_bus.subscribe(ConversationArchived, partial(on_conversation_archived_cleanup, tmp_dir=Path(settings.tmp_base_dir)))
+    event_bus.subscribe(
+        ConversationArchived,
+        partial(on_conversation_archived_cleanup, tmp_dir=Path(settings.tmp_base_dir)),
+    )
 
     return (
         settings,
@@ -158,6 +217,7 @@ async def _build_components(settings: Settings) -> tuple:
         executor,
         users,
         event_bus,
+        dialog_journal,
     )
 
 
@@ -187,6 +247,7 @@ async def main() -> None:
     settings = Settings()
     # Отключаем консольный вывод логов чтобы не смешивать с ответами агента
     setup_logging(settings, console_output=False)
+    setup_sentry(settings)
 
     (
         settings,
@@ -202,6 +263,7 @@ async def main() -> None:
         executor,
         users,
         event_bus,
+        dialog_journal,
     ) = await _build_components(settings)
 
     # Функция core.handle_user_task для текстовых сообщений
@@ -239,6 +301,7 @@ async def main() -> None:
         core_handle_user_task=core_handle_user_task,
         users=users,
         event_bus=event_bus,
+        journal=dialog_journal,
     )
 
     try:

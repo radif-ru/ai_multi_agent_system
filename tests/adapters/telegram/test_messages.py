@@ -14,7 +14,6 @@ import pytest
 
 from app.adapters.telegram.handlers import messages as messages_module
 from app.adapters.telegram.handlers.messages import (
-    LLM_BAD_RESPONSE_REPLY,
     LLM_TIMEOUT_REPLY,
     LLM_UNAVAILABLE_REPLY,
     MAX_INPUT_LENGTH,
@@ -80,7 +79,7 @@ def _make_handler(
 def _make_message(
     *, text: str | None = "привет", user_id: int = 42, chat_id: int = 777
 ) -> tuple[MagicMock, AsyncMock]:
-    msg = MagicMock(spec=["from_user", "chat", "answer", "text", "bot"])
+    msg = MagicMock(spec=["from_user", "chat", "answer", "text", "bot", "message_id"])
     msg.from_user = MagicMock()
     msg.from_user.id = user_id
     msg.chat = MagicMock()
@@ -88,6 +87,7 @@ def _make_message(
     msg.text = text
     msg.answer = AsyncMock()
     msg.bot = MagicMock()
+    msg.message_id = 1
     return msg, msg.answer
 
 
@@ -303,4 +303,3 @@ async def test_no_reply_without_reply_to_message(patch_handle_user_task, event_b
     assert len(history) == 2
     assert "[В ответ на:" not in history[0]["content"]
     answer.assert_awaited_once_with("ответ", parse_mode=None)
-

@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 from typing import Sequence
 
@@ -86,7 +87,12 @@ def extract_text(
     if lang is None:
         lang = get_default_lang()
 
-    logger.info("OCR для %d изображений, язык=%s", len(image_paths), lang)
+    started = time.monotonic()
+    logger.info(
+        "external.call service=ocr lang=%s n_images=%d",
+        lang, len(image_paths),
+        extra={"service": "ocr", "lang": lang, "n_images": len(image_paths)},
+    )
 
     ocr_text_parts = []
     for img_path in image_paths:
@@ -99,12 +105,23 @@ def extract_text(
         except Exception as exc:
             logger.warning("Ошибка OCR для %s: %s", img_path, exc)
 
+    dur_ms = int((time.monotonic() - started) * 1000)
     if not ocr_text_parts:
-        logger.info("OCR не извлёк текста ни с одного изображения")
+        logger.info(
+            "external.ok service=ocr dur_ms=%d status=empty",
+            dur_ms,
+            extra={"service": "ocr", "duration_ms": dur_ms,
+                   "status": "ok", "len_out": 0},
+        )
         return ""
 
     result = "\n\n".join(ocr_text_parts)
-    logger.info("OCR добавил %d символов текста", len(result))
+    logger.info(
+        "external.ok service=ocr dur_ms=%d len_out=%d",
+        dur_ms, len(result),
+        extra={"service": "ocr", "duration_ms": dur_ms,
+               "status": "ok", "len_out": len(result)},
+    )
 
     # Сохраняем в кеш
     if cache_path is not None:

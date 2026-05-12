@@ -120,12 +120,22 @@ class OllamaClient:
         status: str,
     ) -> None:
         dur_ms = int((time.monotonic() - started) * 1000)
-        logger.info(
-            "llm kind=%s model=%s len_in=%d len_out=%d dur_ms=%d status=%s",
+        event = "external.ok" if status == "ok" else "external.fail"
+        log_fn = logger.info if status == "ok" else logger.error
+        log_fn(
+            "%s service=ollama kind=%s model=%s dur_ms=%d status=%s",
+            event,
             kind,
             model,
-            len_in,
-            len_out,
             dur_ms,
             status,
+            extra={
+                "service": "ollama",
+                "kind": kind,
+                "model": model,
+                "len_in": len_in,
+                "len_out": len_out,
+                "duration_ms": dur_ms,
+                "status": status,
+            },
         )

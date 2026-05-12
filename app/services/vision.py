@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import base64
 import logging
+import time
 from pathlib import Path
 
 from app.services.llm import OllamaClient
@@ -47,11 +48,11 @@ class Vision:
             VisionUnavailableError: Если модель не настроена.
             Exception: При ошибке описания.
         """
+        started = time.monotonic()
         logger.info(
-            "vision: описываю %s model=%s caption=%s",
-            image_path,
+            "external.call service=vision model=%s",
             self._model,
-            caption,
+            extra={"service": "vision", "model": self._model},
         )
 
         # Читаем изображение и кодируем в base64
@@ -60,7 +61,12 @@ class Vision:
                 image_data = f.read()
             image_base64 = base64.b64encode(image_data).decode("utf-8")
         except OSError as exc:
-            logger.error("vision: не удалось прочитать изображение %s: %s", image_path, exc)
+            logger.error(
+                "external.fail service=vision model=%s error=%s",
+                self._model, exc,
+                extra={"service": "vision", "model": self._model,
+                       "status": "fail", "error": str(exc)},
+            )
             raise
 
         # Формируем prompt
@@ -80,8 +86,22 @@ class Vision:
                 }],
             )
             description = response.strip()
-            logger.info("vision: описание готово len=%d chars", len(description))
+            dur_ms = int((time.monotonic() - started) * 1000)
+            logger.info(
+                "external.ok service=vision model=%s dur_ms=%d len_out=%d",
+                self._model, dur_ms, len(description),
+                extra={"service": "vision", "model": self._model,
+                       "duration_ms": dur_ms, "status": "ok",
+                       "len_out": len(description)},
+            )
             return description
         except Exception as exc:
-            logger.error("vision: описание не удалось: %s", exc)
+            dur_ms = int((time.monotonic() - started) * 1000)
+            logger.error(
+                "external.fail service=vision model=%s dur_ms=%d error=%s",
+                self._model, dur_ms, exc,
+                extra={"service": "vision", "model": self._model,
+                       "duration_ms": dur_ms, "status": "fail",
+                       "error": str(exc)},
+            )
             raise

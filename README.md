@@ -1,5 +1,7 @@
 # ai-multi-agent-system
 
+[![tests](https://github.com/radif-ru/ai_multi_agent_system/actions/workflows/test.yml/badge.svg)](https://github.com/radif-ru/ai_multi_agent_system/actions/workflows/test.yml)
+
 Telegram-бот, работающий как **AI-агент** на локальной LLM. Принимает задачу от пользователя, **выполняет цикл `thought → action → observation`** до получения финального ответа: думает, выбирает инструмент, наблюдает результат, повторяет. Ответ модели — строго в JSON-формате (`{"thought", "action", "args"}` либо `{"final_answer"}`).
 
 Заложен под **мульти-агентную систему**: уже сейчас в архитектуре выделены роли Planner / Executor / Critic, но в первом MVP реализован только Executor (один агентный цикл). Будущие спринты добавят остальные роли и новые адаптеры (web-версия, мессенджер MAX) поверх той же доменной модели.
@@ -29,7 +31,7 @@ Telegram-бот, работающий как **AI-агент** на локаль
 
 ## Требования
 
-- **Python** 3.11+ (рекомендуется 3.12).
+- **Python** 3.14+.
 - **Ollama** (`https://ollama.com`) с предзагруженными моделями `qwen3.5:4b`, `nomic-embed-text` и `gemma3:4b` (или другая vision-модель, см. `_docs/vision-models.md`).
 - **Telegram bot token** от [@BotFather](https://t.me/BotFather).
 - **tesseract-ocr** (опционально, для OCR в PDF): `sudo apt-get install tesseract-ocr tesseract-ocr-rus`

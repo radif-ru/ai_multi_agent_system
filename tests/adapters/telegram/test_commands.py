@@ -97,6 +97,7 @@ def _make_handlers(
     skills: _FakeRegistry | None = None,
     conversations: ConversationStore | None = None,
     archiver: _FakeArchiver | None = None,
+    journal: Any = None,
 ) -> dict[str, Any]:
     return build_command_handlers(
         settings=settings or _FakeSettings(),
@@ -112,6 +113,7 @@ def _make_handlers(
         skills=skills or _FakeRegistry([{"name": "demo", "description": "пример"}]),
         conversations=conversations or ConversationStore(max_messages=10),
         archiver=archiver or _FakeArchiver(),
+        journal=journal,
     )
 
 
@@ -494,3 +496,125 @@ async def test_new_archive_failure_keeps_history() -> None:
     text = answer.await_args.args[0]
     assert "не удалось" in text
     assert "embed" in text
+
+
+# ---------- /new + /reset × dialog_journal (задача 06.3.5) ------------------
+
+
+@pytest.mark.asyncio
+async def test_new_marks_dialog_journal_archived(tmp_path) -> None:
+    """После успешного /new строки журнала текущей сессии помечаются `archived_at`.
+
+    Иначе фоновое восстановление при следующем старте подняло бы их повторно
+    через `Archiver` и продублировало бы чанки в `memory_chunks`.
+    См. `_docs/memory.md` §4.3 и задачу 06.3.5.
+    """
+    from app.services.dialog_journal import DialogJournal
+
+    journal = DialogJournal(db_path=tmp_path / "memory.db")
+    await journal.init()
+    try:
+        conversations = ConversationStore(max_messages=10)
+        conversations.add_user_message(42, "вопрос")
+        conversations.add_assistant_message(42, "ответ")
+        cid_before = conversations.current_conversation_id(42)
+        # Имитируем подписчика dialog_journal: запись пользователя и ответа.
+        await journal.append(
+            user_id=42, chat_id=777, conversation_id=cid_before,
+            role="user", kind="text", content="вопрос",
+        )
+        await journal.append(
+            user_id=42, chat_id=777, conversation_id=cid_before,
+            role="assistant", kind="text", content="ответ",
+        )
+
+        archiver = _FakeArchiver(inserted=2)
+        handlers = _make_handlers(
+            conversations=conversations, archiver=archiver, journal=journal,
+        )
+        msg, _ = _make_message(chat_id=777)
+
+        await handlers["new"](msg)
+
+        # Архивирование вызвано один раз.
+        assert len(archiver.calls) == 1
+        # Все строки сессии в журнале — закрыты.
+        rows = await journal.read_conversation(42, cid_before)
+        assert len(rows) == 2
+        assert all(r["archived_at"] is not None for r in rows)
+        # Незаархивированных сессий — нет.
+        assert await journal.pending_conversations() == []
+    finally:
+        await journal.close()
+
+
+@pytest.mark.asyncio
+async def test_new_failure_keeps_dialog_journal_open(tmp_path) -> None:
+    """Если `Archiver.archive(...)` упал — журнал остаётся открытым.
+
+    На следующем старте фоновое восстановление перенесёт сессию в
+    `memory_chunks` (см. `_docs/memory.md` §4.4).
+    """
+    from app.services.dialog_journal import DialogJournal
+
+    journal = DialogJournal(db_path=tmp_path / "memory.db")
+    await journal.init()
+    try:
+        conversations = ConversationStore(max_messages=10)
+        conversations.add_user_message(42, "вопрос")
+        cid_before = conversations.current_conversation_id(42)
+        await journal.append(
+            user_id=42, chat_id=777, conversation_id=cid_before,
+            role="user", kind="text", content="вопрос",
+        )
+        archiver = _FakeArchiver(error=RuntimeError("embed недоступен"))
+        handlers = _make_handlers(
+            conversations=conversations, archiver=archiver, journal=journal,
+        )
+        msg, _ = _make_message(chat_id=777)
+
+        await handlers["new"](msg)
+
+        rows = await journal.read_conversation(42, cid_before)
+        assert len(rows) == 1
+        assert rows[0]["archived_at"] is None
+        assert await journal.pending_conversations() == [(42, 777, cid_before)]
+    finally:
+        await journal.close()
+
+
+@pytest.mark.asyncio
+async def test_reset_keeps_dialog_journal_open(tmp_path) -> None:
+    """`/reset` ротирует `conversation_id`, но журнал остаётся открытым долгом.
+
+    Сессия будет дозаархивирована фоновой задачей при следующем старте — так
+    мы не теряем диалог даже если пользователь нажал `/reset` по ошибке.
+    См. задачу 06.3.5 и `_docs/memory.md` §4.3.
+    """
+    from app.services.dialog_journal import DialogJournal
+
+    journal = DialogJournal(db_path=tmp_path / "memory.db")
+    await journal.init()
+    try:
+        conversations = ConversationStore(max_messages=10)
+        conversations.add_user_message(42, "привет")
+        cid_before = conversations.current_conversation_id(42)
+        await journal.append(
+            user_id=42, chat_id=777, conversation_id=cid_before,
+            role="user", kind="text", content="привет",
+        )
+        handlers = _make_handlers(conversations=conversations, journal=journal)
+        msg, _ = _make_message(chat_id=777)
+
+        await handlers["reset"](msg)
+
+        # conversation_id ротирован, история очищена.
+        assert conversations.get_history(42) == []
+        assert conversations.current_conversation_id(42) != cid_before
+        # Строка журнала — всё ещё открытый долг.
+        rows = await journal.read_conversation(42, cid_before)
+        assert len(rows) == 1
+        assert rows[0]["archived_at"] is None
+        assert await journal.pending_conversations() == [(42, 777, cid_before)]
+    finally:
+        await journal.close()

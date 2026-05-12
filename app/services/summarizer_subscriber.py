@@ -41,11 +41,11 @@ async def on_response_generated_summarize(
     """
     # Используем user.id как ключ для ConversationStore
     user_id = int(event.user.external_id) if event.user.external_id.isdigit() else event.user.external_id
-    
+
     history = conversations.get_history(user_id)
     if len(history) < settings.history_summary_threshold:
         return
-    
+
     try:
         model = user_settings.get_model(user_id)
         summary = await summarizer.summarize(history[:-2], model=model)

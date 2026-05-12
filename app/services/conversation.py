@@ -38,7 +38,7 @@ class ConversationStore:
         *,
         max_messages: int,
         session_log_max_messages: int = 1000,
-        file_contexts_db: Path = Path("data/file_contexts.db"),
+        journal_db_path: Path | None = None,
     ) -> None:
         if max_messages <= 0:
             raise ValueError("max_messages must be > 0")
@@ -49,29 +49,10 @@ class ConversationStore:
         self._messages: dict[int, list[Message]] = {}
         self._session_log: dict[int, list[Message]] = {}
         self._conversation_ids: dict[int, str] = {}
+        # In-memory кеш контекстов файлов; источник истины — `dialog_journal`
+        # в `data/memory.db` (см. `_docs/memory.md` §2.6, задача 06.3-bis.2).
         self._file_contexts: dict[int, dict[int, str]] = {}
-        self._file_contexts_db = file_contexts_db
-        self._init_file_contexts_db()
-
-    def _init_file_contexts_db(self) -> None:
-        """Создать таблицу для контекстов файлов."""
-        self._file_contexts_db.parent.mkdir(parents=True, exist_ok=True)
-        with sqlite3.connect(self._file_contexts_db) as conn:
-            conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS file_contexts (
-                    user_id INTEGER NOT NULL,
-                    message_id INTEGER NOT NULL,
-                    file_type TEXT NOT NULL,
-                    context TEXT NOT NULL,
-                    file_id TEXT,
-                    file_path TEXT,
-                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (user_id, message_id)
-                )
-                """
-            )
-            conn.commit()
+        self._journal_db_path = journal_db_path
 
     # -- история ----------------------------------------------------------
 
@@ -123,82 +104,63 @@ class ConversationStore:
         self._messages.pop(user_id, None)
         self._session_log.pop(user_id, None)
         self._conversation_ids.pop(user_id, None)
+        # Контексты файлов в журнале append-only; `clear` сбрасывает только
+        # in-memory кеш. Реальная архивация строк журнала идёт через
+        # `DialogJournal.mark_archived(...)` после успешного `/new`
+        # (см. `_docs/memory.md` §4.3, задача 06.3.5).
         self._file_contexts.pop(user_id, None)
-        # Очищаем контексты файлов из БД
-        try:
-            with sqlite3.connect(self._file_contexts_db) as conn:
-                conn.execute(
-                    "DELETE FROM file_contexts WHERE user_id = ?",
-                    (user_id,),
-                )
-                conn.commit()
-        except Exception as exc:  # noqa: BLE001
-            logger.error("ошибка очистки контекстов из БД: %s", exc)
 
     # -- file contexts ----------------------------------------------------
 
-    def save_file_context(
-        self, user_id: int, message_id: int, file_type: str, context: str,
-        file_id: str | None = None, file_path: Path | None = None
-    ) -> None:
-        """Сохранить контекст файла для ответов на конкретный файл.
-
-        Args:
-            user_id: ID пользователя.
-            message_id: ID сообщения в Telegram.
-            file_type: Тип файла (document, image, voice).
-            context: Контекст файла (текст goal).
-            file_id: Временный идентификатор файла (опционально).
-            file_path: Путь к файлу (опционально).
-        """
-        # Сохраняем в памяти для быстрого доступа
-        if user_id not in self._file_contexts:
-            self._file_contexts[user_id] = {}
-        self._file_contexts[user_id][message_id] = context
-        # Сохраняем в БД для персистентности
-        try:
-            with sqlite3.connect(self._file_contexts_db) as conn:
-                conn.execute(
-                    """
-                    INSERT OR REPLACE INTO file_contexts (user_id, message_id, file_type, context, file_id, file_path)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    """,
-                    (user_id, message_id, file_type, context, file_id, str(file_path) if file_path else None),
-                )
-                conn.commit()
-            logger.info("сохранён контекст файла user_id=%s message_id=%s file_type=%s file_id=%s", user_id, message_id, file_type, file_id)
-        except Exception as exc:  # noqa: BLE001
-            logger.error("ошибка сохранения контекста в БД: %s", exc)
-
     def get_file_context(self, user_id: int, message_id: int) -> str | None:
-        """Получить контекст файла по message_id."""
+        """Получить контекст файла (`goal`) по `message_id`.
+
+        Источник истины — таблица `dialog_journal` в `data/memory.db`
+        (см. `_docs/memory.md` §2.6 и §4.1). In-memory словарь
+        `_file_contexts` — это лишь кеш, который наполняется по факту
+        первого чтения и сбрасывается при `clear(user_id)`.
+        """
         # Сначала ищем в памяти
         ctx = self._file_contexts.get(user_id, {}).get(message_id)
         if ctx:
-            logger.info("получен контекст файла из памяти user_id=%s message_id=%s", user_id, message_id)
+            logger.info(
+                "получен контекст файла из памяти user_id=%s message_id=%s",
+                user_id, message_id,
+            )
             return ctx
-        # Если нет в памяти, ищем в БД
+        # Затем читаем из dialog_journal (если путь к БД задан).
+        if self._journal_db_path is None:
+            logger.warning(
+                "контекст файла не найден user_id=%s message_id=%s (journal_db_path не задан)",
+                user_id, message_id,
+            )
+            return None
         try:
-            with sqlite3.connect(self._file_contexts_db) as conn:
+            with sqlite3.connect(self._journal_db_path) as conn:
                 cursor = conn.execute(
                     """
-                    SELECT context FROM file_contexts
+                    SELECT content FROM dialog_journal
                     WHERE user_id = ? AND message_id = ?
+                    ORDER BY id DESC
+                    LIMIT 1
                     """,
                     (user_id, message_id),
                 )
                 row = cursor.fetchone()
                 if row:
                     ctx = row[0]
-                    # Кешируем в памяти
-                    if user_id not in self._file_contexts:
-                        self._file_contexts[user_id] = {}
-                    self._file_contexts[user_id][message_id] = ctx
-                    logger.info("получен контекст файла из БД user_id=%s message_id=%s", user_id, message_id)
+                    self._file_contexts.setdefault(user_id, {})[message_id] = ctx
+                    logger.info(
+                        "получен контекст файла из dialog_journal user_id=%s message_id=%s",
+                        user_id, message_id,
+                    )
                     return ctx
         except Exception as exc:  # noqa: BLE001
-            logger.error("ошибка чтения контекста из БД: %s", exc)
-        logger.warning("контекст файла не найден user_id=%s message_id=%s", user_id, message_id)
+            logger.error("ошибка чтения контекста из dialog_journal: %s", exc)
+        logger.warning(
+            "контекст файла не найден user_id=%s message_id=%s",
+            user_id, message_id,
+        )
         return None
 
     # -- conversation_id --------------------------------------------------

@@ -50,8 +50,7 @@ ai-multi-agent-system/
 │   └── summarizer.md         # промпт для in-memory суммаризации и архивирования
 │
 ├── data/                     # runtime-данные (в .gitignore): sqlite-vec БД, …
-│   ├── memory.db             # путь по умолчанию для MEMORY_DB_PATH
-│   ├── file_contexts.db      # контексты файлов и маппинги file_id → path
+│   ├── memory.db             # путь по умолчанию для MEMORY_DB_PATH: sqlite-vec + dialog_journal (контексты файлов и маппинги file_id → path)
 │   └── tmp/                  # временные файлы (изолированы по user_id)
 │
 ├── logs/                     # файлы логов (в .gitignore)
@@ -93,7 +92,7 @@ ai-multi-agent-system/
 │   ├── services/
 │   │   ├── __init__.py
 │   │   ├── llm.py            # OllamaClient (.chat, .embed) + LLMError + estimate_tokens
-│   │   ├── conversation.py   # ConversationStore: in-memory история per-user, conversation_id, file_contexts (SQLite)
+│   │   ├── conversation.py   # ConversationStore: in-memory история per-user, conversation_id, in-memory кеш контекстов файлов (источник истины — dialog_journal)
 │   │   ├── summarizer.py     # Summarizer: сжатие истории через LLM
 │   │   ├── memory.py         # SemanticMemory: sqlite-vec обёртка (init/insert/search)
 │   │   ├── archiver.py       # Archiver: оркестратор /new (summary → chunk → embed → insert)
@@ -223,7 +222,7 @@ ai-multi-agent-system/
 | `app/tools/ocr_image.py` | OCR для одиночных изображений. |
 | `app/tools/weather.py` | Погода через wttr.in с fallback на WebSearchTool. |
 | `app/services/llm.py` | `OllamaClient` (async) с `chat` и `embed`, `estimate_tokens`, иерархия `LLMError`. |
-| `app/services/conversation.py` | `ConversationStore`: in-memory история per-user (`user_id → list`), `conversation_id`, FIFO-обрезка, file_contexts (SQLite). |
+| `app/services/conversation.py` | `ConversationStore`: in-memory история per-user (`user_id → list`), `conversation_id`, FIFO-обрезка, in-memory кеш контекстов файлов (источник истины — `dialog_journal`). |
 | `app/services/summarizer.py` | `Summarizer`: тонкая обёртка над `OllamaClient.chat`. Используется и для in-session порога, и для `/new`. |
 | `app/services/memory.py` | `SemanticMemory`: обёртка над `sqlite3 + sqlite_vec.load`; `init`, `insert`, `search`. |
 | `app/services/archiver.py` | `Archiver`: оркестратор `/new` (см. `memory.md` §3.3). |
@@ -238,7 +237,7 @@ ai-multi-agent-system/
 | `app/services/tmp_cleanup.py` | Подписчик для очистки tmp-изображений при /new. |
 | `app/services/session_bootstrap.py` | Авто-подгрузка контекста из SemanticMemory при старте сессии. |
 | `app/security/input_sanitizer.py` | `sanitize_user_input`: защита от prompt injection. |
-| `app/security/file_id_mapper.py` | `FileIdMapper`: маскирование путей к файлам, персистентность через SQLite. |
+| `app/security/file_id_mapper.py` | `FileIdMapper`: маскирование путей к файлам, персистентность через `dialog_journal` в `data/memory.db`. |
 | `app/security/response_sanitizer.py` | `sanitize_response`: фильтрация системной информации в ответах модели. |
 | `app/users/repository.py` | `UserRepository`: хранилище пользователей с get_or_create, публикует UserCreated. |
 | `app/adapters/telegram/handlers/commands.py` | Router с `/start`, `/help`, `/models`, `/model`, `/prompt`, `/new`, `/reset`. |

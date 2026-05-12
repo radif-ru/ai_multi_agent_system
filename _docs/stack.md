@@ -2,7 +2,7 @@
 
 ## 1. Runtime
 
-- **Python** — 3.11+ (рекомендуется 3.12). Нужен нативный `asyncio`, `tomllib`, совместимость с актуальными aiogram / pydantic / sqlite-vec.
+- **Python** — 3.14+. Нужен нативный `asyncio`, `tomllib`, совместимость с актуальными aiogram / pydantic / sqlite-vec.
 - **OS** — Linux / WSL2 Ubuntu / macOS. Windows нативно — не приоритет (см. ASM-1).
 
 ## 2. Telegram
@@ -53,7 +53,8 @@
 
 - Стандартный **`logging`** + `logging.handlers.RotatingFileHandler`.
 - Конфигурация через `dictConfig` в `app/logging_config.py`.
-- Формат: `%(asctime)s | %(levelname)s | %(name)s | %(message)s`.
+- Формат — **структурный JSON**: поля `timestamp`, `level`, `service`, `name`, `message`, `trace_id`, `user_id`, опционально `extra`/`exc_info`/`stack_info`. Детали — в `_docs/observability.md` §1.
+- `trace_id` и `user_id` прокидываются автоматически через `contextvars` (см. `app/utils/tracing.py`, `_docs/observability.md` §2).
 - Уровень — из `LOG_LEVEL` (`INFO` по умолчанию).
 - Файл — из `LOG_FILE` (например, `logs/agent.log`), каталог `logs/` в `.gitignore`.
 

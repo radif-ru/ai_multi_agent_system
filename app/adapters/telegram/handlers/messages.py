@@ -118,7 +118,8 @@ def build_text_handler(
                 user=user,
                 text=text,
                 conversation_id=str(chat_id),
-                channel="telegram"
+                channel="telegram",
+                message_id=message.message_id,
             ))
 
         if len(text) > MAX_INPUT_LENGTH:
@@ -136,12 +137,20 @@ def build_text_handler(
                     reply_text = reply_text[:500] + "..."
                 text = f"[В ответ на: {reply_text}]\n{text}"
             # Если ответ на файл (фото, документ или голосовой), добавляем контекст конкретного файла по message_id
-            if getattr(reply_msg, "photo", None) is not None or getattr(reply_msg, "document", None) is not None or getattr(reply_msg, "voice", None) is not None:
+            has_attachment = (
+                getattr(reply_msg, "photo", None) is not None
+                or getattr(reply_msg, "document", None) is not None
+                or getattr(reply_msg, "voice", None) is not None
+            )
+            if has_attachment:
                 reply_msg_id = getattr(reply_msg, "message_id", None)
                 logger.info("reply на файл user=%s reply_msg_id=%s", user_id, reply_msg_id)
                 if reply_msg_id is not None:
                     file_context = conversations.get_file_context(user_id, reply_msg_id)
-                    logger.info("file_context найден=%s для reply_msg_id=%s", file_context is not None, reply_msg_id)
+                    logger.info(
+                        "file_context найден=%s для reply_msg_id=%s",
+                        file_context is not None, reply_msg_id,
+                    )
                     if file_context:
                         # Добавляем контекст конкретного файла
                         text = f"{file_context}\n\n{text}"
@@ -179,9 +188,12 @@ def build_text_handler(
             logger.warning("LLM вернула некорректный ответ user=%s error=%s", user_id, exc)
             # Если пустой ответ - это может быть из-за слишком большого контекста
             if "empty" in str(exc):
-                error_msg = "Модель не смогла обработать такой большой запрос. Попробуйте отправить файл меньшего размера или задайте более конкретный вопрос."
+                error_msg = (
+                    "Модель не смогла обработать такой большой запрос. "
+                    "Попробуйте отправить файл меньшего размера или задайте более конкретный вопрос."
+                )
             else:
-                error_msg = f"Модель ответила в неожиданном формате. Попробуйте ещё раз."
+                error_msg = "Модель ответила в неожиданном формате. Попробуйте ещё раз."
             formatted, parse_mode = format_for_telegram(error_msg)
             await _send_with_fallback(message, formatted, parse_mode)
             return
@@ -236,7 +248,10 @@ async def handle_document(
 
     # Проверяем, это аудио файл - перенаправляем в handle_voice
     if isinstance(mime_type, str) and mime_type.startswith("audio/"):
-        logger.info("Аудиофайл отправлен как документ, перенаправляем в handle_voice user=%s mime_type=%s", user_id, mime_type)
+        logger.info(
+            "Аудиофайл отправлен как документ, перенаправляем в handle_voice user=%s mime_type=%s",
+            user_id, mime_type,
+        )
         await handle_voice(
             message,
             settings=settings,
@@ -275,7 +290,10 @@ async def handle_document(
     mapper = get_global_mapper()
     file_id = mapper.generate_id(file_path)
     # Сохраняем полный путь в контексте для восстановления file_id при перезапуске
-    goal = f"Пользователь прислал документ (ID: {file_id}, путь: {file_path}). Caption: {caption}. Прочитай через read_document с параметром file_id={file_id} и ответь по сути."
+    goal = (
+        f"Пользователь прислал документ (ID: {file_id}, путь: {file_path}). Caption: {caption}. "
+        f"Прочитай через read_document с параметром file_id={file_id} и ответь по сути."
+    )
 
     # Публикуем MessageReceived
     if event_bus and user:
@@ -283,11 +301,14 @@ async def handle_document(
             user=user,
             text=goal,
             conversation_id=str(chat_id),
-            channel="telegram"
+            channel="telegram",
+            kind="document",
+            file_id=file_id,
+            file_path=str(file_path),
+            message_id=message.message_id,
         ))
 
-    # Сохраняем контекст файла по message_id для ответов на конкретный файл
-    conversations.save_file_context(user_id, message.message_id, "document", goal, file_id=file_id, file_path=file_path)
+    # Контекст файла читается из dialog_journal через get_file_context (см. 06.3-bis.2).
     model = user_settings.get_model(user_id)
 
     # Санитайзинг пользовательского ввода
@@ -357,7 +378,11 @@ async def handle_voice(
     if message.voice is not None:
         file_id = message.voice.file_id
         mime_type = message.voice.mime_type or "audio/ogg"
-    elif message.document is not None and message.document.mime_type and message.document.mime_type.startswith("audio/"):
+    elif (
+        message.document is not None
+        and message.document.mime_type
+        and message.document.mime_type.startswith("audio/")
+    ):
         file_id = message.document.file_id
         mime_type = message.document.mime_type
     else:
@@ -430,7 +455,12 @@ async def handle_voice(
     # Если это ответ на файл (фото, документ или голосовой), добавляем контекст конкретного файла по message_id
     reply_msg = getattr(message, "reply_to_message", None)
     if reply_msg is not None:
-        if getattr(reply_msg, "photo", None) is not None or getattr(reply_msg, "document", None) is not None or getattr(reply_msg, "voice", None) is not None:
+        has_attachment = (
+            getattr(reply_msg, "photo", None) is not None
+            or getattr(reply_msg, "document", None) is not None
+            or getattr(reply_msg, "voice", None) is not None
+        )
+        if has_attachment:
             reply_msg_id = getattr(reply_msg, "message_id", None)
             logger.info("reply на файл user=%s reply_msg_id=%s", user_id, reply_msg_id)
             if reply_msg_id is not None:
@@ -448,17 +478,20 @@ async def handle_voice(
     # Сохраняем полный путь в контексте для восстановления file_id при перезапуске
     goal = f"Голосовое сообщение (ID: {file_id}, путь: {file_path})\nТранскрипция: {text}"
 
-    # Публикуем MessageReceived
+    # Публикуем MessageReceived с kind=voice (для dialog_journal)
     if event_bus and user:
         await event_bus.publish(MessageReceived(
             user=user,
             text=goal,
             conversation_id=str(chat_id),
-            channel="telegram"
+            channel="telegram",
+            kind="voice",
+            file_id=file_id,
+            file_path=str(file_path),
+            message_id=message.message_id,
         ))
 
-    # Сохраняем контекст голосового файла по message_id для ответов на конкретный файл
-    conversations.save_file_context(user_id, message.message_id, "voice", goal, file_id=file_id, file_path=file_path)
+    # Контекст голосового файла читается из dialog_journal через get_file_context (06.3-bis.2).
     model = user_settings.get_model(user_id)
 
     # Санитайзинг пользовательского ввода
@@ -563,19 +596,27 @@ async def handle_photo(
     mapper = get_global_mapper()
     file_id = mapper.generate_id(file_path)
     # Сохраняем полный путь в контексте для восстановления file_id при перезапуске
-    goal = f"Пользователь прислал изображение (file_id: {file_id}, путь: {file_path}). Caption: {caption}. Используй describe_image с параметром file_id для описания сцены или ocr_image с параметром file_id для распознавания текста. Выбери подходящий инструмент и ответь по сути."
+    goal = (
+        f"Пользователь прислал изображение (file_id: {file_id}, путь: {file_path}). Caption: {caption}. "
+        f"Используй describe_image с параметром file_id для описания сцены "
+        f"или ocr_image с параметром file_id для распознавания текста. "
+        f"Выбери подходящий инструмент и ответь по сути."
+    )
 
-    # Публикуем MessageReceived
+    # Публикуем MessageReceived с kind=image (для dialog_journal)
     if event_bus and user:
         await event_bus.publish(MessageReceived(
             user=user,
             text=goal,
             conversation_id=str(chat_id),
-            channel="telegram"
+            channel="telegram",
+            kind="image",
+            file_id=file_id,
+            file_path=str(file_path),
+            message_id=message.message_id,
         ))
 
-    # Сохраняем контекст файла по message_id для ответов на конкретный файл
-    conversations.save_file_context(user_id, message.message_id, "image", goal, file_id=file_id, file_path=file_path)
+    # Контекст изображения читается из dialog_journal через get_file_context (06.3-bis.2).
     model = user_settings.get_model(user_id)
 
     # Санитайзинг пользовательского ввода
@@ -635,7 +676,7 @@ def build_document_handler(
 ) -> Callable[[Message], Awaitable[None]]:
     """Собрать async-handler для документов."""
 
-    async def handler(message: Message) -> None:
+    async def handler(message: Message, **data: dict) -> None:
         await handle_document(
             message,
             settings=settings,
@@ -645,6 +686,7 @@ def build_document_handler(
             executor=executor,
             llm=llm,
             semantic_memory=semantic_memory,
+            **data,
         )
 
     return handler
@@ -662,7 +704,7 @@ def build_voice_handler(
 ) -> Callable[[Message], Awaitable[None]]:
     """Собрать async-handler для голосовых сообщений."""
 
-    async def handler(message: Message) -> None:
+    async def handler(message: Message, **data: dict) -> None:
         await handle_voice(
             message,
             settings=settings,
@@ -672,6 +714,7 @@ def build_voice_handler(
             executor=executor,
             llm=llm,
             semantic_memory=semantic_memory,
+            **data,
         )
 
     return handler
@@ -689,7 +732,7 @@ def build_photo_handler(
 ) -> Callable[[Message], Awaitable[None]]:
     """Собрать async-handler для фотографий."""
 
-    async def handler(message: Message) -> None:
+    async def handler(message: Message, **data: dict) -> None:
         await handle_photo(
             message,
             settings=settings,
@@ -699,6 +742,7 @@ def build_photo_handler(
             executor=executor,
             llm=llm,
             semantic_memory=semantic_memory,
+            **data,
         )
 
     return handler

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 from html import escape as html_escape
-from typing import Literal
 
 from aiogram.enums import ParseMode
 
@@ -47,11 +46,11 @@ def format_for_telegram(text: str) -> tuple[str, ParseMode | None]:
         code = match.group(2)
         parts.append(("code", lang, code))
         last_end = end
-    
+
     # Текст после последнего блока
     if last_end < len(text):
         parts.append(("text", text[last_end:]))
-    
+
     # Формируем результат
     formatted_parts = []
     for part in parts:
@@ -64,6 +63,6 @@ def format_for_telegram(text: str) -> tuple[str, ParseMode | None]:
             code = part[2]
             code_escaped = html_escape(code)
             formatted_parts.append(f'<pre><code class="language-{lang}">{code_escaped}</code></pre>')
-    
+
     formatted = "".join(formatted_parts)
     return formatted, ParseMode.HTML

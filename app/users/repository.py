@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from app.users.models import User
 
 if TYPE_CHECKING:
-    from app.core.events import EventBus, UserCreated
+    from app.core.events import EventBus
 
 logger = logging.getLogger(__name__)
 

@@ -95,6 +95,12 @@ class Settings(BaseSettings):
         default_factory=lambda: ["duckduckgo"]
     )
 
+    # --- Observability / error tracking (Sentry/GlitchTip) ---
+    # DSN self-hosted GlitchTip или Sentry. Пустая строка / None = выключено.
+    sentry_dsn: str | None = None
+    sentry_environment: str = "dev"
+    sentry_traces_sample_rate: float = 0.0
+
     # --- Security ---
     dangerous_tools_allowlist: Annotated[list[str], NoDecode] = Field(
         default_factory=list

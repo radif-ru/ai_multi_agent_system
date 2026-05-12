@@ -12,7 +12,6 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from aiogram import Bot, Dispatcher
 from aiogram.types import BotCommand
@@ -24,9 +23,12 @@ from app.agents.executor import Executor
 from app.config import Settings
 from app.core import orchestrator as _orchestrator  # импорт для DI/тестов
 from app.logging_config import setup_logging
+from app.observability import setup_sentry
 from app.middlewares.logging_mw import LoggingMiddleware
 from app.services.archiver import Archiver
 from app.services.conversation import ConversationStore
+from app.services.dialog_journal import DialogJournal
+from app.services.journal_recovery import recover_pending_journals
 from app.services.llm import OllamaClient
 from app.services.memory import MemoryUnavailable, SemanticMemory
 from app.services.model_registry import UserSettingsRegistry
@@ -46,7 +48,7 @@ from app.tools.web_search import WebSearchTool
 from app.tools.weather import WeatherTool
 from app.users.repository import UserRepository
 from app.core.events import EventBus, MessageReceived, ResponseGenerated
-from app.security import get_global_mapper, clear_global_mapper
+from app.security import get_global_mapper
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +74,7 @@ class _Components:
     conversations: ConversationStore
     summarizer: Summarizer
     semantic_memory: SemanticMemory | None
+    dialog_journal: DialogJournal | None
     skills: SkillRegistry
     prompts: PromptLoader
     user_settings: UserSettingsRegistry
@@ -91,6 +94,7 @@ async def _build_components(settings: Settings) -> _Components:
     conversations = ConversationStore(
         max_messages=settings.history_max_messages,
         session_log_max_messages=settings.session_log_max_messages,
+        journal_db_path=settings.memory_db_path,
     )
     summarizer = Summarizer(
         llm=llm,
@@ -106,6 +110,32 @@ async def _build_components(settings: Settings) -> _Components:
     except MemoryUnavailable as exc:
         logger.error("долгосрочная память недоступна: %s", exc)
         semantic_memory = None
+
+    # Журнал диалога для восстановления при рестарте (спринт 06 §3)
+    dialog_journal: DialogJournal | None = DialogJournal(
+        db_path=settings.memory_db_path
+    )
+    try:
+        await dialog_journal.init()
+    except Exception as exc:  # noqa: BLE001
+        logger.error("dialog_journal: инициализация не удалась, журнал выключен: %s", exc)
+        dialog_journal = None
+
+    # Одноразовая миграция data/file_contexts.db → dialog_journal (этап 06.3-bis.1).
+    if dialog_journal is not None:
+        try:
+            from app.services.file_contexts_migration import (
+                migrate_file_contexts_to_journal,
+            )
+            legacy_db = settings.memory_db_path.parent / "file_contexts.db"
+            moved = migrate_file_contexts_to_journal(
+                legacy_db_path=legacy_db,
+                journal_db_path=settings.memory_db_path,
+            )
+            if moved:
+                logger.info("file_contexts_migration: перенесено %d строк", moved)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("file_contexts_migration: %s", exc)
 
     # Инициализируем FileIdMapper для загрузки существующих маппингов
     try:
@@ -170,16 +200,48 @@ async def _build_components(settings: Settings) -> _Components:
     # Регистрируем подписчиков для записи в ConversationStore
     from app.core.events import ConversationArchived
     from app.services.conversation_subscriber import on_message_received, on_response_generated
+    from app.services.dialog_journal_subscriber import (
+        on_message_received_journal, on_response_generated_journal,
+    )
     from app.services.summarizer_subscriber import on_response_generated_summarize
     from app.services.tmp_cleanup import on_conversation_archived_cleanup
     from functools import partial
 
     event_bus.subscribe(MessageReceived, partial(on_message_received, conversations=conversations))
     event_bus.subscribe(ResponseGenerated, partial(on_response_generated, conversations=conversations))
+    # Подписчики dialog_journal — СНАЧАЛА ПОСЛЕ conversation_subscriber, чтобы
+    # current_conversation_id() видел свежий cid после add_user_message
+    if dialog_journal is not None:
+        event_bus.subscribe(
+            MessageReceived,
+            partial(
+                on_message_received_journal,
+                conversations=conversations, journal=dialog_journal,
+            ),
+        )
+        event_bus.subscribe(
+            ResponseGenerated,
+            partial(
+                on_response_generated_journal,
+                conversations=conversations, journal=dialog_journal,
+            ),
+        )
     # Регистрируем подписчика суммаризации ПОСЛЕ conversation_subscriber, чтобы ответ уже был записан в стор
-    event_bus.subscribe(ResponseGenerated, partial(on_response_generated_summarize, conversations=conversations, summarizer=summarizer, user_settings=user_settings, settings=settings))
+    event_bus.subscribe(
+        ResponseGenerated,
+        partial(
+            on_response_generated_summarize,
+            conversations=conversations,
+            summarizer=summarizer,
+            user_settings=user_settings,
+            settings=settings,
+        ),
+    )
     # Регистрируем подписчика очистки tmp-изображений при успешном архивировании
-    event_bus.subscribe(ConversationArchived, partial(on_conversation_archived_cleanup, tmp_dir=Path(settings.tmp_base_dir)))
+    event_bus.subscribe(
+        ConversationArchived,
+        partial(on_conversation_archived_cleanup, tmp_dir=Path(settings.tmp_base_dir)),
+    )
 
     return _Components(
         settings=settings,
@@ -187,6 +249,7 @@ async def _build_components(settings: Settings) -> _Components:
         conversations=conversations,
         summarizer=summarizer,
         semantic_memory=semantic_memory,
+        dialog_journal=dialog_journal,
         skills=skills,
         prompts=prompts,
         user_settings=user_settings,
@@ -214,6 +277,7 @@ def _wire_telegram(c: _Components) -> tuple[Bot, Dispatcher]:
             conversations=c.conversations,
             archiver=c.archiver,
             users=c.users,
+            journal=c.dialog_journal,
         )
     )
     dispatcher.include_router(
@@ -255,6 +319,11 @@ async def _shutdown(bot: Bot, components: _Components) -> None:
             await components.semantic_memory.close()
         except Exception:  # noqa: BLE001
             logger.exception("ошибка при закрытии семантической памяти")
+    if components.dialog_journal is not None:
+        try:
+            await components.dialog_journal.close()
+        except Exception:  # noqa: BLE001
+            logger.exception("ошибка при закрытии dialog_journal")
     try:
         from app.security import get_global_mapper
         get_global_mapper().close()
@@ -266,13 +335,34 @@ async def main() -> None:
     """Async-точка входа: сборка, запуск polling, корректный shutdown."""
     settings = Settings()
     setup_logging(settings)
+    setup_sentry(settings)
 
     components = await _build_components(settings)
     bot, dispatcher = _wire_telegram(components)
+
+    # Фоновое восстановление «висящих» сессий из dialog_journal.
+    # Запускаем параллельно с polling, чтобы не блокировать старт бота
+    # (см. _docs/memory.md §4 и _docs/architecture.md §3.1).
+    recovery_task: asyncio.Task | None = None
+    if components.dialog_journal is not None:
+        recovery_task = asyncio.create_task(
+            recover_pending_journals(
+                journal=components.dialog_journal,
+                archiver=components.archiver,
+            ),
+            name="journal_recovery",
+        )
+
     try:
         logger.info("Bot started")
         await _start_polling(bot, dispatcher)
     finally:
+        if recovery_task is not None and not recovery_task.done():
+            recovery_task.cancel()
+            try:
+                await recovery_task
+            except (asyncio.CancelledError, Exception):  # noqa: BLE001
+                pass
         await _shutdown(bot, components)
 
 

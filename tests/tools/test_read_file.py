@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -93,7 +92,7 @@ async def test_file_id_not_found_error(tmp_path, ctx):
     """Ошибка при неизвестном file_id."""
     clear_global_mapper()
     tool = ReadFileTool(allowed_dirs=[tmp_path])
-    with pytest.raises(ToolError, match="file_id .* не найден"):
+    with pytest.raises(ToolError, match="file_id .* недоступен"):
         await tool.run({"file_id": "file_unknown"}, ctx)
     clear_global_mapper()
 

@@ -20,8 +20,8 @@ try:
 except ImportError:
     pytesseract = None  # type: ignore
 
-from app.security import get_global_mapper
-from app.services.ocr import extract_text, get_default_lang
+from app.security import file_id_not_found_message, get_global_mapper
+from app.services.ocr import extract_text
 from app.tools.base import Tool, ToolContext, truncate_output
 from app.tools.errors import ToolError
 
@@ -68,7 +68,7 @@ class ReadDocumentTool(Tool):
             mapper = get_global_mapper()
             path = mapper.get_path(str(args["file_id"]))
             if path is None:
-                raise ToolError(f"file_id {args['file_id']} не найден")
+                raise ToolError(file_id_not_found_message(str(args['file_id'])))
             raw_path = str(path)
         elif "path" in args and args["path"]:
             raw_path = str(args["path"])
@@ -110,7 +110,10 @@ class ReadDocumentTool(Tool):
         # Проверяем размер файла
         file_size = resolved.stat().st_size
         if file_size > self._max_file_size:
-            raise ToolError(f"файл слишком большой ({file_size / 1024 / 1024:.1f}MB), максимальный размер {self._max_file_size / 1024 / 1024:.0f}MB")
+            raise ToolError(
+                f"файл слишком большой ({file_size / 1024 / 1024:.1f}MB), "
+                f"максимальный размер {self._max_file_size / 1024 / 1024:.0f}MB"
+            )
 
         # Определяем тип по расширению
         suffix = resolved.suffix.lower()
@@ -131,8 +134,10 @@ class ReadDocumentTool(Tool):
         try:
             reader = PdfReader(path)
             max_images = self._max_images
-            logger.info("Чтение PDF: %s, страниц=%d, max_chars=%d, max_images=%d, ocr=%s",
-                       path, len(reader.pages), max_chars, max_images, self._ocr_enabled)
+            logger.info(
+                "Чтение PDF: %s, страниц=%d, max_chars=%d, max_images=%d, ocr=%s",
+                path, len(reader.pages), max_chars, max_images, self._ocr_enabled,
+            )
             text_parts = []
             total_chars = 0
             image_paths = []
@@ -166,7 +171,7 @@ class ReadDocumentTool(Tool):
                                     clean_obj_name = str(obj_name).replace("/", "_").replace("\\", "_")
                                     image_filename = f"{path.stem}_page{page_num}_{clean_obj_name}{image_ext}"
                                     image_path = path.parent / image_filename
-                                    
+
                                     # Проверяем существует ли картинка уже
                                     if image_path.exists():
                                         logger.info("Картинка уже существует: %s", image_path)
@@ -178,7 +183,7 @@ class ReadDocumentTool(Tool):
                                         logger.info("Извлечена картинка из PDF: %s", image_path)
                                 except Exception as exc:
                                     logger.warning("Ошибка извлечения картинки: %s", exc)
-                
+
                 # Если достигнут лимит картинок, прерываем обработку страниц
                 if len(image_paths) >= max_images:
                     logger.info("Достигнут лимит извлечения картинок (%d)", max_images)
@@ -189,29 +194,35 @@ class ReadDocumentTool(Tool):
             # Если OCR включен и текста очень мало, извлекаем текст из картинок через сервис
             ocr_successful = False
             if self._ocr_enabled and len(text) < self._ocr_min_text_threshold and image_paths:
-                ocr_cache_path = path.with_suffix(".ocr.txt")
+                # Дисковый кеш `.ocr.txt` убран (задача 06.3-bis.4):
+                # результат OCR попадает в `dialog_journal.content` через goal.
                 ocr_text = extract_text(
                     image_paths=[Path(p) for p in image_paths],
-                    cache_path=ocr_cache_path,
                 )
                 if ocr_text:
                     text += f"\n\n[OCR текст из изображений:]\n{ocr_text}"
                     logger.info("OCR добавил %d символов текста", len(ocr_text))
                     ocr_successful = True
-            
+
             result = truncate_output(text, max_chars)
-            
+
             logger.info("PDF прочитан: текст=%d символов, картинок=%d", len(text), len(image_paths))
-            
+
             # Возвращаем информацию о картинках только если OCR не сработал или текста мало
             if image_paths and not ocr_successful:
                 # Если текста очень мало (< 100 символов), это скан - возвращаем только первую картинку
                 if len(text) < 100:
-                    logger.warning("PDF похоже на скан (текст=%d символов), возвращаем только первую картинку", len(text))
-                    result += f"\n\n[PDF содержит {len(image_paths)} изображений. Текст не извлечён. Первая картинка: {image_paths[0]}]"
+                    logger.warning(
+                        "PDF похоже на скан (текст=%d символов), возвращаем только первую картинку",
+                        len(text),
+                    )
+                    result += (
+                        f"\n\n[PDF содержит {len(image_paths)} изображений. "
+                        f"Текст не извлечён. Первая картинка: {image_paths[0]}]"
+                    )
                 else:
                     result += f"\n\n[PDF содержит {len(image_paths)} изображений: {', '.join(image_paths)}]"
-            
+
             return result
         except Exception as exc:
             logger.error("Ошибка чтения PDF: %s", exc)
@@ -246,9 +257,8 @@ class ReadDocumentTool(Tool):
         if not self._ocr_enabled:
             raise ToolError("OCR отключён. Включите DOCUMENT_OCR_ENABLED в настройках.")
 
-        # Проверяем кеш OCR
-        ocr_cache_path = path.with_suffix(".ocr.txt")
-        text = extract_text(image_paths=[path], cache_path=ocr_cache_path)
+        # Дисковый кеш `.ocr.txt` убран (задача 06.3-bis.4).
+        text = extract_text(image_paths=[path])
 
         if not text:
             raise ToolError("OCR не смог извлечь текст с изображения")
@@ -256,6 +266,10 @@ class ReadDocumentTool(Tool):
         # Проверяем, что это не просто изображение без текста
         if len(text.strip()) < 50:
             logger.warning("OCR извлёк очень мало текста (%d символов), похоже на обычное изображение", len(text))
-            text = f"[OCR извлёк очень мало текста ({len(text)} символов). Если это обычное изображение без текста, загрузите его как изображение в Telegram, а не как файл.]\n\n{text}"
+            text = (
+                f"[OCR извлёк очень мало текста ({len(text)} символов). "
+                "Если это обычное изображение без текста, загрузите его как изображение в Telegram, а не как файл.]\n\n"
+                f"{text}"
+            )
 
         return truncate_output(text, max_chars)

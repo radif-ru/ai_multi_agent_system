@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import sqlite3
+from pathlib import Path
+
 import pytest
 
 from app.services.conversation import ConversationStore
+from app.services.dialog_journal import DialogJournal
 
 
 def test_add_and_get_history_independent_copy():
@@ -170,6 +174,70 @@ def test_session_log_users_are_isolated():
     s.clear(1)
     assert s.get_session_log(1) == []
     assert s.get_session_log(2) == [{"role": "user", "content": "u2"}]
+
+
+# ---- file context backed by dialog_journal (см. _docs/memory.md §2.6) ----
+
+
+async def test_get_file_context_reads_from_dialog_journal(tmp_path: Path) -> None:
+    """`get_file_context` восстанавливает goal по `message_id` из dialog_journal."""
+    db_path = tmp_path / "memory.db"
+    journal = DialogJournal(db_path=db_path)
+    await journal.init()
+    try:
+        await journal.append(
+            user_id=42, chat_id=42, conversation_id="cid-1",
+            role="user", kind="document",
+            content="Документ user=42 msg=7",
+            file_id="file_abc", file_path="/tmp/a.pdf",
+            message_id=7,
+        )
+    finally:
+        await journal.close()
+
+    s = ConversationStore(max_messages=10, journal_db_path=db_path)
+    assert s.get_file_context(42, 7) == "Документ user=42 msg=7"
+    # Повторный вызов попадает в in-memory кеш.
+    assert s.get_file_context(42, 7) == "Документ user=42 msg=7"
+
+
+async def test_get_file_context_returns_none_when_missing(tmp_path: Path) -> None:
+    db_path = tmp_path / "memory.db"
+    journal = DialogJournal(db_path=db_path)
+    await journal.init()
+    await journal.close()
+    s = ConversationStore(max_messages=10, journal_db_path=db_path)
+    assert s.get_file_context(42, 999) is None
+
+
+def test_get_file_context_without_db_path_returns_none() -> None:
+    s = ConversationStore(max_messages=10)
+    assert s.get_file_context(1, 1) is None
+
+
+def test_save_file_context_removed() -> None:
+    """`save_file_context` удалён — данные пишутся через подписчик dialog_journal."""
+    s = ConversationStore(max_messages=10)
+    assert not hasattr(s, "save_file_context")
+
+
+def test_conversation_store_does_not_create_file_contexts_db(tmp_path: Path) -> None:
+    """ConversationStore больше не открывает `data/file_contexts.db`."""
+    ConversationStore(
+        max_messages=10, journal_db_path=tmp_path / "memory.db",
+    )
+    # Файл `file_contexts.db` не должен появиться рядом.
+    assert not (tmp_path / "file_contexts.db").exists()
+    # И никаких таблиц `file_contexts` в memory.db быть не должно (init dialog_journal
+    # делается отдельно через DialogJournal.init()).
+    if (tmp_path / "memory.db").exists():
+        with sqlite3.connect(tmp_path / "memory.db") as conn:
+            tables = {
+                row[0] for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                )
+            }
+        assert "file_contexts" not in tables
 
 
 def test_session_log_overflow_drops_head_and_warns(caplog):

@@ -42,6 +42,7 @@ def mock_components():
     core_handle_user_task = MagicMock(return_value="test response")
 
     users = MagicMock()
+
     async def mock_get_or_create(*args, **kwargs):
         return MagicMock(id=1), False
     users.get_or_create = mock_get_or_create
