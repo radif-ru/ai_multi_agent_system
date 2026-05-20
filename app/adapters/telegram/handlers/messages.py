@@ -40,7 +40,9 @@ from app.services.transcribe import (
 from app.utils.text import split_long_message
 
 if TYPE_CHECKING:
+    from app.agents.critic import CriticAgent
     from app.agents.executor import Executor
+    from app.agents.planner import PlannerAgent
     from app.config import Settings
     from app.services.conversation import ConversationStore
     from app.services.llm import OllamaClient
@@ -85,6 +87,8 @@ def build_text_handler(
     executor: "Executor",
     llm: "OllamaClient | None" = None,
     semantic_memory: "SemanticMemory | None" = None,
+    planner: "PlannerAgent | None" = None,
+    critic: "CriticAgent | None" = None,
 ) -> Callable[[Message], Awaitable[None]]:
     """Собрать async-handler для текстовых сообщений (без `/`-команд)."""
 
@@ -173,6 +177,9 @@ def build_text_handler(
                 settings=settings,
                 llm=llm,
                 semantic_memory=semantic_memory,
+                planner=planner,
+                critic=critic,
+                user_settings=user_settings,
             )
         except LLMTimeout:
             logger.warning("LLM timeout user=%s", user_id)
@@ -224,6 +231,8 @@ async def handle_document(
     executor: "Executor",
     llm: "OllamaClient | None" = None,
     semantic_memory: "SemanticMemory | None" = None,
+    planner: "PlannerAgent | None" = None,
+    critic: "CriticAgent | None" = None,
     **data: dict,
 ) -> None:
     """Обработчик документов (PDF, TXT, MD, аудио)."""
@@ -261,6 +270,8 @@ async def handle_document(
             executor=executor,
             llm=llm,
             semantic_memory=semantic_memory,
+            planner=planner,
+            critic=critic,
             **data,
         )
         return
@@ -325,6 +336,9 @@ async def handle_document(
             settings=settings,
             llm=llm,
             semantic_memory=semantic_memory,
+            planner=planner,
+            critic=critic,
+            user_settings=user_settings,
         )
     except LLMTimeout:
         logger.warning("LLM timeout user=%s", user_id)
@@ -368,6 +382,8 @@ async def handle_voice(
     executor: "Executor",
     llm: "OllamaClient | None" = None,
     semantic_memory: "SemanticMemory | None" = None,
+    planner: "PlannerAgent | None" = None,
+    critic: "CriticAgent | None" = None,
     **data: dict,
 ) -> None:
     """Обработчик голосовых сообщений (Voice/Audio)."""
@@ -508,6 +524,9 @@ async def handle_voice(
             settings=settings,
             llm=llm,
             semantic_memory=semantic_memory,
+            planner=planner,
+            critic=critic,
+            user_settings=user_settings,
         )
     except LLMTimeout:
         logger.warning("LLM timeout user=%s", user_id)
@@ -549,6 +568,8 @@ async def handle_photo(
     executor: "Executor",
     llm: "OllamaClient | None" = None,
     semantic_memory: "SemanticMemory | None" = None,
+    planner: "PlannerAgent | None" = None,
+    critic: "CriticAgent | None" = None,
     **data: dict,
 ) -> None:
     """Обработчик фотографий - передаёт агенту для выбора между vision и OCR."""
@@ -633,6 +654,9 @@ async def handle_photo(
             settings=settings,
             llm=llm,
             semantic_memory=semantic_memory,
+            planner=planner,
+            critic=critic,
+            user_settings=user_settings,
         )
     except LLMTimeout:
         logger.warning("LLM timeout user=%s", user_id)
@@ -673,6 +697,8 @@ def build_document_handler(
     executor: "Executor",
     llm: "OllamaClient | None" = None,
     semantic_memory: "SemanticMemory | None" = None,
+    planner: "PlannerAgent | None" = None,
+    critic: "CriticAgent | None" = None,
 ) -> Callable[[Message], Awaitable[None]]:
     """Собрать async-handler для документов."""
 
@@ -686,6 +712,8 @@ def build_document_handler(
             executor=executor,
             llm=llm,
             semantic_memory=semantic_memory,
+            planner=planner,
+            critic=critic,
             **data,
         )
 
@@ -701,6 +729,8 @@ def build_voice_handler(
     executor: "Executor",
     llm: "OllamaClient | None" = None,
     semantic_memory: "SemanticMemory | None" = None,
+    planner: "PlannerAgent | None" = None,
+    critic: "CriticAgent | None" = None,
 ) -> Callable[[Message], Awaitable[None]]:
     """Собрать async-handler для голосовых сообщений."""
 
@@ -714,6 +744,8 @@ def build_voice_handler(
             executor=executor,
             llm=llm,
             semantic_memory=semantic_memory,
+            planner=planner,
+            critic=critic,
             **data,
         )
 
@@ -729,6 +761,8 @@ def build_photo_handler(
     executor: "Executor",
     llm: "OllamaClient | None" = None,
     semantic_memory: "SemanticMemory | None" = None,
+    planner: "PlannerAgent | None" = None,
+    critic: "CriticAgent | None" = None,
 ) -> Callable[[Message], Awaitable[None]]:
     """Собрать async-handler для фотографий."""
 
@@ -742,6 +776,8 @@ def build_photo_handler(
             executor=executor,
             llm=llm,
             semantic_memory=semantic_memory,
+            planner=planner,
+            critic=critic,
             **data,
         )
 
@@ -757,6 +793,8 @@ def build_messages_router(
     executor: "Executor",
     llm: "OllamaClient | None" = None,
     semantic_memory: "SemanticMemory | None" = None,
+    planner: "PlannerAgent | None" = None,
+    critic: "CriticAgent | None" = None,
 ) -> Router:
     """Собрать aiogram-Router для произвольных текстовых сообщений и документов."""
 
@@ -768,6 +806,8 @@ def build_messages_router(
         executor=executor,
         llm=llm,
         semantic_memory=semantic_memory,
+        planner=planner,
+        critic=critic,
     )
 
     document_handler = build_document_handler(
@@ -778,6 +818,8 @@ def build_messages_router(
         executor=executor,
         llm=llm,
         semantic_memory=semantic_memory,
+        planner=planner,
+        critic=critic,
     )
 
     voice_handler = build_voice_handler(
@@ -788,6 +830,8 @@ def build_messages_router(
         executor=executor,
         llm=llm,
         semantic_memory=semantic_memory,
+        planner=planner,
+        critic=critic,
     )
 
     photo_handler = build_photo_handler(
@@ -798,6 +842,8 @@ def build_messages_router(
         executor=executor,
         llm=llm,
         semantic_memory=semantic_memory,
+        planner=planner,
+        critic=critic,
     )
 
     router = Router(name="messages")

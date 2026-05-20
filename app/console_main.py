@@ -12,7 +12,9 @@ import logging
 from pathlib import Path
 
 from app.adapters.console.adapter import ConsoleAdapter
+from app.agents.critic import CriticAgent
 from app.agents.executor import Executor
+from app.agents.planner import PlannerAgent
 from app.config import Settings
 from app.core import orchestrator as _orchestrator
 from app.core.logging_config import setup_logging
@@ -145,6 +147,8 @@ async def _build_components(settings: Settings) -> tuple:
         user_settings=user_settings,
         summarizer=summarizer,
     )
+    planner = PlannerAgent(llm=llm, prompts=prompts, settings=settings)
+    critic = CriticAgent(llm=llm, prompts=prompts, settings=settings)
     event_bus = EventBus()
     users = UserRepository(event_bus=event_bus)
     archiver = Archiver(
@@ -215,6 +219,8 @@ async def _build_components(settings: Settings) -> tuple:
         tools,
         archiver,
         executor,
+        planner,
+        critic,
         users,
         event_bus,
         dialog_journal,
@@ -261,6 +267,8 @@ async def main() -> None:
         tools,
         archiver,
         executor,
+        planner,
+        critic,
         users,
         event_bus,
         dialog_journal,
@@ -286,6 +294,12 @@ async def main() -> None:
             conversations=conversations,
             executor=executor,
             model=model,
+            settings=settings,
+            llm=llm,
+            semantic_memory=semantic_memory,
+            planner=planner,
+            critic=critic,
+            user_settings=user_settings,
         )
 
     adapter = ConsoleAdapter(

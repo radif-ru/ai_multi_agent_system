@@ -204,7 +204,7 @@
 
 ### Задача 4.1. Расширить `core.handle_user_task`
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** L
 - **Зависит от:** Задача 2.2, Задача 3.2, Задача 1.1.
@@ -226,12 +226,12 @@
 
 #### Definition of Done
 
-- [ ] Сигнатура `handle_user_task` сохранена; новые зависимости (`planner`, `critic`) добавлены как kwargs с `None` по умолчанию (адаптеры не правятся, кроме DI в `main.py`/`console_main.py`).
-- [ ] Юнит-тест `tests/core/test_orchestrator.py` покрывает три ветки (OFF / NORMAL-PASS / NORMAL-REVISE / DEEP с лимитом итераций) на мок-LLM.
-- [ ] Логирование шагов: `orchestrator.mode`, `orchestrator.planner_ok|fallback`, `orchestrator.critic_verdict`, `orchestrator.iteration`.
-- [ ] **Документация обновлена** — `_docs/architecture.md` §3.10 и `_docs/agent-loop.md` (новая диаграмма потока).
-- [ ] **Тесты добавлены / обновлены** — да.
-- [ ] `git status` чист.
+- [x] Сигнатура `handle_user_task` сохранена; новые зависимости (`planner`, `critic`, `user_settings`) добавлены как kwargs с `None` по умолчанию; DI прописан в `main.py` и `console_main.py` + прокинут через `messages.py` без изменения публичного контракта хендлеров.
+- [x] Юнит-тесты `tests/core/test_orchestrator.py` покрывают ветки OFF / NORMAL-PASS / NORMAL-REVISE / DEEP-лимит / DEEP-PASS-на-2 / per-user override / planner-fallback / critic-fail-open (9 новых тестов).
+- [x] Логирование шагов: `orchestrator.mode`, `orchestrator.planner_ok|planner_fallback`, `orchestrator.iteration` (с verdict), `orchestrator.critic_error|revise_error`.
+- [x] **Документация обновлена** — `_docs/architecture.md` §3.11 переписан, `_docs/agent-loop.md` перенаправлен на `multi-agent.md` (появится в задаче 5.1).
+- [x] **Тесты добавлены / обновлены** — да.
+- [x] `git status` чист.
 
 ### Задача 4.2. Команда `/mode`
 
@@ -345,7 +345,7 @@
 | 2.2 | `PlannerAgent`                                        | high      | M     | Done   | 2.1, 1.2          |
 | 3.1 | Промпт `_prompts/critic.md`                           | high      | S     | Done   | 1.2               |
 | 3.2 | `CriticAgent`                                         | high      | M     | Done   | 3.1, 1.2          |
-| 4.1 | Расширить `core.handle_user_task`                     | high      | L     | Progress | 2.2, 3.2, 1.1   |
+| 4.1 | Расширить `core.handle_user_task`                     | high      | L     | Done   | 2.2, 3.2, 1.1     |
 | 4.2 | Команда `/mode`                                       | medium    | S     | ToDo   | 1.1, 4.1          |
 | 4.3 | Сквозной интеграционный тест оркестратора             | medium    | S     | ToDo   | 4.1, 4.2          |
 | 5.1 | Новый `_docs/multi-agent.md`                          | high      | M     | ToDo   | 4.1, 4.2          |
@@ -369,3 +369,4 @@
 - **2026-05-20** — задача 07.3.2 взята в работу (`ToDo` → `Progress`).
 - **2026-05-20** — закрыта задача 07.3.2: `CriticAgent` (`app/agents/critic.py`) + 10 unit-тестов, fail-open поведение (PASS при любой ошибке LLM/парсера). Этап 3 завершён.
 - **2026-05-20** — задача 07.4.1 взята в работу (`ToDo` → `Progress`).
+- **2026-05-20** — закрыта задача 07.4.1: оркестратор расширен режимами OFF/NORMAL/DEEP (Planner+Executor+Critic), DI в `main.py`/`console_main.py`, 9 новых юнит-тестов, обновлён `architecture.md` §3.11.
