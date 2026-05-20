@@ -16,8 +16,10 @@ from __future__ import annotations
 from pathlib import Path
 
 _DEFAULT_SUMMARIZER_PATH = Path("_prompts/summarizer.md")
+_DEFAULT_PLANNER_PATH = Path("_prompts/planner.md")
 _TOOLS_PLACEHOLDER = "{{TOOLS_DESCRIPTION}}"
 _SKILLS_PLACEHOLDER = "{{SKILLS_DESCRIPTION}}"
+_TASK_PLACEHOLDER = "{{TASK}}"
 
 
 class PromptLoader:
@@ -25,11 +27,13 @@ class PromptLoader:
         self,
         agent_system_path: Path | str,
         summarizer_path: Path | str = _DEFAULT_SUMMARIZER_PATH,
+        planner_path: Path | str = _DEFAULT_PLANNER_PATH,
     ) -> None:
         self._agent_system_template = Path(agent_system_path).read_text(
             encoding="utf-8"
         )
         self._summarizer_prompt = Path(summarizer_path).read_text(encoding="utf-8")
+        self._planner_template = Path(planner_path).read_text(encoding="utf-8")
 
     @property
     def summarizer_prompt(self) -> str:
@@ -39,6 +43,10 @@ class PromptLoader:
     def agent_system_template(self) -> str:
         return self._agent_system_template
 
+    @property
+    def planner_template(self) -> str:
+        return self._planner_template
+
     def render_agent_system(
         self, *, tools_description: str, skills_description: str
     ) -> str:
@@ -47,3 +55,12 @@ class PromptLoader:
         text = text.replace(_TOOLS_PLACEHOLDER, tools_description)
         text = text.replace(_SKILLS_PLACEHOLDER, skills_description)
         return text
+
+    def render_planner(self, task: str) -> str:
+        """Подставить задачу пользователя в шаблон Planner-промпта.
+
+        См. `_docs/prompts.md` §3 и `_prompts/planner.md`. Если в шаблоне
+        нет плейсхолдера `{{TASK}}` — возвращаем исходный текст без ошибки
+        (поведение симметрично `render_agent_system`).
+        """
+        return self._planner_template.replace(_TASK_PLACEHOLDER, task)

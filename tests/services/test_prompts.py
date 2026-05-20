@@ -84,6 +84,50 @@ def test_missing_placeholder_is_not_error(tmp_path: Path) -> None:
     assert out == "Без плейсхолдеров."
 
 
+def test_reads_planner_template(tmp_path: Path) -> None:
+    agent = _write(tmp_path / "agent_system.md", "x")
+    summ = _write(tmp_path / "summarizer.md", "y")
+    planner = _write(tmp_path / "planner.md", "PLANNER {{TASK}}")
+    loader = PromptLoader(agent, summ, planner)
+    assert loader.planner_template == "PLANNER {{TASK}}"
+
+
+def test_missing_planner_raises(tmp_path: Path) -> None:
+    agent = _write(tmp_path / "agent_system.md", "x")
+    summ = _write(tmp_path / "summarizer.md", "y")
+    with pytest.raises(FileNotFoundError):
+        PromptLoader(agent, summ, tmp_path / "no.md")
+
+
+def test_render_planner_substitutes_task(tmp_path: Path) -> None:
+    agent = _write(tmp_path / "agent_system.md", "x")
+    summ = _write(tmp_path / "summarizer.md", "y")
+    planner = _write(tmp_path / "planner.md", "Задача: {{TASK}}\nКонец.")
+    loader = PromptLoader(agent, summ, planner)
+
+    out = loader.render_planner("найти столицу Франции")
+    assert out == "Задача: найти столицу Франции\nКонец."
+    assert "{{TASK}}" not in out
+
+
+def test_render_planner_without_placeholder_is_not_error(tmp_path: Path) -> None:
+    agent = _write(tmp_path / "agent_system.md", "x")
+    summ = _write(tmp_path / "summarizer.md", "y")
+    planner = _write(tmp_path / "planner.md", "Без плейсхолдера.")
+    loader = PromptLoader(agent, summ, planner)
+    assert loader.render_planner("любая задача") == "Без плейсхолдера."
+
+
+def test_planner_template_is_not_mutated_between_renders(tmp_path: Path) -> None:
+    agent = _write(tmp_path / "agent_system.md", "x")
+    summ = _write(tmp_path / "summarizer.md", "y")
+    planner = _write(tmp_path / "planner.md", "T={{TASK}}")
+    loader = PromptLoader(agent, summ, planner)
+    assert loader.render_planner("A") == "T=A"
+    assert loader.render_planner("B") == "T=B"
+    assert "{{TASK}}" in loader.planner_template
+
+
 def test_template_is_not_mutated_between_renders(tmp_path: Path) -> None:
     agent = _write(
         tmp_path / "agent_system.md",
