@@ -31,6 +31,7 @@ class _FakeSettings:
     search_engines_available: list[str] = field(
         default_factory=lambda: ["duckduckgo", "bing"]
     )
+    agent_reflection_mode: str = "OFF"
 
 
 class _FakePrompts:
@@ -618,3 +619,46 @@ async def test_reset_keeps_dialog_journal_open(tmp_path) -> None:
         assert await journal.pending_conversations() == [(42, 777, cid_before)]
     finally:
         await journal.close()
+
+
+# ---------- /mode -----------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_mode_no_arg_shows_current_and_default() -> None:
+    user_settings = UserSettingsRegistry(
+        default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+    )
+    handlers = _make_handlers(user_settings=user_settings)
+    msg, answer = _make_message()
+    await handlers["mode"](msg, _command(args=None))
+    answer.assert_awaited_once()
+    text = answer.await_args.args[0]
+    assert "OFF" in text
+    assert "off" in text and "normal" in text and "deep" in text
+
+
+@pytest.mark.asyncio
+async def test_mode_known_calls_set_reflection_mode() -> None:
+    user_settings = UserSettingsRegistry(
+        default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+    )
+    handlers = _make_handlers(user_settings=user_settings)
+    msg, answer = _make_message(user_id=42)
+    await handlers["mode"](msg, _command(args="normal"))
+    assert user_settings.get_reflection_mode(42) == "NORMAL"
+    answer.assert_awaited_once()
+    assert "NORMAL" in answer.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_mode_unknown_does_not_change_state() -> None:
+    user_settings = UserSettingsRegistry(
+        default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+    )
+    handlers = _make_handlers(user_settings=user_settings)
+    msg, answer = _make_message(user_id=42)
+    await handlers["mode"](msg, _command(args="bogus"))
+    assert user_settings.get_reflection_mode(42) is None
+    text = answer.await_args.args[0]
+    assert "Неизвестный" in text

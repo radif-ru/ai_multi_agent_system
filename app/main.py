@@ -60,6 +60,7 @@ _BOT_COMMANDS: list[BotCommand] = [
     BotCommand(command="models", description="Список моделей"),
     BotCommand(command="model", description="Выбрать модель"),
     BotCommand(command="prompt", description="Задать системный промпт"),
+    BotCommand(command="mode", description="Режим рефлексии (off/normal/deep)"),
     BotCommand(command="new", description="Архивировать и открыть новую сессию"),
     BotCommand(command="reset", description="Очистить контекст и сбросить настройки"),
 ]
