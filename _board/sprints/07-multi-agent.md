@@ -104,7 +104,7 @@
 
 ### Задача 2.1. Промпт `_prompts/planner.md`
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 1.2.
@@ -119,11 +119,11 @@
 
 #### Definition of Done
 
-- [ ] `_prompts/planner.md` существует, синтаксис консистентен с `agent_system.md`.
-- [ ] `PromptLoader.render_planner` покрыт юнит-тестом.
-- [ ] **Документация обновлена** — `_docs/prompts.md` (упомянуть новый промпт).
-- [ ] **Тесты добавлены / обновлены** — да.
-- [ ] `git status` чист.
+- [x] `_prompts/planner.md` существует, синтаксис консистентен с `agent_system.md`.
+- [x] `PromptLoader.render_planner` покрыт юнит-тестом.
+- [x] **Документация обновлена** — `_docs/prompts.md` (упомянут новый промпт и плейсхолдер `{{TASK}}`).
+- [x] **Тесты добавлены / обновлены** — да.
+- [x] `git status` чист.
 
 ### Задача 2.2. `PlannerAgent`
 
@@ -341,7 +341,7 @@
 |-----|-------------------------------------------------------|:---------:|:-----:|:------:|:-----------------:|
 | 1.1 | Режимы рефлексии в `Settings` и `user_settings`       | high      | S     | Done   | —                 |
 | 1.2 | Протоколы Planner и Critic                            | high      | S     | Done   | —                 |
-| 2.1 | Промпт `_prompts/planner.md`                          | high      | S     | Progress | 1.2             |
+| 2.1 | Промпт `_prompts/planner.md`                          | high      | S     | Done   | 1.2               |
 | 2.2 | `PlannerAgent`                                        | high      | M     | ToDo   | 2.1, 1.2          |
 | 3.1 | Промпт `_prompts/critic.md`                           | high      | S     | ToDo   | 1.2               |
 | 3.2 | `CriticAgent`                                         | high      | M     | ToDo   | 3.1, 1.2          |
@@ -361,3 +361,4 @@
 - **2026-05-20** — задача 07.1.2 взята в работу (`ToDo` → `Progress`).
 - **2026-05-20** — закрыта задача 07.1.2: `PlanStep`/`Plan`/`CriticVerdict` + парсеры `parse_planner_response`/`parse_critic_response` в `app/agents/protocol.py`, 21 unit-тест. Этап 1 завершён.
 - **2026-05-20** — задача 07.2.1 взята в работу (`ToDo` → `Progress`).
+- **2026-05-20** — закрыта задача 07.2.1: `_prompts/planner.md` + `PromptLoader.render_planner` + тесты + `_docs/prompts.md`.
