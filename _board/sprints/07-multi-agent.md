@@ -76,7 +76,7 @@
 
 ### Задача 1.2. Протоколы Planner и Critic
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** —
@@ -92,11 +92,11 @@
 
 #### Definition of Done
 
-- [ ] Парсеры покрыты юнит-тестами (валидный JSON, markdown-fence, мусор → `LLMBadResponse`, неизвестный `verdict` → `LLMBadResponse`).
-- [ ] `pytest tests/agents -q` зелёный.
-- [ ] **Документация обновлена** — `n/a` (новый `_docs/multi-agent.md` появится в задаче 5.1, контракт зафиксируется там).
-- [ ] **Тесты добавлены / обновлены** — да.
-- [ ] `git status` чист.
+- [x] Парсеры покрыты юнит-тестами (валидный JSON, markdown-fence, мусор → `LLMBadResponse`, неизвестный `verdict` → `LLMBadResponse`).
+- [x] `pytest tests/agents -q` зелёный.
+- [x] **Документация обновлена** — `n/a` (новый `_docs/multi-agent.md` появится в задаче 5.1, контракт зафиксируется там).
+- [x] **Тесты добавлены / обновлены** — да.
+- [x] `git status` чист.
 
 ## 5. Этап 2. Planner
 
@@ -340,7 +340,7 @@
 | #   | Задача                                                | Приоритет | Объём | Статус | Зависит от        |
 |-----|-------------------------------------------------------|:---------:|:-----:|:------:|:-----------------:|
 | 1.1 | Режимы рефлексии в `Settings` и `user_settings`       | high      | S     | Done   | —                 |
-| 1.2 | Протоколы Planner и Critic                            | high      | S     | Progress | —               |
+| 1.2 | Протоколы Planner и Critic                            | high      | S     | Done   | —                 |
 | 2.1 | Промпт `_prompts/planner.md`                          | high      | S     | ToDo   | 1.2               |
 | 2.2 | `PlannerAgent`                                        | high      | M     | ToDo   | 2.1, 1.2          |
 | 3.1 | Промпт `_prompts/critic.md`                           | high      | S     | ToDo   | 1.2               |
@@ -359,3 +359,4 @@
 - **2026-05-20** — задача 07.1.1 взята в работу (`ToDo` → `Progress`).
 - **2026-05-20** — закрыта задача 07.1.1: `agent_reflection_mode` / `agent_reflection_max_iterations` в `Settings`, per-user `reflection_mode` в `UserSettingsRegistry`, тесты + `_docs/stack.md` §9.
 - **2026-05-20** — задача 07.1.2 взята в работу (`ToDo` → `Progress`).
+- **2026-05-20** — закрыта задача 07.1.2: `PlanStep`/`Plan`/`CriticVerdict` + парсеры `parse_planner_response`/`parse_critic_response` в `app/agents/protocol.py`, 21 unit-тест. Этап 1 завершён.
