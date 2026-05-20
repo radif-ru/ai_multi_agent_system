@@ -235,7 +235,7 @@
 
 ### Задача 4.2. Команда `/mode`
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** medium
 - **Объём:** S
 - **Зависит от:** Задача 1.1, Задача 4.1.
@@ -251,10 +251,10 @@
 
 #### Definition of Done
 
-- [ ] Команда работает в Telegram и в console; покрыта юнит-тестом per адаптер.
-- [ ] **Документация обновлена** — `_docs/commands.md`, `_docs/console-adapter.md`.
-- [ ] **Тесты добавлены / обновлены** — да.
-- [ ] `git status` чист.
+- [x] Команда работает в Telegram (`tests/adapters/telegram/test_commands.py`, 3 новых теста) и в консоли (`tests/adapters/console/test_adapter.py::test_console_adapter_handle_mode_command`).
+- [x] **Документация обновлена** — `_docs/commands.md` (сводная таблица + раздел `/mode`), `_docs/console-adapter.md` (список команд).
+- [x] **Тесты добавлены / обновлены** — да.
+- [x] `git status` чист.
 
 ### Задача 4.3. Сквозной интеграционный тест оркестратора
 
@@ -346,7 +346,7 @@
 | 3.1 | Промпт `_prompts/critic.md`                           | high      | S     | Done   | 1.2               |
 | 3.2 | `CriticAgent`                                         | high      | M     | Done   | 3.1, 1.2          |
 | 4.1 | Расширить `core.handle_user_task`                     | high      | L     | Done   | 2.2, 3.2, 1.1     |
-| 4.2 | Команда `/mode`                                       | medium    | S     | Progress | 1.1, 4.1        |
+| 4.2 | Команда `/mode`                                       | medium    | S     | Done   | 1.1, 4.1          |
 | 4.3 | Сквозной интеграционный тест оркестратора             | medium    | S     | ToDo   | 4.1, 4.2          |
 | 5.1 | Новый `_docs/multi-agent.md`                          | high      | M     | ToDo   | 4.1, 4.2          |
 | 5.2 | Обновить `current-state.md` и `roadmap.md`            | medium    | S     | ToDo   | 5.1               |
@@ -371,3 +371,4 @@
 - **2026-05-20** — задача 07.4.1 взята в работу (`ToDo` → `Progress`).
 - **2026-05-20** — закрыта задача 07.4.1: оркестратор расширен режимами OFF/NORMAL/DEEP (Planner+Executor+Critic), DI в `main.py`/`console_main.py`, 9 новых юнит-тестов, обновлён `architecture.md` §3.11.
 - **2026-05-20** — задача 07.4.2 взята в работу (`ToDo` → `Progress`).
+- **2026-05-20** — закрыта задача 07.4.2: `cmd_mode` в `app/commands/registry.py` + Telegram-handler + регистрация в `_BOT_COMMANDS`, 3 telegram-теста + 1 консольный, обновлены `commands.md` и `console-adapter.md`.
