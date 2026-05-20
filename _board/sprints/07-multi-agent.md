@@ -127,7 +127,7 @@
 
 ### Задача 2.2. `PlannerAgent`
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** high
 - **Объём:** M
 - **Зависит от:** Задача 2.1, Задача 1.2.
@@ -342,7 +342,7 @@
 | 1.1 | Режимы рефлексии в `Settings` и `user_settings`       | high      | S     | Done   | —                 |
 | 1.2 | Протоколы Planner и Critic                            | high      | S     | Done   | —                 |
 | 2.1 | Промпт `_prompts/planner.md`                          | high      | S     | Done   | 1.2               |
-| 2.2 | `PlannerAgent`                                        | high      | M     | ToDo   | 2.1, 1.2          |
+| 2.2 | `PlannerAgent`                                        | high      | M     | Progress | 2.1, 1.2        |
 | 3.1 | Промпт `_prompts/critic.md`                           | high      | S     | ToDo   | 1.2               |
 | 3.2 | `CriticAgent`                                         | high      | M     | ToDo   | 3.1, 1.2          |
 | 4.1 | Расширить `core.handle_user_task`                     | high      | L     | ToDo   | 2.2, 3.2, 1.1     |
@@ -362,3 +362,4 @@
 - **2026-05-20** — закрыта задача 07.1.2: `PlanStep`/`Plan`/`CriticVerdict` + парсеры `parse_planner_response`/`parse_critic_response` в `app/agents/protocol.py`, 21 unit-тест. Этап 1 завершён.
 - **2026-05-20** — задача 07.2.1 взята в работу (`ToDo` → `Progress`).
 - **2026-05-20** — закрыта задача 07.2.1: `_prompts/planner.md` + `PromptLoader.render_planner` + тесты + `_docs/prompts.md`.
+- **2026-05-20** — задача 07.2.2 взята в работу (`ToDo` → `Progress`).
