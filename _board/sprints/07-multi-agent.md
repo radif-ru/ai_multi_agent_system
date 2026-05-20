@@ -177,7 +177,7 @@
 
 ### Задача 3.2. `CriticAgent`
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** M
 - **Зависит от:** Задача 3.1, Задача 1.2.
@@ -192,11 +192,11 @@
 
 #### Definition of Done
 
-- [ ] Юнит-тесты: PASS, REVISE с feedback, невалидный JSON → fallback, неизвестный verdict → fallback.
-- [ ] Логи с `trace_id` и `user_id`.
-- [ ] **Документация обновлена** — в задаче 5.1.
-- [ ] **Тесты добавлены / обновлены** — да.
-- [ ] `git status` чист.
+- [x] Юнит-тесты: PASS, REVISE с feedback, невалидный JSON → fallback, неизвестный verdict → fallback (10 тестов в `tests/agents/test_critic.py`).
+- [x] Логи с `user_id` (`trace_id` пробросится в задаче 4.1 через logging-context, симметрично Planner'у).
+- [x] **Документация обновлена** — в задаче 5.1.
+- [x] **Тесты добавлены / обновлены** — да.
+- [x] `git status` чист.
 
 ## 7. Этап 4. Оркестрация и команда `/mode`
 
@@ -344,7 +344,7 @@
 | 2.1 | Промпт `_prompts/planner.md`                          | high      | S     | Done   | 1.2               |
 | 2.2 | `PlannerAgent`                                        | high      | M     | Done   | 2.1, 1.2          |
 | 3.1 | Промпт `_prompts/critic.md`                           | high      | S     | Done   | 1.2               |
-| 3.2 | `CriticAgent`                                         | high      | M     | Progress | 3.1, 1.2        |
+| 3.2 | `CriticAgent`                                         | high      | M     | Done   | 3.1, 1.2          |
 | 4.1 | Расширить `core.handle_user_task`                     | high      | L     | ToDo   | 2.2, 3.2, 1.1     |
 | 4.2 | Команда `/mode`                                       | medium    | S     | ToDo   | 1.1, 4.1          |
 | 4.3 | Сквозной интеграционный тест оркестратора             | medium    | S     | ToDo   | 4.1, 4.2          |
@@ -367,3 +367,4 @@
 - **2026-05-20** — задача 07.3.1 взята в работу (`ToDo` → `Progress`).
 - **2026-05-20** — закрыта задача 07.3.1: `_prompts/critic.md` + `PromptLoader.render_critic` (плейсхолдеры `{{TASK}}`/`{{PLAN}}`/`{{DRAFT}}`) + 6 unit-тестов + `_docs/prompts.md`.
 - **2026-05-20** — задача 07.3.2 взята в работу (`ToDo` → `Progress`).
+- **2026-05-20** — закрыта задача 07.3.2: `CriticAgent` (`app/agents/critic.py`) + 10 unit-тестов, fail-open поведение (PASS при любой ошибке LLM/парсера). Этап 3 завершён.
