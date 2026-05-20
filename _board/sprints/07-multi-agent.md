@@ -258,7 +258,7 @@
 
 ### Задача 4.3. Сквозной интеграционный тест оркестратора
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** medium
 - **Объём:** S
 - **Зависит от:** Задача 4.1, Задача 4.2.
@@ -271,10 +271,10 @@
 
 #### Definition of Done
 
-- [ ] Тест проходит, изолирован от сети, не дёргает реальную Ollama.
-- [ ] **Документация обновлена** — `n/a`.
-- [ ] **Тесты добавлены / обновлены** — да.
-- [ ] `git status` чист.
+- [x] Тест `tests/test_multi_agent_e2e.py::test_deep_full_cycle_plan_revise_pass` проходит, изолирован от сети (`OllamaClient` подменён `_RecordingLLM`), проверяет точную последовательность PLANNER→EXECUTOR→CRITIC→EXECUTOR→CRITIC и финальный текст `draft v2`.
+- [x] **Документация обновлена** — `n/a`.
+- [x] **Тесты добавлены / обновлены** — да.
+- [x] `git status` чист.
 
 ## 8. Этап 5. Документация и синхронизация roadmap
 
@@ -347,7 +347,7 @@
 | 3.2 | `CriticAgent`                                         | high      | M     | Done   | 3.1, 1.2          |
 | 4.1 | Расширить `core.handle_user_task`                     | high      | L     | Done   | 2.2, 3.2, 1.1     |
 | 4.2 | Команда `/mode`                                       | medium    | S     | Done   | 1.1, 4.1          |
-| 4.3 | Сквозной интеграционный тест оркестратора             | medium    | S     | Progress | 4.1, 4.2        |
+| 4.3 | Сквозной интеграционный тест оркестратора             | medium    | S     | Done   | 4.1, 4.2          |
 | 5.1 | Новый `_docs/multi-agent.md`                          | high      | M     | ToDo   | 4.1, 4.2          |
 | 5.2 | Обновить `current-state.md` и `roadmap.md`            | medium    | S     | ToDo   | 5.1               |
 
@@ -373,3 +373,4 @@
 - **2026-05-20** — задача 07.4.2 взята в работу (`ToDo` → `Progress`).
 - **2026-05-20** — закрыта задача 07.4.2: `cmd_mode` в `app/commands/registry.py` + Telegram-handler + регистрация в `_BOT_COMMANDS`, 3 telegram-теста + 1 консольный, обновлены `commands.md` и `console-adapter.md`.
 - **2026-05-20** — задача 07.4.3 взята в работу (`ToDo` → `Progress`).
+- **2026-05-20** — закрыта задача 07.4.3: сквозной e2e-тест `tests/test_multi_agent_e2e.py` на реальных Planner/Executor/Critic с мок-LLM (5 вызовов, DEEP → REVISE → PASS). Этап 4 завершён.
