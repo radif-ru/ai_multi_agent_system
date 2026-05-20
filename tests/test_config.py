@@ -114,3 +114,28 @@ def test_prompt_path_does_not_exist_raises(base_env, tmp_path):
     bad = tmp_path / "nope.md"
     with pytest.raises(ValidationError):
         _build(base_env, AGENT_SYSTEM_PROMPT_PATH=str(bad))
+
+
+# --- Multi-agent (Planner + Critic), задача 1.1 спринта 07 ---
+
+
+def test_reflection_mode_default_off(base_env):
+    s = _build(base_env)
+    assert s.agent_reflection_mode == "OFF"
+    assert s.agent_reflection_max_iterations == 2
+
+
+@pytest.mark.parametrize("raw", ["NORMAL", "normal", " Deep ", "OFF"])
+def test_reflection_mode_parsed_and_normalized(base_env, raw):
+    s = _build(base_env, AGENT_REFLECTION_MODE=raw)
+    assert s.agent_reflection_mode == raw.strip().upper()
+
+
+def test_reflection_mode_invalid_raises(base_env):
+    with pytest.raises(ValidationError):
+        _build(base_env, AGENT_REFLECTION_MODE="LOUD")
+
+
+def test_reflection_max_iterations_non_positive_raises(base_env):
+    with pytest.raises(ValidationError):
+        _build(base_env, AGENT_REFLECTION_MAX_ITERATIONS=0)

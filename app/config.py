@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -42,6 +42,12 @@ class Settings(BaseSettings):
     agent_max_steps: int = 15
     agent_max_output_chars: int = 12000
     agent_max_context_chars: int = 8000
+
+    # --- Multi-agent (Planner + Critic), см. _docs/multi-agent.md ---
+    # OFF — только Executor; NORMAL — один проход Critic; DEEP — итеративный Critic.
+    agent_reflection_mode: Literal["OFF", "NORMAL", "DEEP"] = "OFF"
+    # Верхняя граница итераций Critic в режиме DEEP.
+    agent_reflection_max_iterations: int = 2
 
     # --- Memory (in-memory) ---
     history_max_messages: int = 20
@@ -118,6 +124,20 @@ class Settings(BaseSettings):
     def _parse_search_engines_csv(cls, v):
         if isinstance(v, str):
             return [x.strip() for x in v.split(",") if x.strip()]
+        return v
+
+    @field_validator("agent_reflection_mode", mode="before")
+    @classmethod
+    def _normalize_reflection_mode(cls, v):
+        if isinstance(v, str):
+            return v.strip().upper()
+        return v
+
+    @field_validator("agent_reflection_max_iterations")
+    @classmethod
+    def _check_reflection_max_iterations(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("AGENT_REFLECTION_MAX_ITERATIONS must be > 0")
         return v
 
     @field_validator("embedding_dimensions")

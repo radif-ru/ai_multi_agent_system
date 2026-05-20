@@ -17,6 +17,7 @@ class _UserState:
     model: str | None = None
     prompt: str | None = None
     search_engine: str | None = None
+    reflection_mode: str | None = None
 
 
 class UserSettingsRegistry:
@@ -67,3 +68,22 @@ class UserSettingsRegistry:
     def set_search_engine(self, user_id: int, engine_name: str) -> None:
         """Устанавливает поисковик для пользователя."""
         self._states.setdefault(user_id, _UserState()).search_engine = engine_name
+
+    def get_reflection_mode(self, user_id: int) -> str | None:
+        """Возвращает per-user override режима рефлексии или `None` (= fallback на Settings).
+
+        См. `_docs/multi-agent.md` и `app.config.Settings.agent_reflection_mode`.
+        Валидация значения (`OFF|NORMAL|DEEP`) — ответственность handler'а команды `/mode`.
+        """
+        state = self._states.get(user_id)
+        return None if state is None else state.reflection_mode
+
+    def set_reflection_mode(self, user_id: int, mode: str) -> None:
+        """Устанавливает per-user режим рефлексии."""
+        self._states.setdefault(user_id, _UserState()).reflection_mode = mode
+
+    def reset_reflection_mode(self, user_id: int) -> None:
+        """Сбрасывает per-user режим рефлексии к дефолту из Settings."""
+        state = self._states.get(user_id)
+        if state is not None:
+            state.reflection_mode = None
