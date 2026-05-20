@@ -28,9 +28,9 @@
 
 | ID | Название | Файл | Источник |
 |:--:|----------|------|----------|
-| — | — | — | — |
+| 08 | Hardening и зачистка техдолга после спринтов 03–05 | [`sprints/08-hardening-and-cleanup.md`](./sprints/08-hardening-and-cleanup.md) | ревизия спринтов 03/04/05; `_docs/current-state.md` §1.7 |
 
-> Пусто: ни один файл будущего спринта пока не создан. Кандидаты на спринты — в [`_docs/roadmap.md`](../_docs/roadmap.md).
+> Кандидаты на спринты без файла — в [`_docs/roadmap.md`](../_docs/roadmap.md).
 
 ## Сводная таблица состояния
 
@@ -44,6 +44,7 @@
 | 05. Усиление безопасности и OCR-рефакторинг | Closed | 0 / 0 / 13 | `sprints/05-security-ocr.md` |
 | 06. Надёжность диалога и observability | Closed | 0 / 0 / 24 | `sprints/06-reliability-and-observability.md` |
 | 07. Multi-agent (Planner + Critic) | Active | 11 / 0 / 0 | `sprints/07-multi-agent.md` |
+| 08. Hardening и зачистка техдолга | ToDo | 6 / 0 / 0 | `sprints/08-hardening-and-cleanup.md` |
 
 > Таблицу обновлять одновременно с переходами статусов в файлах спринтов (см. `process.md` §7.3 и §7.9).
 
