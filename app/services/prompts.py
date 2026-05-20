@@ -7,6 +7,8 @@
 - `Settings.agent_system_prompt_path` — главный системный промпт агентного цикла
   (содержит плейсхолдеры `{{TOOLS_DESCRIPTION}}` и `{{SKILLS_DESCRIPTION}}`).
 - `_prompts/summarizer.md` — промпт суммаризатора (фиксированный путь).
+- `_prompts/planner.md` — промпт Planner-агента (плейсхолдер `{{TASK}}`).
+- `_prompts/critic.md` — промпт Critic-агента (плейсхолдеры `{{TASK}}`, `{{PLAN}}`, `{{DRAFT}}`).
 
 Если файла нет — `FileNotFoundError` (это явная ошибка конфигурации).
 """
@@ -14,12 +16,19 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.agents.protocol import Plan
 
 _DEFAULT_SUMMARIZER_PATH = Path("_prompts/summarizer.md")
 _DEFAULT_PLANNER_PATH = Path("_prompts/planner.md")
+_DEFAULT_CRITIC_PATH = Path("_prompts/critic.md")
 _TOOLS_PLACEHOLDER = "{{TOOLS_DESCRIPTION}}"
 _SKILLS_PLACEHOLDER = "{{SKILLS_DESCRIPTION}}"
 _TASK_PLACEHOLDER = "{{TASK}}"
+_PLAN_PLACEHOLDER = "{{PLAN}}"
+_DRAFT_PLACEHOLDER = "{{DRAFT}}"
 
 
 class PromptLoader:
@@ -28,12 +37,14 @@ class PromptLoader:
         agent_system_path: Path | str,
         summarizer_path: Path | str = _DEFAULT_SUMMARIZER_PATH,
         planner_path: Path | str = _DEFAULT_PLANNER_PATH,
+        critic_path: Path | str = _DEFAULT_CRITIC_PATH,
     ) -> None:
         self._agent_system_template = Path(agent_system_path).read_text(
             encoding="utf-8"
         )
         self._summarizer_prompt = Path(summarizer_path).read_text(encoding="utf-8")
         self._planner_template = Path(planner_path).read_text(encoding="utf-8")
+        self._critic_template = Path(critic_path).read_text(encoding="utf-8")
 
     @property
     def summarizer_prompt(self) -> str:
@@ -64,3 +75,23 @@ class PromptLoader:
         (поведение симметрично `render_agent_system`).
         """
         return self._planner_template.replace(_TASK_PLACEHOLDER, task)
+
+    @property
+    def critic_template(self) -> str:
+        return self._critic_template
+
+    def render_critic(self, task: str, plan: "Plan", draft: str) -> str:
+        """Подставить задачу, план и черновик в шаблон Critic-промпта.
+
+        План форматируется как нумерованный список `"<id>. <description>"`,
+        по одному шагу на строку — этот формат фиксирует контракт Critic'а
+        (см. `_prompts/critic.md`, секция «План Executor'а»).
+        """
+        plan_text = "\n".join(
+            f"{step.id}. {step.description}" for step in plan.steps
+        )
+        text = self._critic_template
+        text = text.replace(_TASK_PLACEHOLDER, task)
+        text = text.replace(_PLAN_PLACEHOLDER, plan_text)
+        text = text.replace(_DRAFT_PLACEHOLDER, draft)
+        return text

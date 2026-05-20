@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from app.agents.protocol import Plan, PlanStep
 from app.services.prompts import PromptLoader
 
 
@@ -126,6 +127,69 @@ def test_planner_template_is_not_mutated_between_renders(tmp_path: Path) -> None
     assert loader.render_planner("A") == "T=A"
     assert loader.render_planner("B") == "T=B"
     assert "{{TASK}}" in loader.planner_template
+
+
+def _critic_loader(tmp_path: Path, critic_body: str) -> PromptLoader:
+    agent = _write(tmp_path / "agent_system.md", "x")
+    summ = _write(tmp_path / "summarizer.md", "y")
+    planner = _write(tmp_path / "planner.md", "p")
+    critic = _write(tmp_path / "critic.md", critic_body)
+    return PromptLoader(agent, summ, planner, critic)
+
+
+def test_reads_critic_template(tmp_path: Path) -> None:
+    loader = _critic_loader(tmp_path, "CRITIC {{TASK}} {{PLAN}} {{DRAFT}}")
+    assert loader.critic_template == "CRITIC {{TASK}} {{PLAN}} {{DRAFT}}"
+
+
+def test_missing_critic_raises(tmp_path: Path) -> None:
+    agent = _write(tmp_path / "agent_system.md", "x")
+    summ = _write(tmp_path / "summarizer.md", "y")
+    planner = _write(tmp_path / "planner.md", "p")
+    with pytest.raises(FileNotFoundError):
+        PromptLoader(agent, summ, planner, tmp_path / "no.md")
+
+
+def test_render_critic_substitutes_all_placeholders(tmp_path: Path) -> None:
+    loader = _critic_loader(
+        tmp_path,
+        "T={{TASK}}\nP=\n{{PLAN}}\nD={{DRAFT}}",
+    )
+    plan = Plan(
+        steps=(
+            PlanStep(id=1, description="первый шаг"),
+            PlanStep(id=2, description="второй шаг"),
+        )
+    )
+    out = loader.render_critic("найти X", plan, "черновик ответа")
+    assert "T=найти X" in out
+    assert "1. первый шаг\n2. второй шаг" in out
+    assert "D=черновик ответа" in out
+    assert "{{TASK}}" not in out
+    assert "{{PLAN}}" not in out
+    assert "{{DRAFT}}" not in out
+
+
+def test_render_critic_single_step_plan(tmp_path: Path) -> None:
+    loader = _critic_loader(tmp_path, "{{PLAN}}")
+    plan = Plan(steps=(PlanStep(id=1, description="всё в одном шаге"),))
+    assert loader.render_critic("t", plan, "d") == "1. всё в одном шаге"
+
+
+def test_render_critic_without_placeholders_is_not_error(tmp_path: Path) -> None:
+    loader = _critic_loader(tmp_path, "Без плейсхолдеров.")
+    plan = Plan(steps=(PlanStep(id=1, description="x"),))
+    assert loader.render_critic("t", plan, "d") == "Без плейсхолдеров."
+
+
+def test_critic_template_is_not_mutated_between_renders(tmp_path: Path) -> None:
+    loader = _critic_loader(tmp_path, "T={{TASK}}|P={{PLAN}}|D={{DRAFT}}")
+    plan = Plan(steps=(PlanStep(id=1, description="s"),))
+    first = loader.render_critic("A", plan, "DA")
+    second = loader.render_critic("B", plan, "DB")
+    assert first == "T=A|P=1. s|D=DA"
+    assert second == "T=B|P=1. s|D=DB"
+    assert "{{TASK}}" in loader.critic_template
 
 
 def test_template_is_not_mutated_between_renders(tmp_path: Path) -> None:
