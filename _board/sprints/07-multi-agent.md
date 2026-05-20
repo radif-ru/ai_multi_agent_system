@@ -52,7 +52,7 @@
 
 ### Задача 1.1. Режимы рефлексии в `Settings` и `user_settings`
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** —
@@ -68,11 +68,11 @@
 
 #### Definition of Done
 
-- [ ] `Settings()` парсит новые переменные из `.env`; есть значения по умолчанию.
-- [ ] `user_settings` умеет хранить и читать `reflection_mode` per-user.
-- [ ] **Документация обновлена** — добавить упоминание в `_docs/stack.md` §9.
-- [ ] **Тесты добавлены / обновлены** — короткий тест на парсинг `.env` и per-user override.
-- [ ] `git status` чист.
+- [x] `Settings()` парсит новые переменные из `.env`; есть значения по умолчанию.
+- [x] `user_settings` умеет хранить и читать `reflection_mode` per-user.
+- [x] **Документация обновлена** — добавить упоминание в `_docs/stack.md` §9.
+- [x] **Тесты добавлены / обновлены** — короткий тест на парсинг `.env` и per-user override.
+- [x] `git status` чист.
 
 ### Задача 1.2. Протоколы Planner и Critic
 
@@ -339,7 +339,7 @@
 
 | #   | Задача                                                | Приоритет | Объём | Статус | Зависит от        |
 |-----|-------------------------------------------------------|:---------:|:-----:|:------:|:-----------------:|
-| 1.1 | Режимы рефлексии в `Settings` и `user_settings`       | high      | S     | Progress | —               |
+| 1.1 | Режимы рефлексии в `Settings` и `user_settings`       | high      | S     | Done   | —                 |
 | 1.2 | Протоколы Planner и Critic                            | high      | S     | ToDo   | —                 |
 | 2.1 | Промпт `_prompts/planner.md`                          | high      | S     | ToDo   | 1.2               |
 | 2.2 | `PlannerAgent`                                        | high      | M     | ToDo   | 2.1, 1.2          |
@@ -357,3 +357,4 @@
 
 - **2026-05-20** — спринт открыт, ветка `feature/07-multi-agent` создана от `main`.
 - **2026-05-20** — задача 07.1.1 взята в работу (`ToDo` → `Progress`).
+- **2026-05-20** — закрыта задача 07.1.1: `agent_reflection_mode` / `agent_reflection_max_iterations` в `Settings`, per-user `reflection_mode` в `UserSettingsRegistry`, тесты + `_docs/stack.md` §9.
