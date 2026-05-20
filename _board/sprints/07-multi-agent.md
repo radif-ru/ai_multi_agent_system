@@ -76,7 +76,7 @@
 
 ### Задача 1.2. Протоколы Planner и Critic
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** —
@@ -340,7 +340,7 @@
 | #   | Задача                                                | Приоритет | Объём | Статус | Зависит от        |
 |-----|-------------------------------------------------------|:---------:|:-----:|:------:|:-----------------:|
 | 1.1 | Режимы рефлексии в `Settings` и `user_settings`       | high      | S     | Done   | —                 |
-| 1.2 | Протоколы Planner и Critic                            | high      | S     | ToDo   | —                 |
+| 1.2 | Протоколы Planner и Critic                            | high      | S     | Progress | —               |
 | 2.1 | Промпт `_prompts/planner.md`                          | high      | S     | ToDo   | 1.2               |
 | 2.2 | `PlannerAgent`                                        | high      | M     | ToDo   | 2.1, 1.2          |
 | 3.1 | Промпт `_prompts/critic.md`                           | high      | S     | ToDo   | 1.2               |
@@ -358,3 +358,4 @@
 - **2026-05-20** — спринт открыт, ветка `feature/07-multi-agent` создана от `main`.
 - **2026-05-20** — задача 07.1.1 взята в работу (`ToDo` → `Progress`).
 - **2026-05-20** — закрыта задача 07.1.1: `agent_reflection_mode` / `agent_reflection_max_iterations` в `Settings`, per-user `reflection_mode` в `UserSettingsRegistry`, тесты + `_docs/stack.md` §9.
+- **2026-05-20** — задача 07.1.2 взята в работу (`ToDo` → `Progress`).
