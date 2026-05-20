@@ -235,7 +235,7 @@
 
 ### Задача 4.2. Команда `/mode`
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** medium
 - **Объём:** S
 - **Зависит от:** Задача 1.1, Задача 4.1.
@@ -346,7 +346,7 @@
 | 3.1 | Промпт `_prompts/critic.md`                           | high      | S     | Done   | 1.2               |
 | 3.2 | `CriticAgent`                                         | high      | M     | Done   | 3.1, 1.2          |
 | 4.1 | Расширить `core.handle_user_task`                     | high      | L     | Done   | 2.2, 3.2, 1.1     |
-| 4.2 | Команда `/mode`                                       | medium    | S     | ToDo   | 1.1, 4.1          |
+| 4.2 | Команда `/mode`                                       | medium    | S     | Progress | 1.1, 4.1        |
 | 4.3 | Сквозной интеграционный тест оркестратора             | medium    | S     | ToDo   | 4.1, 4.2          |
 | 5.1 | Новый `_docs/multi-agent.md`                          | high      | M     | ToDo   | 4.1, 4.2          |
 | 5.2 | Обновить `current-state.md` и `roadmap.md`            | medium    | S     | ToDo   | 5.1               |
@@ -370,3 +370,4 @@
 - **2026-05-20** — закрыта задача 07.3.2: `CriticAgent` (`app/agents/critic.py`) + 10 unit-тестов, fail-open поведение (PASS при любой ошибке LLM/парсера). Этап 3 завершён.
 - **2026-05-20** — задача 07.4.1 взята в работу (`ToDo` → `Progress`).
 - **2026-05-20** — закрыта задача 07.4.1: оркестратор расширен режимами OFF/NORMAL/DEEP (Planner+Executor+Critic), DI в `main.py`/`console_main.py`, 9 новых юнит-тестов, обновлён `architecture.md` §3.11.
+- **2026-05-20** — задача 07.4.2 взята в работу (`ToDo` → `Progress`).
