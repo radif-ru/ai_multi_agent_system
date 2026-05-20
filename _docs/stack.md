@@ -75,6 +75,8 @@
 | `SEARCH_ENGINES_AVAILABLE`  | Список доступных поисковиков через запятую.                      | `duckduckgo`              |
 | `AGENT_MAX_STEPS`           | Лимит шагов агентного цикла.                                     | `10`                      |
 | `AGENT_MAX_OUTPUT_CHARS`    | Лимит размера ответа модели за один шаг (защита от мусора).     | `8000`                    |
+| `AGENT_REFLECTION_MODE`     | Режим multi-agent рефлексии (`OFF\|NORMAL\|DEEP`), см. `_docs/multi-agent.md`. | `OFF`     |
+| `AGENT_REFLECTION_MAX_ITERATIONS` | Верхняя граница итераций Critic в режиме `DEEP`.          | `2`                       |
 | `HISTORY_MAX_MESSAGES`      | Жёсткий лимит сообщений in-memory истории на пользователя.       | `20`                      |
 | `HISTORY_SUMMARY_THRESHOLD` | Порог in-session суммаризации (`> 0`, `<= HISTORY_MAX_MESSAGES`).| `10`                      |
 | `SUMMARIZATION_PROMPT`      | System prompt для in-memory суммаризации.                        | (см. `.env.example`)      |
