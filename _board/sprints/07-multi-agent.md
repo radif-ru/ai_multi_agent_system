@@ -204,7 +204,7 @@
 
 ### Задача 4.1. Расширить `core.handle_user_task`
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** high
 - **Объём:** L
 - **Зависит от:** Задача 2.2, Задача 3.2, Задача 1.1.
@@ -345,7 +345,7 @@
 | 2.2 | `PlannerAgent`                                        | high      | M     | Done   | 2.1, 1.2          |
 | 3.1 | Промпт `_prompts/critic.md`                           | high      | S     | Done   | 1.2               |
 | 3.2 | `CriticAgent`                                         | high      | M     | Done   | 3.1, 1.2          |
-| 4.1 | Расширить `core.handle_user_task`                     | high      | L     | ToDo   | 2.2, 3.2, 1.1     |
+| 4.1 | Расширить `core.handle_user_task`                     | high      | L     | Progress | 2.2, 3.2, 1.1   |
 | 4.2 | Команда `/mode`                                       | medium    | S     | ToDo   | 1.1, 4.1          |
 | 4.3 | Сквозной интеграционный тест оркестратора             | medium    | S     | ToDo   | 4.1, 4.2          |
 | 5.1 | Новый `_docs/multi-agent.md`                          | high      | M     | ToDo   | 4.1, 4.2          |
@@ -368,3 +368,4 @@
 - **2026-05-20** — закрыта задача 07.3.1: `_prompts/critic.md` + `PromptLoader.render_critic` (плейсхолдеры `{{TASK}}`/`{{PLAN}}`/`{{DRAFT}}`) + 6 unit-тестов + `_docs/prompts.md`.
 - **2026-05-20** — задача 07.3.2 взята в работу (`ToDo` → `Progress`).
 - **2026-05-20** — закрыта задача 07.3.2: `CriticAgent` (`app/agents/critic.py`) + 10 unit-тестов, fail-open поведение (PASS при любой ошибке LLM/парсера). Этап 3 завершён.
+- **2026-05-20** — задача 07.4.1 взята в работу (`ToDo` → `Progress`).
