@@ -154,7 +154,7 @@
 
 ### Задача 3.1. Промпт `_prompts/critic.md`
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** Задача 1.2.
@@ -169,11 +169,11 @@
 
 #### Definition of Done
 
-- [ ] `_prompts/critic.md` существует.
-- [ ] `PromptLoader.render_critic` покрыт юнит-тестом.
-- [ ] **Документация обновлена** — `_docs/prompts.md`.
-- [ ] **Тесты добавлены / обновлены** — да.
-- [ ] `git status` чист.
+- [x] `_prompts/critic.md` существует.
+- [x] `PromptLoader.render_critic` покрыт юнит-тестом (6 тестов в `tests/services/test_prompts.py`).
+- [x] **Документация обновлена** — `_docs/prompts.md`.
+- [x] **Тесты добавлены / обновлены** — да.
+- [x] `git status` чист.
 
 ### Задача 3.2. `CriticAgent`
 
@@ -343,7 +343,7 @@
 | 1.2 | Протоколы Planner и Critic                            | high      | S     | Done   | —                 |
 | 2.1 | Промпт `_prompts/planner.md`                          | high      | S     | Done   | 1.2               |
 | 2.2 | `PlannerAgent`                                        | high      | M     | Done   | 2.1, 1.2          |
-| 3.1 | Промпт `_prompts/critic.md`                           | high      | S     | Progress | 1.2             |
+| 3.1 | Промпт `_prompts/critic.md`                           | high      | S     | Done   | 1.2               |
 | 3.2 | `CriticAgent`                                         | high      | M     | ToDo   | 3.1, 1.2          |
 | 4.1 | Расширить `core.handle_user_task`                     | high      | L     | ToDo   | 2.2, 3.2, 1.1     |
 | 4.2 | Команда `/mode`                                       | medium    | S     | ToDo   | 1.1, 4.1          |
@@ -365,3 +365,4 @@
 - **2026-05-20** — задача 07.2.2 взята в работу (`ToDo` → `Progress`).
 - **2026-05-20** — закрыта задача 07.2.2: `PlannerAgent` (`app/agents/planner.py`) + 11 unit-тестов, fallback на single-step при любой ошибке LLM/парсера. Этап 2 завершён.
 - **2026-05-20** — задача 07.3.1 взята в работу (`ToDo` → `Progress`).
+- **2026-05-20** — закрыта задача 07.3.1: `_prompts/critic.md` + `PromptLoader.render_critic` (плейсхолдеры `{{TASK}}`/`{{PLAN}}`/`{{DRAFT}}`) + 6 unit-тестов + `_docs/prompts.md`.
