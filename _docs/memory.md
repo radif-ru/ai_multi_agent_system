@@ -184,12 +184,11 @@ ConversationStore                       Executor.run
 для каждого чанка:    +- OllamaClient.embed(chunk_i)     |  -> вектор[EMBEDDING_DIMENSIONS]
                        |  (модель EMBEDDING_MODEL)         |
                                                           |
-                       +- SemanticMemory.insert(           |
-                       |    chunk_i, vector_i,            |  -> запись в sqlite-vec
-                       |    metadata={                    |
-                       |      conversation_id, chat_id,   |
+                       +- SemanticMemory.insert_batch(    |
+                       |    [(chunk_i, vector_i, {         |  -> запись в sqlite-vec
+                       |      conversation_id, chat_id,   |     (одна транзакция для всех)
                        |      user_id, chunk_index,       |
-                       |      created_at                  |
+                       |      created_at}), ...]           |
                        |    })                            |
                                                           v
                        ConversationStore.clear(user_id) +
