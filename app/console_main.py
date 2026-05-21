@@ -60,9 +60,10 @@ async def _build_components(settings: Settings) -> tuple:
         session_log_max_messages=settings.session_log_max_messages,
         journal_db_path=settings.memory_db_path,
     )
+    prompts = PromptLoader(settings.agent_system_prompt_path)
     summarizer = Summarizer(
         llm=llm,
-        system_prompt=settings.summarization_prompt,
+        system_prompt=prompts.summarizer_prompt,
         chunk_messages=settings.summarizer_chunk_messages,
     )
 
@@ -109,7 +110,6 @@ async def _build_components(settings: Settings) -> tuple:
 
     skills = SkillRegistry("app/skills")
     skills.load()
-    prompts = PromptLoader(settings.agent_system_prompt_path)
     user_settings = UserSettingsRegistry(
         default_model=settings.ollama_default_model,
         default_search_engine=settings.search_engine_default,

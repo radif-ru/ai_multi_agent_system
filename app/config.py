@@ -53,10 +53,6 @@ class Settings(BaseSettings):
     history_max_messages: int = 20
     history_summary_threshold: int = 10
     session_log_max_messages: int = 1000
-    summarization_prompt: str = (
-        "Кратко и точно резюмируй ключевые факты и решения из этого диалога "
-        "в 2–4 предложениях. Ответ — только текст резюме, без вступлений."
-    )
     summarizer_chunk_messages: int = 30
 
     # --- Memory (long-term) ---

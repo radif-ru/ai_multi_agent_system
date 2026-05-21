@@ -79,7 +79,6 @@
 | `AGENT_REFLECTION_MAX_ITERATIONS` | Верхняя граница итераций Critic в режиме `DEEP`.          | `2`                       |
 | `HISTORY_MAX_MESSAGES`      | Жёсткий лимит сообщений in-memory истории на пользователя.       | `20`                      |
 | `HISTORY_SUMMARY_THRESHOLD` | Порог in-session суммаризации (`> 0`, `<= HISTORY_MAX_MESSAGES`).| `10`                      |
-| `SUMMARIZATION_PROMPT`      | System prompt для in-memory суммаризации.                        | (см. `.env.example`)      |
 | `MEMORY_DB_PATH`            | Путь к `.db`-файлу с `sqlite-vec`. Каталог создаётся автоматически. | `data/memory.db`        |
 | `MEMORY_CHUNK_SIZE`         | Размер чанка саммари при `/new`, символы.                        | `1500`                    |
 | `MEMORY_CHUNK_OVERLAP`      | Перекрытие соседних чанков, символы.                             | `150`                     |
