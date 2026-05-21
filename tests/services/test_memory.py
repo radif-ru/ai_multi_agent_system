@@ -118,7 +118,7 @@ async def test_insert_batch_rolls_back_on_error(mem):
     """При ошибке insert_batch откатывает все изменения."""
     # Вставляем один чанк через обычный insert
     await mem.insert("existing", [1.0, 0.0, 0.0, 0.0], _meta(idx=0))
-    
+
     # Пытаемся вставить батч с неправильной размерностью вектора
     items = [
         ("text1", [1.0, 0.0, 0.0, 0.0], _meta(idx=1)),
@@ -126,7 +126,7 @@ async def test_insert_batch_rolls_back_on_error(mem):
     ]
     with pytest.raises(ValueError, match="dimension mismatch"):
         await mem.insert_batch(items)
-    
+
     # Проверяем, что ничего не вставилось (rollback сработал)
     conn = mem._conn
     chunks = conn.execute("SELECT id, text FROM memory_chunks").fetchall()

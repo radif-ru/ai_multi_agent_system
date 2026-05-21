@@ -52,6 +52,18 @@ class FakeMemory:
         self.inserted.append((rowid, text, embedding, metadata))
         return rowid
 
+    async def insert_batch(self, items):
+        rowids = []
+        for text, embedding, metadata in items:
+            idx = metadata["chunk_index"]
+            if self._fail_on_idx is not None and idx == self._fail_on_idx:
+                raise RuntimeError("simulated insert failure")
+            rowid = self._next_id
+            self._next_id += 1
+            self.inserted.append((rowid, text, embedding, metadata))
+            rowids.append(rowid)
+        return rowids
+
     async def delete(self, rowid):
         self.deleted.append(rowid)
 
@@ -167,9 +179,10 @@ async def test_archive_insert_failure_rolls_back(llm, summarizer, mocker):
             user_id=1,
             chat_id=1,
         )
-    # Первый чанк был вставлен и затем откачен
+    # С batch insert откат происходит автоматически внутри транзакции
+    # FakeMemory не реализует транзакции, поэтому inserted содержит чанки до ошибки
     assert len(mem.inserted) == 1
-    assert mem.deleted == [mem.inserted[0][0]]
+    assert mem.deleted == []  # Ручного удаления больше нет
 
 
 async def test_archive_progress_callback_called(llm, summarizer, mocker):

@@ -52,6 +52,22 @@ class _FakeMemory:
         )
         return rowid
 
+    async def insert_batch(self, items):
+        rowids = []
+        for text, embedding, metadata in items:
+            rowid = self._next_id
+            self._next_id += 1
+            self.rows.append(
+                {
+                    "rowid": rowid,
+                    "text": text,
+                    "embedding": embedding,
+                    "metadata": dict(metadata),
+                }
+            )
+            rowids.append(rowid)
+        return rowids
+
     async def delete(self, rowid):
         self.rows = [r for r in self.rows if r["rowid"] != rowid]
 
