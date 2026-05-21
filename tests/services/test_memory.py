@@ -87,3 +87,48 @@ async def test_dimension_mismatch_raises(mem):
 async def test_top_k_zero_returns_empty(mem):
     await mem.insert("x", [1.0, 0.0, 0.0, 0.0], _meta())
     assert await mem.search([1.0, 0.0, 0.0, 0.0], top_k=0, scope_user_id=1) == []
+
+
+async def test_insert_batch_inserts_multiple_chunks(mem):
+    """insert_batch вставляет несколько чанков и возвращает список rowid."""
+    items = [
+        ("text1", [1.0, 0.0, 0.0, 0.0], _meta(idx=0)),
+        ("text2", [0.0, 1.0, 0.0, 0.0], _meta(idx=1)),
+        ("text3", [0.0, 0.0, 1.0, 0.0], _meta(idx=2)),
+    ]
+    rowids = await mem.insert_batch(items)
+    assert len(rowids) == 3
+    assert all(rid > 0 for rid in rowids)
+    # Проверяем, что все rowid разные
+    assert len(set(rowids)) == 3
+    # Проверяем, что данные в БД
+    conn = mem._conn
+    chunks = conn.execute("SELECT id, text FROM memory_chunks ORDER BY id").fetchall()
+    assert len(chunks) == 3
+    assert [c[1] for c in chunks] == ["text1", "text2", "text3"]
+
+
+async def test_insert_batch_empty_returns_empty(mem):
+    """insert_batch с пустым списком возвращает пустой список."""
+    rowids = await mem.insert_batch([])
+    assert rowids == []
+
+
+async def test_insert_batch_rolls_back_on_error(mem):
+    """При ошибке insert_batch откатывает все изменения."""
+    # Вставляем один чанк через обычный insert
+    await mem.insert("existing", [1.0, 0.0, 0.0, 0.0], _meta(idx=0))
+
+    # Пытаемся вставить батч с неправильной размерностью вектора
+    items = [
+        ("text1", [1.0, 0.0, 0.0, 0.0], _meta(idx=1)),
+        ("text2", [1.0, 0.0], _meta(idx=2)),  # неправильная размерность
+    ]
+    with pytest.raises(ValueError, match="dimension mismatch"):
+        await mem.insert_batch(items)
+
+    # Проверяем, что ничего не вставилось (rollback сработал)
+    conn = mem._conn
+    chunks = conn.execute("SELECT id, text FROM memory_chunks").fetchall()
+    assert len(chunks) == 1
+    assert chunks[0][1] == "existing"

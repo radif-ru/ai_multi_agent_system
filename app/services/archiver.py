@@ -146,8 +146,8 @@ class Archiver:
 
         inserted_ids: list[int] = []
         try:
-            for idx, vector in vectors:
-                rowid = await self._memory.insert(
+            items = [
+                (
                     chunks[idx],
                     vector,
                     {
@@ -157,13 +157,11 @@ class Archiver:
                         "chunk_index": idx,
                     },
                 )
-                inserted_ids.append(rowid)
+                for idx, vector in vectors
+            ]
+            inserted_ids = await self._memory.insert_batch(items)
         except Exception:
-            for rowid in inserted_ids:
-                try:
-                    await self._memory.delete(rowid)
-                except Exception:  # noqa: BLE001
-                    logger.exception("откат: не удалось удалить chunk rowid=%s", rowid)
+            # insert_batch откатывает транзакцию автоматически
             raise
 
         db_dur = time.monotonic() - db_start

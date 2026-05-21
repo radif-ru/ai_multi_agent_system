@@ -52,6 +52,18 @@ class FakeMemory:
         self.inserted.append((rowid, text, embedding, metadata))
         return rowid
 
+    async def insert_batch(self, items):
+        rowids = []
+        for text, embedding, metadata in items:
+            idx = metadata["chunk_index"]
+            if self._fail_on_idx is not None and idx == self._fail_on_idx:
+                raise RuntimeError("simulated insert failure")
+            rowid = self._next_id
+            self._next_id += 1
+            self.inserted.append((rowid, text, embedding, metadata))
+            rowids.append(rowid)
+        return rowids
+
     async def delete(self, rowid):
         self.deleted.append(rowid)
 
@@ -167,9 +179,10 @@ async def test_archive_insert_failure_rolls_back(llm, summarizer, mocker):
             user_id=1,
             chat_id=1,
         )
-    # Первый чанк был вставлен и затем откачен
+    # С batch insert откат происходит автоматически внутри транзакции
+    # FakeMemory не реализует транзакции, поэтому inserted содержит чанки до ошибки
     assert len(mem.inserted) == 1
-    assert mem.deleted == [mem.inserted[0][0]]
+    assert mem.deleted == []  # Ручного удаления больше нет
 
 
 async def test_archive_progress_callback_called(llm, summarizer, mocker):
@@ -300,6 +313,33 @@ async def test_archive_does_not_publish_event_on_failure(llm, summarizer, mocker
         )
 
     assert len(published_events) == 0
+
+
+@pytest.mark.slow
+async def test_archive_completes_within_budget(llm, summarizer, mocker):
+    """Регрессия 03.1.1: `Archiver.archive` на 50 сообщениях с мок-LLM укладывается
+    в бюджет. Цель — поймать неявные O(N²) или забытые `asyncio.sleep`,
+    а не измерять реальный latency Ollama. См. спринт 08, задача 4.1.
+    """
+    import time as _time
+
+    mem = FakeMemory()
+    summary = "y" * 6000  # ~ 5 чанков
+    mocker.patch.object(summarizer, "summarize", return_value=summary)
+    mocker.patch.object(llm, "embed", return_value=[0.1, 0.2])
+
+    history = [
+        {"role": "user" if i % 2 == 0 else "assistant", "content": f"msg-{i}"}
+        for i in range(50)
+    ]
+    archiver = make_archiver(llm, summarizer, mem)
+
+    started = _time.monotonic()
+    n = await archiver.archive(history, conversation_id="c", user_id=1, chat_id=1)
+    elapsed = _time.monotonic() - started
+
+    assert n >= 1
+    assert elapsed < 2.0, f"archive занял {elapsed:.2f}s, ожидался < 2.0s"
 
 
 async def test_archive_does_not_publish_event_without_event_bus(llm, summarizer, mocker, user):

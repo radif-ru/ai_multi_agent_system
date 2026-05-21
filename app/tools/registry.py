@@ -108,10 +108,15 @@ class ToolRegistry:
             self._log(name, started, "error", "not_found")
             raise
 
-        # Проверка allowlist для опасных tools
+        # Проверка allowlist для опасных tools (secure by default)
         if name in _DANGEROUS_TOOLS:
             allowlist = ctx.settings.dangerous_tools_allowlist or []
             if name not in allowlist:
+                logger.warning(
+                    "опасный tool заблокирован: name=%s reason=not_in_allowlist "
+                    "(добавьте в DANGEROUS_TOOLS_ALLOWLIST в .env, чтобы разрешить)",
+                    name,
+                )
                 self._log(name, started, "error", "not_allowed")
                 raise ToolError(f"Tool '{name}' не разрешён в настройках безопасности")
 

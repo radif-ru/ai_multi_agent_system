@@ -80,7 +80,7 @@ clear_global_mapper()  # Очистить (для тестов)
 - `clear()` — очищает in-memory кеш маппингов; записи журнала не трогает.
 - `close()` — закрывает SQLite-соединение.
 
-**Хранилище (с задачи 06.3-bis.3):** колонки `file_id`/`file_path` в таблице `dialog_journal` (`data/memory.db`) — единая БД с журналом диалога; запись делает подписчик `on_message_received_journal` при публикации `MessageReceived` из Telegram-хендлеров. In-memory кеш в `FileIdMapper` — для быстрого доступа. Старая БД `data/file_contexts.db` упразднена (см. `_docs/memory.md` §2.6.1, миграция в `app/services/file_contexts_migration.py`).
+**Хранилище (с задачи 06.3-bis.3):** колонки `file_id`/`file_path` в таблице `dialog_journal` (`data/memory.db`) — единая БД с журналом диалога; запись делает подписчик `on_message_received_journal` при публикации `MessageReceived` из Telegram-хендлеров. In-memory кеш в `FileIdMapper` — для быстрого доступа. Старая БД `data/file_contexts.db` упразднена (см. `_docs/memory.md` §2.6.1); миграционный модуль удалён в спринте 08.
 
 ### 2.1 Интеграция
 
@@ -149,20 +149,21 @@ def sanitize_response(text: str) -> str
 
 ### 4.1 Allowlist для опасных tools
 
-Опасные tools (`http_request`, `read_file`, `read_document`) имеют дополнительную валидацию через allowlist в конфигурации.
+Опасные tools (`http_request`, `read_file`) имеют дополнительную валидацию через allowlist в конфигурации.
 
 **Параметр конфигурации:**
 ```python
-dangerous_tools_allowlist: list[str]  # список разрешённых опасных tools
+dangerous_tools_allowlist: list[str]  # список явно разрешённых опасных tools
 ```
 
-**Реализация:**
-- Список опасных tools определён в `app/tools/registry.py` как `_DANGEROUS_TOOLS = {"http_request", "read_file", "read_document"}`.
-- В `ToolRegistry.execute` после получения tool проверяется: если tool в `_DANGEROUS_TOOLS` и не в `ctx.settings.dangerous_tools_allowlist` — возвращается `ToolError("Tool '{name}' не разрешён в настройках безопасности")`.
-- По умолчанию `dangerous_tools_allowlist` пустой (все опасные tools разрешены для MVP).
+**Реализация (secure by default, спринт 08):**
+- Список опасных tools определён в `app/tools/registry.py` как `_DANGEROUS_TOOLS = {"http_request", "read_file"}`. `read_document` исключён после внедрения `FileIdMapper` (пути заменяются временными ID).
+- В `ToolRegistry.execute` после получения tool проверяется: если tool в `_DANGEROUS_TOOLS` и не в `ctx.settings.dangerous_tools_allowlist` — логируется `WARNING` и возвращается `ToolError("Tool '{name}' не разрешён в настройках безопасности")`.
+- **По умолчанию `dangerous_tools_allowlist` пуст — все опасные tools запрещены.** Чтобы разрешить, нужно явно перечислить их в `.env` (`DANGEROUS_TOOLS_ALLOWLIST=http_request,read_file`).
+- При старте `app/main.py` / `app/console_main.py`, если allowlist пуст, печатается `INFO`-подсказка с готовой строкой для миграции.
 - Обычные tools не проверяются по allowlist.
 
-См. задачу 6.1 спринта 05.
+См. задачу 6.1 спринта 05 и задачу 1.1 спринта 08.
 
 ### 4.2 Валидация параметров опасных tools
 
@@ -191,6 +192,37 @@ dangerous_tools_allowlist: list[str]  # список разрешённых оп
 Раздел находится после секции "# Запреты (важно)" и перед секцией "# Готовность".
 
 См. задачу 5.1 спринта 05.
+
+## 5. Известные ограничения санитайзеров
+
+Зафиксированы в спринте 08 (задача 1.2) после расширения bypass-тестов.
+
+### 5.1 InputSanitizer — что ловится
+
+- Разный регистр (`re.IGNORECASE`): `IGNORE`, `IgNoRe`.
+- Любые пробелы между словами (`\s+`), включая неразрывный `\u00a0`.
+- Все варианты глаголов из паттернов: `ignore | repeat | print | forget | disregard`.
+- Разделители сообщений `<|...|>` в любом регистре.
+
+### 5.2 InputSanitizer — что НЕ ловится (known limitations)
+
+Эти случаи зафиксированы как known-limitations и проверяются в `tests/security/test_input_sanitizer.py::test_known_limitations_not_detected`. Будут адресованы отдельно, когда появится практический кейс.
+
+- **Юникод-эскейпы как сырая строка** (`\u0069gnore all previous`) — текст приходит литерально, без декодирования. Решение по необходимости — декодировать `text.encode().decode("unicode_escape")` перед матчингом, но это даст ложноположительные срабатывания на легитимных кейсах.
+- **Base64-кодированные инъекции** — мы не декодируем содержимое сообщения. Решение по необходимости — детектировать «подозрительно длинные base64-блоки» и пытаться декодировать.
+
+### 5.3 ResponseSanitizer — что ловится
+
+- Windows-пути (`C:\...`, `D:\My Documents\...`) для всех букв диска.
+- Unix-пути с минимум двумя `/` (включая `~/.ssh/config`, т. к. в нём два `/`).
+- ENV-ключи (`KEY=value`, `KEY="value"`) и dot-конфиги (`a.b=...`).
+- Секции системного промпта (`# Запреты`, `# Правила безопасности`, `# Готовность`, `# Инструкции`) в любом регистре.
+- Идентичность `Ты — AI`, `Ты есть помощник`.
+
+### 5.4 ResponseSanitizer — что НЕ ловится (known limitations)
+
+- **Пути с одним слешем** (`~/file.txt`, `app/config.py`) — regex требует двух `/`. Расширение паттерна без увеличения ложноположительных срабатываний — отдельная задача.
+- **API-ключи / токены без `=`** (например, голый `sk-XXXX`) — нет паттерна для голых секретов; полагаемся на правило «не выводить системную информацию» в `app/prompts/agent_system.md`.
 
 ## 6. Архитектура
 

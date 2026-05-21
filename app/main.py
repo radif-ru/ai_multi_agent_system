@@ -10,9 +10,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+import signal
 from dataclasses import dataclass
 from pathlib import Path
 
+import aiohttp
 from aiogram import Bot, Dispatcher
 from aiogram.types import BotCommand
 
@@ -51,6 +54,25 @@ from app.tools.weather import WeatherTool
 from app.users.repository import UserRepository
 from app.core.events import EventBus, MessageReceived, ResponseGenerated
 from app.security import get_global_mapper
+
+# Monkey-patch aiohttp ClientSession для поддержки прокси через переменные окружения
+_original_init = aiohttp.ClientSession.__init__
+
+
+def patched_init(self, *args, **kwargs):
+    # Если прокси настроен в переменных окружения, добавляем trust_env=True
+    proxy_env = (
+        os.environ.get("HTTP_PROXY")
+        or os.environ.get("HTTPS_PROXY")
+        or os.environ.get("http_proxy")
+        or os.environ.get("https_proxy")
+    )
+    if proxy_env:
+        kwargs.setdefault("trust_env", True)
+    return _original_init(self, *args, **kwargs)
+
+
+aiohttp.ClientSession.__init__ = patched_init
 
 logger = logging.getLogger(__name__)
 
@@ -127,22 +149,6 @@ async def _build_components(settings: Settings) -> _Components:
         logger.error("dialog_journal: инициализация не удалась, журнал выключен: %s", exc)
         dialog_journal = None
 
-    # Одноразовая миграция data/file_contexts.db → dialog_journal (этап 06.3-bis.1).
-    if dialog_journal is not None:
-        try:
-            from app.services.file_contexts_migration import (
-                migrate_file_contexts_to_journal,
-            )
-            legacy_db = settings.memory_db_path.parent / "file_contexts.db"
-            moved = migrate_file_contexts_to_journal(
-                legacy_db_path=legacy_db,
-                journal_db_path=settings.memory_db_path,
-            )
-            if moved:
-                logger.info("file_contexts_migration: перенесено %d строк", moved)
-        except Exception as exc:  # noqa: BLE001
-            logger.error("file_contexts_migration: %s", exc)
-
     # Инициализируем FileIdMapper для загрузки существующих маппингов
     try:
         get_global_mapper().init()
@@ -191,7 +197,8 @@ async def _build_components(settings: Settings) -> _Components:
     planner = PlannerAgent(llm=llm, prompts=prompts, settings=settings)
     critic = CriticAgent(llm=llm, prompts=prompts, settings=settings)
     event_bus = EventBus()
-    users = UserRepository(event_bus=event_bus)
+    users = UserRepository(db_path=settings.memory_db_path, event_bus=event_bus)
+    await users.init()
     archiver = Archiver(
         llm=llm,
         summarizer=summarizer,
@@ -271,7 +278,15 @@ async def _build_components(settings: Settings) -> _Components:
 
 
 def _wire_telegram(c: _Components) -> tuple[Bot, Dispatcher]:
-    bot = Bot(token=c.settings.telegram_bot_token)
+    # Monkey-patch добавляет trust_env=True, также передаем proxy явно
+    http_proxy = os.environ.get("HTTP_PROXY") or os.environ.get("http_proxy")
+    https_proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
+
+    bot = Bot(
+        token=c.settings.telegram_bot_token,
+        request_timeout=30,
+        proxy=https_proxy or http_proxy,
+    )
     dispatcher = Dispatcher()
     dispatcher["users"] = c.users
     dispatcher["event_bus"] = c.event_bus
@@ -336,6 +351,10 @@ async def _shutdown(bot: Bot, components: _Components) -> None:
         except Exception:  # noqa: BLE001
             logger.exception("ошибка при закрытии dialog_journal")
     try:
+        await components.users.close()
+    except Exception:  # noqa: BLE001
+        logger.exception("ошибка при закрытии UserRepository")
+    try:
         from app.security import get_global_mapper
         get_global_mapper().close()
     except Exception:  # noqa: BLE001
@@ -347,6 +366,24 @@ async def main() -> None:
     settings = Settings()
     setup_logging(settings)
     setup_sentry(settings)
+
+    # Graceful shutdown через сигналы SIGTERM/SIGINT
+    shutdown_event = asyncio.Event()
+
+    def signal_handler() -> None:
+        logger.info("Получен сигнал shutdown, останавливаем бота...")
+        shutdown_event.set()
+
+    loop = asyncio.get_running_loop()
+    loop.add_signal_handler(signal.SIGTERM, signal_handler)
+    loop.add_signal_handler(signal.SIGINT, signal_handler)
+
+    if not settings.dangerous_tools_allowlist:
+        logger.info(
+            "DANGEROUS_TOOLS_ALLOWLIST пуст: опасные tools (http_request, read_file) "
+            "запрещены (secure by default). Чтобы включить — задайте в .env, например: "
+            "DANGEROUS_TOOLS_ALLOWLIST=http_request,read_file"
+        )
 
     components = await _build_components(settings)
     bot, dispatcher = _wire_telegram(components)
@@ -366,7 +403,14 @@ async def main() -> None:
 
     try:
         logger.info("Bot started")
-        await _start_polling(bot, dispatcher)
+        # Запускаем polling в отдельной задаче для graceful shutdown по сигналу
+        polling_task = asyncio.create_task(_start_polling(bot, dispatcher))
+        await shutdown_event.wait()
+        polling_task.cancel()
+        try:
+            await polling_task
+        except asyncio.CancelledError:
+            pass
     finally:
         if recovery_task is not None and not recovery_task.done():
             recovery_task.cancel()
@@ -379,7 +423,13 @@ async def main() -> None:
 
 def run() -> None:
     """Синхронный wrapper для `python -m app`."""
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        raise
+    except BaseException:
+        logger.exception("необработанное исключение на верхнем уровне")
+        raise
 
 
 if __name__ == "__main__":  # pragma: no cover

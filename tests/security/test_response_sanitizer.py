@@ -3,6 +3,8 @@
 См. задачу 7.1 спринта 05.
 """
 
+import pytest
+
 from app.security.response_sanitizer import sanitize_response
 
 
@@ -83,3 +85,47 @@ def test_sanitize_response_no_sensitive_info():
     text = "Просто обычный текст без путей и настроек"
     result = sanitize_response(text)
     assert result == text
+
+
+@pytest.mark.parametrize(
+    "text,mask",
+    [
+        # 1. Windows-путь с пробелами.
+        ("Открой D:\\My Documents\\report.txt", "[FILE_PATH]"),
+        # 2. Windows-путь в нижнем регистре диска.
+        ("См. c:\\temp\\foo.log", "[FILE_PATH]"),
+        # 3. Unix-путь — глубокая вложенность.
+        ("Лог: /var/log/app/agent.log", "[FILE_PATH]"),
+        # 4. ENV-ключ с кавычками.
+        ('TELEGRAM_BOT_TOKEN="123:abcDEF"', "[CONFIG_KEY]"),
+        # 5. Dot-конфиг.
+        ("Поправь sentry.dsn=https://...", "[CONFIG_KEY]"),
+        # 6. System-section в нижнем регистре.
+        ("# запреты — нельзя то-то", "[SYSTEM_SECTION]"),
+        # 7. Идентичность через 'есть'.
+        ("Ты есть AI-помощник по имени Cascade", "[SYSTEM_IDENTITY]"),
+        # 8. Идентичность через тире.
+        ("Ты — агент-исполнитель", "[SYSTEM_IDENTITY]"),
+    ],
+)
+def test_sanitize_response_bypass_patterns(text, mask):
+    """Bypass-кейсы (спринт 08, задача 1.2): чувствительная информация маскируется."""
+    result = sanitize_response(text)
+    assert mask in result, f"маска {mask!r} не появилась для: {text!r}"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # Tilde-путь без двух слешей — known limitation: regex требует два '/'.
+        "Конфиг лежит в ~/file.txt",
+        # Относительный путь без начального '/' — known limitation.
+        "См. app/config.py",
+    ],
+)
+def test_sanitize_response_known_limitations(text):
+    """Known limitations: эти кейсы НЕ маскируются (см. security.md §5)."""
+    result = sanitize_response(text)
+    assert "[FILE_PATH]" not in result, (
+        f"кейс неожиданно замаскирован — обнови security.md §5: {text!r}"
+    )

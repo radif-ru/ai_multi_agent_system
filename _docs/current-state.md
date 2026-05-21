@@ -75,7 +75,7 @@
 
 ### 1.7 Журнал диалога и observability (Спринт 06)
 
-- **DialogJournal** — `app/services/dialog_journal.py` — append-only журнал текстовых и файловых сообщений (`MessageReceived`/`ResponseGenerated`) в той же `data/memory.db` (таблица `dialog_journal`, индекс `ix_journal_message` по `message_id`). API: `init/append/pending_conversations/read_conversation/mark_archived`. Подписчики — `app/services/dialog_journal_subscriber.py` (DI в `app/main.py` и `app/console_main.py`); ошибки журнала не валят основной поток. Журнал — единый источник истины для контекста файлов: `ConversationStore.get_file_context` и `FileIdMapper` читают `content`/`file_id`/`file_path` из `dialog_journal` по `(user_id, message_id)`. `data/file_contexts.db` сохранён только для одноразовой миграции (`app/services/file_contexts_migration.py`).
+- **DialogJournal** — `app/services/dialog_journal.py` — append-only журнал текстовых и файловых сообщений (`MessageReceived`/`ResponseGenerated`) в той же `data/memory.db` (таблица `dialog_journal`, индекс `ix_journal_message` по `message_id`). API: `init/append/pending_conversations/read_conversation/mark_archived`. Подписчики — `app/services/dialog_journal_subscriber.py` (DI в `app/main.py` и `app/console_main.py`); ошибки журнала не валят основной поток. Журнал — единый источник истины для контекста файлов: `ConversationStore.get_file_context` и `FileIdMapper` читают `content`/`file_id`/`file_path` из `dialog_journal` по `(user_id, message_id)`. Старая БД `data/file_contexts.db` упразднена; миграционный модуль удалён в спринте 08 (см. §6.5).
 - **Автоматическое восстановление при старте** — `app/services/journal_recovery.py::recover_pending_journals` запускается в `asyncio.create_task` параллельно с polling и архивирует «зависшие» сессии из `dialog_journal`, для которых процесс не успел вызвать `Archiver.archive(...)`. После успешной архивации `cmd_new` помечает строки журнала через `mark_archived(...)`. См. `_docs/memory.md` §4.
 - **Структурное JSON-логирование** — `app/core/logging_config.py::JsonFormatter` + `ContextFilter`. Каждая запись содержит `trace_id` и `user_id` из `contextvars` (`app/utils/tracing.py` — `new_trace_id/bind_trace_id/get_trace_id/reset_trace_id`); изоляция между `asyncio.Task` сохраняется. `LoggingMiddleware` (`app/middlewares/logging_mw.py`) и `ConsoleAdapter.run` биндят `trace_id`/`user_id` на каждый Telegram-event / команду и сбрасывают их в `finally`. На границах внешних вызовов пишутся структурные `external.call`/`external.ok`/`external.fail` с полями `service`/`duration_ms`/`status` (`app/services/llm.py`, `transcribe.py`, `vision.py`, `ocr.py`, `app/tools/http_request.py`, `web_search.py`); секреты маскируются через `app/utils/secrets.py::mask_secrets`. См. `_docs/observability.md` §1–§4.
 - **Error tracking через GlitchTip / Sentry** — `app/observability/__init__.py::setup_sentry` (off-by-default: при пустом `SENTRY_DSN` ничего не инициализируется). `_before_send` подмешивает `trace_id`/`user_id` в `tags`/`extra`/`user`. Self-hosted GlitchTip разворачивается через `docker-compose.observability.yml` (postgres + redis + web/worker/migrate). См. `_docs/observability.md` §5.
@@ -134,6 +134,7 @@
 - **`parse_mode=ParseMode.HTML`** установлен по умолчанию (`DefaultBotProperties` в `main.py`). Все хендлеры должны экранировать пользовательский ввод (`html.escape`) перед вставкой.
 - **Автоматическая суммаризация контекста**: Executor проверяет размер контекста перед отправкой в LLM. Если превышает `AGENT_MAX_CONTEXT_CHARS` (default 8000), история суммаризируется через `Summarizer` для предотвращения пустых ответов при больших контекстах (например, при обработке PDF с OCR текстом).
 - **Порядок подписчиков EventBus**: подписчики вызываются последовательно в порядке регистрации (FIFO). Для события `ResponseGenerated` важно, чтобы `conversation_subscriber.on_response_generated` регистрировался первым, чтобы к моменту суммаризации ответ уже был записан в ConversationStore. Это гарантируется порядком регистрации в точках входа (main.py, console_main.py).
+- **Top-level логирование необработанных исключений** (`app/main.py::run`, `app/console_main.py::run`, спринт 08 задача 6.1): обёртки оборачивают `asyncio.run(main())` в `try/except`. `KeyboardInterrupt` пробрасывается без лога (штатное завершение polling). Любое другое `BaseException` логируется через `logger.exception("необработанное исключение на верхнем уровне")` и пробрасывается дальше, чтобы Sentry/GlitchTip (через `LoggingIntegration` в `setup_sentry`) подхватил traceback. Дополнительный `sys.excepthook` не ставится сознательно.
 - **Multi-agent fail-open / graceful degradation** (`app/core/orchestrator.py`, см. `multi-agent.md` §4): любые ошибки Planner/Critic не валят запрос пользователя. `Planner` бросил → Executor запускается на исходном `text` (лог `orchestrator.planner_fallback`). `Planner` вернул мусор → внутри `PlannerAgent` фолбэчится в `Plan(steps=[PlanStep(1, task)])` (лог `planner.fallback`). `Critic` бросил → возврат текущего draft (лог `orchestrator.critic_error`). `Critic` вернул мусор → fail-open `PASS` (лог `critic.fallback`). Re-run Executor бросил → возврат предыдущего draft. Контракт `handle_user_task(text, user_id, chat_id)` остаётся стабильным.
 
 ## 4. Что точно не сломано
@@ -173,3 +174,39 @@
 **Исходная проблема:** LLM иногда возвращает некорректный формат `{"action": "final_answer", "args": {}}` вместо правильного `{"final_answer": "..."}`. Это приводило к ошибкам в парсере.
 
 **Решение:** добавлена обработка случая `action == "final_answer"` в `_parse_action` в `app/agents/protocol.py` с преобразованием в правильный формат `AgentDecision(kind="final", final_answer=thought)`. В системном промпте `app/prompts/agent_system.md` добавлено явное предупреждение, что `final_answer` НЕ инструмент и его нельзя использовать как значение поля `action`.
+
+### 6.3 Secure-by-default `dangerous_tools_allowlist` (закрыто в спринте 08, задача 1.1)
+
+**Дата:** 2026-05-21.
+
+**Исходная проблема:** в спринте 05 (задача 6.1) сознательно зафиксировано, что по умолчанию `dangerous_tools_allowlist` пустой и опасные tools (`http_request`, `read_file`) разрешены «для MVP». Документация в `_docs/security.md` §4.1 повторяла это утверждение. По факту код `app/tools/registry.py::execute` уже трактовал пустой allowlist как **запрет** (исправлено ранее без записи в документацию), но не логировал отказ как `WARNING` и `.env.example` не содержал подсказки.
+
+**Решение:** зафиксирован контракт «secure by default» — пустой `DANGEROUS_TOOLS_ALLOWLIST` означает запрет всех опасных tools. В `ToolRegistry.execute` добавлен `WARNING`-лог с указанием tool и причины (`not_in_allowlist`). В `app/main.py::main` и `app/console_main.py::main` добавлена `INFO`-подсказка при пустом allowlist с готовой строкой для миграции. В `.env.example` добавлен закомментированный пример. Документация `_docs/security.md` §4.1 переписана.
+
+**Миграция для существующих установок:** если опасные tools нужны — добавить в `.env`:
+```
+DANGEROUS_TOOLS_ALLOWLIST=http_request,read_file
+```
+
+### 6.5 Удалён legacy `file_contexts` миграционный код (закрыто в спринте 08, задача 3.1)
+
+**Дата:** 2026-05-21.
+
+**Исходная проблема:** после спринта 06 контекст файлов мигрирован в `dialog_journal`; миграционный модуль `app/services/file_contexts_migration.py` и его вызов в точках входа сохранялись «на всякий случай», но мёртвый код в активной кодовой базе.
+
+**Решение:** удалены `app/services/file_contexts_migration.py`, `tests/services/test_file_contexts_migration.py` и блок вызова миграции из `app/main.py` / `app/console_main.py`. Документация (`_docs/memory.md` §2.6.1, §4.1; `_docs/security.md` §2) обновлена. У существующих установок резервный файл `data/file_contexts.db.migrated-<ts>` (если был) можно безопасно удалить вручную.
+
+### 6.6 Настройка прокси для Telegram API через переменные окружения (закрыто в спринте 08, задача 8.1)
+
+**Дата:** 2026-05-21.
+
+**Исходная проблема:** в WSL aiogram по умолчанию не использует переменные окружения `HTTP_PROXY`/`HTTPS_PROXY`, что приводит к timeout ошибкам при подключении к Telegram API через системный прокси.
+
+**Решение:** в `app/main.py` добавлен monkey-patch `aiohttp.ClientSession.__init__` для автоматического добавления `trust_env=True` при наличии переменных окружения прокси. В `_wire_telegram` добавлено чтение переменных окружения `HTTP_PROXY`/`HTTPS_PROXY` и передача значения в параметр `proxy` конструктора `Bot`. Также установлен `request_timeout=30` для уменьшения таймаута.
+
+**Использование:** перед запуском бота задать переменные окружения:
+```bash
+HTTP_PROXY=http://127.0.0.1:10808 HTTPS_PROXY=http://127.0.0.1:10808 python -m app
+```
+
+**Дополнительное улучшение:** добавлен graceful shutdown через сигналы SIGTERM/SIGINT для корректного завершения всех фоновых задач при принудительной остановке приложения (Ctrl+C или kill). При получении сигнала polling-задача отменяется, затем вызывается shutdown всех компонентов (bot.session, llm, semantic_memory, dialog_journal, users, FileIdMapper).

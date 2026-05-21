@@ -86,22 +86,6 @@ async def _build_components(settings: Settings) -> tuple:
         logger.error("dialog_journal: инициализация не удалась, журнал выключен: %s", exc)
         dialog_journal = None
 
-    # Одноразовая миграция data/file_contexts.db → dialog_journal (этап 06.3-bis.1).
-    if dialog_journal is not None:
-        try:
-            from app.services.file_contexts_migration import (
-                migrate_file_contexts_to_journal,
-            )
-            legacy_db = settings.memory_db_path.parent / "file_contexts.db"
-            moved = migrate_file_contexts_to_journal(
-                legacy_db_path=legacy_db,
-                journal_db_path=settings.memory_db_path,
-            )
-            if moved:
-                logger.info("file_contexts_migration: перенесено %d строк", moved)
-        except Exception as exc:  # noqa: BLE001
-            logger.error("file_contexts_migration: %s", exc)
-
     # Инициализируем FileIdMapper для загрузки существующих маппингов
     try:
         get_global_mapper().init()
@@ -150,7 +134,8 @@ async def _build_components(settings: Settings) -> tuple:
     planner = PlannerAgent(llm=llm, prompts=prompts, settings=settings)
     critic = CriticAgent(llm=llm, prompts=prompts, settings=settings)
     event_bus = EventBus()
-    users = UserRepository(event_bus=event_bus)
+    users = UserRepository(db_path=settings.memory_db_path, event_bus=event_bus)
+    await users.init()
     archiver = Archiver(
         llm=llm,
         summarizer=summarizer,
@@ -230,6 +215,7 @@ async def _build_components(settings: Settings) -> tuple:
 async def _shutdown(
     llm: OllamaClient,
     semantic_memory: SemanticMemory | None,
+    users: UserRepository | None = None,
 ) -> None:
     """Корректно закрыть ресурсы."""
     try:
@@ -241,6 +227,11 @@ async def _shutdown(
             await semantic_memory.close()
         except Exception:  # noqa: BLE001
             logger.exception("ошибка при закрытии семантической памяти")
+    if users is not None:
+        try:
+            await users.close()
+        except Exception:  # noqa: BLE001
+            logger.exception("ошибка при закрытии UserRepository")
     try:
         from app.security import get_global_mapper
         get_global_mapper().close()
@@ -254,6 +245,13 @@ async def main() -> None:
     # Отключаем консольный вывод логов чтобы не смешивать с ответами агента
     setup_logging(settings, console_output=False)
     setup_sentry(settings)
+
+    if not settings.dangerous_tools_allowlist:
+        logger.info(
+            "DANGEROUS_TOOLS_ALLOWLIST пуст: опасные tools (http_request, read_file) "
+            "запрещены (secure by default). Чтобы включить — задайте в .env, например: "
+            "DANGEROUS_TOOLS_ALLOWLIST=http_request,read_file"
+        )
 
     (
         settings,
@@ -322,12 +320,18 @@ async def main() -> None:
         logger.info("Console adapter started")
         await adapter.run()
     finally:
-        await _shutdown(llm, semantic_memory)
+        await _shutdown(llm, semantic_memory, users)
 
 
 def run() -> None:
     """Синхронный wrapper для `python -m app.console_main`."""
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        raise
+    except BaseException:
+        logger.exception("необработанное исключение на верхнем уровне")
+        raise
 
 
 if __name__ == "__main__":  # pragma: no cover
