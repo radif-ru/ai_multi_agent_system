@@ -108,6 +108,38 @@ async def test_binds_trace_id_and_user_id_during_handler(
 
 
 @pytest.mark.asyncio
+async def test_extracts_ids_from_data_for_update_without_from_user(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Регрессия: на dispatcher.update объект Update не имеет from_user/chat,
+    aiogram передаёт их через data['event_from_user'] / data['event_chat'].
+    """
+    middleware = LoggingMiddleware()
+    observed: dict[str, object] = {}
+
+    async def _handler(event, data):
+        observed["user_id"] = get_user_id()
+        return "ok"
+
+    # Update-подобный объект: ни from_user, ни chat нет.
+    event = MagicMock(spec=[])
+    user = MagicMock()
+    user.id = 555
+    chat = MagicMock()
+    chat.id = 999
+    data = {"event_from_user": user, "event_chat": chat}
+
+    with caplog.at_level(logging.INFO, logger="app.middlewares.logging_mw"):
+        await middleware(_handler, event, data)
+
+    assert observed["user_id"] == 555
+    assert any(
+        "user=555" in r.message and "chat=999" in r.message
+        for r in caplog.records
+    )
+
+
+@pytest.mark.asyncio
 async def test_trace_id_reset_on_handler_exception() -> None:
     """При исключении в handler контекст всё равно сбрасывается."""
     middleware = LoggingMiddleware()
