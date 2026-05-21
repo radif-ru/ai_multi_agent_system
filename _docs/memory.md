@@ -202,6 +202,17 @@ ConversationStore                       Executor.run
 Архивировано N чанков, новая сессия открыта.
 ```
 
+#### 3.3.1 API SemanticMemory
+
+| Метод | Описание |
+|-------|----------|
+| `init()` | Создать таблицы `memory_chunks` и `memory_vec`; загрузить расширение `sqlite-vec`. Идемпотентен. |
+| `close()` | Закрыть соединение с БД. |
+| `insert(text, embedding, metadata) -> int` | Вставить один чанк. Возвращает rowid вставленной записи. |
+| `insert_batch(items: list[tuple[str, list[float], dict]]]) -> list[int]` | Вставить несколько чанков в одной транзакции. Возвращает список rowid в том же порядке. Оптимизация для массовой вставки (используется в `Archiver`). |
+| `delete(rowid)` | Удалить чанк по rowid (удаляет из обеих таблиц). |
+| `search(embedding, top_k, scope_user_id) -> list[dict]` | KNN-поиск по векторам. Возвращает до `top_k` наиболее похожих чанков для указанного `user_id`. |
+
 ### 3.4 Поиск по архиву (tool `memory_search`)
 
 Доступен агенту в любой сессии. Контракт — в `tools.md` § `memory_search`. Кратко:
