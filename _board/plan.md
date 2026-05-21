@@ -43,7 +43,7 @@
 | 04. Событийная модель и модуль Users | Closed | 0 / 0 / 9 | `sprints/04-events-and-users.md` |
 | 05. Усиление безопасности и OCR-рефакторинг | Closed | 0 / 0 / 13 | `sprints/05-security-ocr.md` |
 | 06. Надёжность диалога и observability | Closed | 0 / 0 / 24 | `sprints/06-reliability-and-observability.md` |
-| 07. Multi-agent (Planner + Critic) | Active | 3 / 0 / 10 | `sprints/07-multi-agent.md` |
+| 07. Multi-agent (Planner + Critic) | Active | 2 / 0 / 11 | `sprints/07-multi-agent.md` |
 | 08. Hardening и зачистка техдолга | ToDo | 6 / 0 / 0 | `sprints/08-hardening-and-cleanup.md` |
 
 > Таблицу обновлять одновременно с переходами статусов в файлах спринтов (см. `process.md` §7.3 и §7.9).

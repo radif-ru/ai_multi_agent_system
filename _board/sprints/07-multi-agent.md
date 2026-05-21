@@ -358,7 +358,7 @@
 
 ### Задача 6.2. Унифицировать источник промпта суммаризации (`app/prompts/summarizer.md`)
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** medium
 - **Объём:** XS
 - **Зависит от:** 6.1 (перенос `app/prompts/`)
@@ -375,12 +375,12 @@
 
 #### Definition of Done
 
-- [ ] `Summarizer` получает промпт из `PromptLoader.summarizer_prompt`; `Settings.summarization_prompt` отсутствует.
-- [ ] `SUMMARIZATION_PROMPT` отсутствует в `.env.example`, `_docs/stack.md`, тестах.
-- [ ] `pytest -q` зелёный; `flake8 app tests` зелёный.
-- [ ] **Документация обновлена** — `_docs/stack.md`.
-- [ ] **Тесты добавлены / обновлены** — обновлены списки env-ключей в `tests/test_config.py`, `tests/test_main.py`; новых тестов на поведение не требуется (контракт `Summarizer` не меняется).
-- [ ] `git status` чист.
+- [x] `Summarizer` получает промпт из `PromptLoader.summarizer_prompt`; `Settings.summarization_prompt` отсутствует.
+- [x] `SUMMARIZATION_PROMPT` отсутствует в `.env.example`, `_docs/stack.md`, тестах.
+- [x] `pytest -q` зелёный (508 passed); `flake8 app tests` зелёный.
+- [x] **Документация обновлена** — `_docs/stack.md`.
+- [x] **Тесты добавлены / обновлены** — обновлены списки env-ключей в `tests/test_config.py`, `tests/test_main.py`; новых тестов на поведение не требуется (контракт `Summarizer` не меняется).
+- [x] `git status` чист.
 
 ## 10. Риски и смягчение
 
@@ -408,7 +408,7 @@
 | 5.1 | Новый `_docs/multi-agent.md`                          | high      | M     | ToDo   | 4.1, 4.2          |
 | 5.2 | Обновить `current-state.md` и `roadmap.md`            | medium    | S     | ToDo   | 5.1               |
 | 6.1 | Перенести `_prompts/`/`_skills/` в `app/`             | medium    | S     | Done   | —                 |
-| 6.2 | Унифицировать источник промпта суммаризации              | medium    | XS    | Progress | 6.1             |
+| 6.2 | Унифицировать источник промпта суммаризации              | medium    | XS    | Done   | 6.1               |
 
 > Обновляется при каждом переходе статуса и при добавлении/удалении задач.
 
@@ -438,3 +438,4 @@
 - **2026-05-21** — закрыта задача 07.6.1: `_prompts/` → `app/prompts/`, `_skills/` → `app/skills/`; обновлены дефолты в `Settings` и `PromptLoader`, DI в `app/main.py`/`app/console_main.py`, `.env.example`, документация (`_docs/*`, `_board/process.md`, `README.md`) и тесты (`tests/test_config.py`, `tests/test_logging_config.py`, `tests/test_main.py`); 508 passed, flake8 зелёный.
 - **2026-05-21** — добавлена задача 07.6.2 (по запросу пользователя): унифицировать источник промпта суммаризации (`Settings.summarization_prompt` → `app/prompts/summarizer.md`).
 - **2026-05-21** — задача 07.6.2 взята в работу (`ToDo` → `Progress`).
+- **2026-05-21** — закрыта задача 07.6.2: `Summarizer` получает промпт из `PromptLoader.summarizer_prompt` в `app/main.py`/`app/console_main.py`; удалены `Settings.summarization_prompt`, `SUMMARIZATION_PROMPT` из `.env.example`, `_docs/stack.md`, `tests/test_config.py`, `tests/test_main.py`; 508 passed, flake8 зелёный.
