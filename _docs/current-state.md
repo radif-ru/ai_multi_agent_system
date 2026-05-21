@@ -174,3 +174,16 @@
 **Исходная проблема:** LLM иногда возвращает некорректный формат `{"action": "final_answer", "args": {}}` вместо правильного `{"final_answer": "..."}`. Это приводило к ошибкам в парсере.
 
 **Решение:** добавлена обработка случая `action == "final_answer"` в `_parse_action` в `app/agents/protocol.py` с преобразованием в правильный формат `AgentDecision(kind="final", final_answer=thought)`. В системном промпте `app/prompts/agent_system.md` добавлено явное предупреждение, что `final_answer` НЕ инструмент и его нельзя использовать как значение поля `action`.
+
+### 6.3 Secure-by-default `dangerous_tools_allowlist` (закрыто в спринте 08, задача 1.1)
+
+**Дата:** 2026-05-21.
+
+**Исходная проблема:** в спринте 05 (задача 6.1) сознательно зафиксировано, что по умолчанию `dangerous_tools_allowlist` пустой и опасные tools (`http_request`, `read_file`) разрешены «для MVP». Документация в `_docs/security.md` §4.1 повторяла это утверждение. По факту код `app/tools/registry.py::execute` уже трактовал пустой allowlist как **запрет** (исправлено ранее без записи в документацию), но не логировал отказ как `WARNING` и `.env.example` не содержал подсказки.
+
+**Решение:** зафиксирован контракт «secure by default» — пустой `DANGEROUS_TOOLS_ALLOWLIST` означает запрет всех опасных tools. В `ToolRegistry.execute` добавлен `WARNING`-лог с указанием tool и причины (`not_in_allowlist`). В `app/main.py::main` и `app/console_main.py::main` добавлена `INFO`-подсказка при пустом allowlist с готовой строкой для миграции. В `.env.example` добавлен закомментированный пример. Документация `_docs/security.md` §4.1 переписана.
+
+**Миграция для существующих установок:** если опасные tools нужны — добавить в `.env`:
+```
+DANGEROUS_TOOLS_ALLOWLIST=http_request,read_file
+```

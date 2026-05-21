@@ -149,20 +149,21 @@ def sanitize_response(text: str) -> str
 
 ### 4.1 Allowlist для опасных tools
 
-Опасные tools (`http_request`, `read_file`, `read_document`) имеют дополнительную валидацию через allowlist в конфигурации.
+Опасные tools (`http_request`, `read_file`) имеют дополнительную валидацию через allowlist в конфигурации.
 
 **Параметр конфигурации:**
 ```python
-dangerous_tools_allowlist: list[str]  # список разрешённых опасных tools
+dangerous_tools_allowlist: list[str]  # список явно разрешённых опасных tools
 ```
 
-**Реализация:**
-- Список опасных tools определён в `app/tools/registry.py` как `_DANGEROUS_TOOLS = {"http_request", "read_file", "read_document"}`.
-- В `ToolRegistry.execute` после получения tool проверяется: если tool в `_DANGEROUS_TOOLS` и не в `ctx.settings.dangerous_tools_allowlist` — возвращается `ToolError("Tool '{name}' не разрешён в настройках безопасности")`.
-- По умолчанию `dangerous_tools_allowlist` пустой (все опасные tools разрешены для MVP).
+**Реализация (secure by default, спринт 08):**
+- Список опасных tools определён в `app/tools/registry.py` как `_DANGEROUS_TOOLS = {"http_request", "read_file"}`. `read_document` исключён после внедрения `FileIdMapper` (пути заменяются временными ID).
+- В `ToolRegistry.execute` после получения tool проверяется: если tool в `_DANGEROUS_TOOLS` и не в `ctx.settings.dangerous_tools_allowlist` — логируется `WARNING` и возвращается `ToolError("Tool '{name}' не разрешён в настройках безопасности")`.
+- **По умолчанию `dangerous_tools_allowlist` пуст — все опасные tools запрещены.** Чтобы разрешить, нужно явно перечислить их в `.env` (`DANGEROUS_TOOLS_ALLOWLIST=http_request,read_file`).
+- При старте `app/main.py` / `app/console_main.py`, если allowlist пуст, печатается `INFO`-подсказка с готовой строкой для миграции.
 - Обычные tools не проверяются по allowlist.
 
-См. задачу 6.1 спринта 05.
+См. задачу 6.1 спринта 05 и задачу 1.1 спринта 08.
 
 ### 4.2 Валидация параметров опасных tools
 
