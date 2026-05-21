@@ -49,7 +49,7 @@ class LoggingMiddleware(BaseMiddleware):
     ) -> Any:
         started = time.monotonic()
         status = "ok"
-        user_id, chat_id = _extract_ids(event)
+        user_id, chat_id = _extract_ids(event, data)
         trace_token = bind_trace_id(new_trace_id())
         user_token = bind_user_id(user_id)
         try:
@@ -71,10 +71,14 @@ class LoggingMiddleware(BaseMiddleware):
             reset_trace_id(trace_token)
 
 
-def _extract_ids(event: TelegramObject) -> tuple[Any, Any]:
-    user = getattr(event, "from_user", None)
+def _extract_ids(
+    event: TelegramObject, data: dict[str, Any]
+) -> tuple[Any, Any]:
+    # Для inner-middleware на dispatcher.update aiogram уже положил в data
+    # вложенные user/chat апдейта (UserContextMiddleware).
+    user = data.get("event_from_user") or getattr(event, "from_user", None)
+    chat = data.get("event_chat") or getattr(event, "chat", None)
     user_id = getattr(user, "id", None) if user is not None else None
-    chat = getattr(event, "chat", None)
     chat_id = getattr(chat, "id", None) if chat is not None else None
     if user_id is None and isinstance(event, Message) and event.from_user is not None:
         user_id = event.from_user.id
