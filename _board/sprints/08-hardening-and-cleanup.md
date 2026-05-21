@@ -54,7 +54,7 @@
 
 ### Задача 1.1. Сменить дефолт `dangerous_tools_allowlist` на «запрет»
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** high
 - **Объём:** S
 - **Зависит от:** —
@@ -264,7 +264,7 @@ DoD задачи 03.1.1 «< 30 секунд на 50+ сообщений» был
 
 | #   | Задача                                                | Приоритет | Объём | Статус | Зависит от        |
 |-----|-------------------------------------------------------|:---------:|:-----:|:------:|:-----------------:|
-| 1.1 | Secure-by-default `dangerous_tools_allowlist`         | high      | S     | ToDo   | —                 |
+| 1.1 | Secure-by-default `dangerous_tools_allowlist`         | high      | S     | Progress | —               |
 | 1.2 | Bypass-тесты для `InputSanitizer` / `ResponseSanitizer` | high    | S     | ToDo   | —                 |
 | 2.1 | SQLite-реализация `UserRepository` с миграцией        | high      | M     | ToDo   | —                 |
 | 3.1 | Удалить миграционный код и legacy `file_contexts.db`  | medium    | S     | ToDo   | —                 |
