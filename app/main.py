@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import signal
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -366,6 +367,17 @@ async def main() -> None:
     setup_logging(settings)
     setup_sentry(settings)
 
+    # Graceful shutdown через сигналы SIGTERM/SIGINT
+    shutdown_event = asyncio.Event()
+
+    def signal_handler() -> None:
+        logger.info("Получен сигнал shutdown, останавливаем бота...")
+        shutdown_event.set()
+
+    loop = asyncio.get_running_loop()
+    loop.add_signal_handler(signal.SIGTERM, signal_handler)
+    loop.add_signal_handler(signal.SIGINT, signal_handler)
+
     if not settings.dangerous_tools_allowlist:
         logger.info(
             "DANGEROUS_TOOLS_ALLOWLIST пуст: опасные tools (http_request, read_file) "
@@ -391,7 +403,14 @@ async def main() -> None:
 
     try:
         logger.info("Bot started")
-        await _start_polling(bot, dispatcher)
+        # Запускаем polling в отдельной задаче для graceful shutdown по сигналу
+        polling_task = asyncio.create_task(_start_polling(bot, dispatcher))
+        await shutdown_event.wait()
+        polling_task.cancel()
+        try:
+            await polling_task
+        except asyncio.CancelledError:
+            pass
     finally:
         if recovery_task is not None and not recovery_task.done():
             recovery_task.cancel()

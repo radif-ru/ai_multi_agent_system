@@ -195,3 +195,18 @@ DANGEROUS_TOOLS_ALLOWLIST=http_request,read_file
 **Исходная проблема:** после спринта 06 контекст файлов мигрирован в `dialog_journal`; миграционный модуль `app/services/file_contexts_migration.py` и его вызов в точках входа сохранялись «на всякий случай», но мёртвый код в активной кодовой базе.
 
 **Решение:** удалены `app/services/file_contexts_migration.py`, `tests/services/test_file_contexts_migration.py` и блок вызова миграции из `app/main.py` / `app/console_main.py`. Документация (`_docs/memory.md` §2.6.1, §4.1; `_docs/security.md` §2) обновлена. У существующих установок резервный файл `data/file_contexts.db.migrated-<ts>` (если был) можно безопасно удалить вручную.
+
+### 6.6 Настройка прокси для Telegram API через переменные окружения (закрыто в спринте 08, задача 8.1)
+
+**Дата:** 2026-05-21.
+
+**Исходная проблема:** в WSL aiogram по умолчанию не использует переменные окружения `HTTP_PROXY`/`HTTPS_PROXY`, что приводит к timeout ошибкам при подключении к Telegram API через системный прокси.
+
+**Решение:** в `app/main.py` добавлен monkey-patch `aiohttp.ClientSession.__init__` для автоматического добавления `trust_env=True` при наличии переменных окружения прокси. В `_wire_telegram` добавлено чтение переменных окружения `HTTP_PROXY`/`HTTPS_PROXY` и передача значения в параметр `proxy` конструктора `Bot`. Также установлен `request_timeout=30` для уменьшения таймаута.
+
+**Использование:** перед запуском бота задать переменные окружения:
+```bash
+HTTP_PROXY=http://127.0.0.1:10808 HTTPS_PROXY=http://127.0.0.1:10808 python -m app
+```
+
+**Дополнительное улучшение:** добавлен graceful shutdown через сигналы SIGTERM/SIGINT для корректного завершения всех фоновых задач при принудительной остановке приложения (Ctrl+C или kill). При получении сигнала polling-задача отменяется, затем вызывается shutdown всех компонентов (bot.session, llm, semantic_memory, dialog_journal, users, FileIdMapper).
