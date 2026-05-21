@@ -2,3 +2,6 @@
 asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = "-ra -q"
+markers = [
+    "slow: помечает тесты с бюджетом по времени (запускаются всегда; см. `_docs/testing.md`)",
+]
