@@ -81,6 +81,18 @@
 - **Error tracking через GlitchTip / Sentry** — `app/observability/__init__.py::setup_sentry` (off-by-default: при пустом `SENTRY_DSN` ничего не инициализируется). `_before_send` подмешивает `trace_id`/`user_id` в `tags`/`extra`/`user`. Self-hosted GlitchTip разворачивается через `docker-compose.observability.yml` (postgres + redis + web/worker/migrate). См. `_docs/observability.md` §5.
 - **CI (GitHub Actions)** — `.github/workflows/test.yml` прогоняет `flake8 app tests` и `pytest -q` на каждый push/PR (Python 3.14, ubuntu-latest, кеш pip по `requirements.txt`, без матрицы и секретов). Бейдж в шапке `README.md`. См. `_docs/instructions.md` §8.4.
 
+### 1.8 Multi-agent (Спринт 07)
+
+- **PlannerAgent** — `app/agents/planner.py` — одиночный LLM-вызов, превращает задачу в линейный `Plan` (1–6 шагов). При любой ошибке LLM/парсера возвращает fallback `Plan(steps=[PlanStep(1, task)])` (лог `planner.fallback`).
+- **CriticAgent** — `app/agents/critic.py` — одиночный LLM-вызов, возвращает `CriticVerdict("PASS"|"REVISE", feedback)`. Fail-open: при любой ошибке возвращает `PASS` (лог `critic.fallback`).
+- **Протоколы** — `app/agents/protocol.py`: `Plan`/`PlanStep`/`CriticVerdict` + парсеры `parse_planner_response`/`parse_critic_response` (толерантны к markdown-fence; константы `PLAN_MIN_STEPS=1`, `PLAN_MAX_STEPS=6`, `PLAN_STEP_DESCRIPTION_MAX_CHARS=200`).
+- **Оркестрация** — `app/core/orchestrator.py::handle_user_task` поддерживает три режима: `OFF` (Executor напрямую), `NORMAL` (Planner → Executor → Critic, один проход), `DEEP` (Critic итерируется до `AGENT_REFLECTION_MAX_ITERATIONS`). Контракт `handle_user_task(text, user_id, chat_id)` стабилен для адаптеров; режим даунгрейдится в `OFF`, если `planner` или `critic` не переданы в DI.
+- **Конфиг** — `Settings.agent_reflection_mode` (`OFF`/`NORMAL`/`DEEP`, default `OFF`) и `Settings.agent_reflection_max_iterations` (default `2`); per-user override — `UserSettingsRegistry.get_reflection_mode(user_id)`.
+- **Команда `/mode`** — `app/commands/registry.py::cmd_mode`, доступна в Telegram и console; без аргументов показывает текущий режим, с `off|normal|deep` — выставляет per-user override.
+- **Промпты** — `app/prompts/planner.md` (плейсхолдер `{{TASK}}`), `app/prompts/critic.md` (`{{TASK}}`/`{{PLAN}}`/`{{DRAFT}}`); рендер через `PromptLoader.render_planner` / `render_critic`.
+- **Тесты** — `tests/agents/test_planner.py`, `tests/agents/test_critic.py`, `tests/core/test_orchestrator.py` (ветки OFF / NORMAL-PASS / NORMAL-REVISE / DEEP-лимит / DEEP-PASS-на-2 / per-user override / planner-fallback / critic-fail-open), `tests/test_multi_agent_e2e.py` (полный цикл DEEP с мок-LLM).
+- **Документ** — `_docs/multi-agent.md` (роли, JSON-протоколы, поток, fallback'ы, логирование).
+
 ## 2. Известные проблемы и легаси
 
 > Пусто на момент закрытия Спринта 00. Записи появляются по мере обнаружения нюансов в Спринтах 01+.
@@ -122,6 +134,7 @@
 - **`parse_mode=ParseMode.HTML`** установлен по умолчанию (`DefaultBotProperties` в `main.py`). Все хендлеры должны экранировать пользовательский ввод (`html.escape`) перед вставкой.
 - **Автоматическая суммаризация контекста**: Executor проверяет размер контекста перед отправкой в LLM. Если превышает `AGENT_MAX_CONTEXT_CHARS` (default 8000), история суммаризируется через `Summarizer` для предотвращения пустых ответов при больших контекстах (например, при обработке PDF с OCR текстом).
 - **Порядок подписчиков EventBus**: подписчики вызываются последовательно в порядке регистрации (FIFO). Для события `ResponseGenerated` важно, чтобы `conversation_subscriber.on_response_generated` регистрировался первым, чтобы к моменту суммаризации ответ уже был записан в ConversationStore. Это гарантируется порядком регистрации в точках входа (main.py, console_main.py).
+- **Multi-agent fail-open / graceful degradation** (`app/core/orchestrator.py`, см. `multi-agent.md` §4): любые ошибки Planner/Critic не валят запрос пользователя. `Planner` бросил → Executor запускается на исходном `text` (лог `orchestrator.planner_fallback`). `Planner` вернул мусор → внутри `PlannerAgent` фолбэчится в `Plan(steps=[PlanStep(1, task)])` (лог `planner.fallback`). `Critic` бросил → возврат текущего draft (лог `orchestrator.critic_error`). `Critic` вернул мусор → fail-open `PASS` (лог `critic.fallback`). Re-run Executor бросил → возврат предыдущего draft. Контракт `handle_user_task(text, user_id, chat_id)` остаётся стабильным.
 
 ## 4. Что точно не сломано
 
