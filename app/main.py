@@ -379,7 +379,13 @@ async def main() -> None:
 
 def run() -> None:
     """Синхронный wrapper для `python -m app`."""
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        raise
+    except BaseException:
+        logger.exception("необработанное исключение на верхнем уровне")
+        raise
 
 
 if __name__ == "__main__":  # pragma: no cover
