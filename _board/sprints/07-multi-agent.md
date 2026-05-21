@@ -303,7 +303,7 @@
 
 ### Задача 5.2. Обновить `current-state.md` и `roadmap.md`
 
-- **Статус:** ToDo
+- **Статус:** Progress
 - **Приоритет:** medium
 - **Объём:** S
 - **Зависит от:** Задача 5.1.
@@ -406,7 +406,7 @@
 | 4.2 | Команда `/mode`                                       | medium    | S     | Done   | 1.1, 4.1          |
 | 4.3 | Сквозной интеграционный тест оркестратора             | medium    | S     | Done   | 4.1, 4.2          |
 | 5.1 | Новый `_docs/multi-agent.md`                          | high      | M     | Done   | 4.1, 4.2          |
-| 5.2 | Обновить `current-state.md` и `roadmap.md`            | medium    | S     | ToDo   | 5.1               |
+| 5.2 | Обновить `current-state.md` и `roadmap.md`            | medium    | S     | Progress | 5.1             |
 | 6.1 | Перенести `_prompts/`/`_skills/` в `app/`             | medium    | S     | Done   | —                 |
 | 6.2 | Унифицировать источник промпта суммаризации              | medium    | XS    | Done   | 6.1               |
 
