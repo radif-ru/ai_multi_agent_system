@@ -134,7 +134,7 @@ ConversationStore                       Executor.run
 
 #### 2.6.1 Унифицированное хранение в `dialog_journal`
 
-С задачи 06.3-bis.2 контекст файла лежит в той же таблице `dialog_journal` (см. §4.1), что и текст диалога: колонка `message_id` хранит ID сообщения Telegram, `kind` — тип файла, `content` — текст `goal`, `file_id`/`file_path` — данные для `FileIdMapper`. Отдельная база `data/file_contexts.db` упразднена и переименована при одноразовой миграции в `data/file_contexts.db.migrated-<ts>` (см. §4.1 и `app/services/file_contexts_migration.py`).
+С задачи 06.3-bis.2 контекст файла лежит в той же таблице `dialog_journal` (см. §4.1), что и текст диалога: колонка `message_id` хранит ID сообщения Telegram, `kind` — тип файла, `content` — текст `goal`, `file_id`/`file_path` — данные для `FileIdMapper`. Отдельная база `data/file_contexts.db` упразднена; одноразовый миграционный модуль удалён в спринте 08 (задача 3.1) — файл `data/file_contexts.db.migrated-<ts>` (если остался) можно безопасно удалить вручную.
 
 Аудит использования полей в `dialog_journal` для reply-сценария:
 
@@ -345,7 +345,7 @@ CREATE INDEX IF NOT EXISTS ix_journal_message  ON dialog_journal(user_id, messag
     WHERE message_id IS NOT NULL;
 ```
 
-Колонка `message_id` добавлена в задаче 06.3-bis.1: она нужна, чтобы свести воедино журнал и старую таблицу `file_contexts` (PK там был `(user_id, message_id)`) — после этапа 3-bis `ConversationStore.get_file_context` и `FileIdMapper` читают из `dialog_journal` по этому же ключу, а `data/file_contexts.db` мигрируется один раз и удаляется. Миграция реализована в `app/services/file_contexts_migration.py::migrate_file_contexts_to_journal(...)`: при старте процесса (см. `app/main.py`/`app/console_main.py`) она читает старую таблицу, добавляет строки в `dialog_journal` с `conversation_id = "legacy"`, `archived_at = now()` (эти строки уже «закрыты» и не подбираются фоновой архивацией) и переименовывает источник в `data/file_contexts.db.migrated-<ts>`.
+Колонка `message_id` добавлена в задаче 06.3-bis.1, чтобы свести воедино журнал и старую таблицу `file_contexts` (PK там был `(user_id, message_id)`) — `ConversationStore.get_file_context` и `FileIdMapper` читают из `dialog_journal` по этому же ключу. Миграционный модуль `app/services/file_contexts_migration.py` и поддерживавший его код в точках входа удалены в спринте 08 (задача 3.1); резервный файл `data/file_contexts.db.migrated-<ts>` можно безопасно удалить вручную.
 
 ### 4.2 API
 
@@ -382,12 +382,33 @@ CREATE INDEX IF NOT EXISTS ix_journal_message  ON dialog_journal(user_id, messag
 
 **Smoke-сценарий «kill -9 → старт»** (ожидаемое поведение): отправили текст пользователю → подписчик `on_message_received_journal` записал строку в `dialog_journal` (`archived_at IS NULL`); процесс прервали (`kill -9`, краш, рестарт хоста); следующий старт через `python -m app` → `recover_pending_journals` поднимает сессию через `Archiver` → строка получает `archived_at`, чанк попадает в `memory_chunks` и виден в `MemorySearchTool`. Unit-тесты на алгоритм — `tests/services/test_journal_recovery.py`.
 
+### 4.5 Таблица `users`
+
+Хранилище пользователей вынесено в SQLite в той же `data/memory.db` (отдельное соединение, без `sqlite-vec`). Реализация — `app/users/repository.py::UserRepository`. Цель — стабильный `user.id` между рестартами процесса: иначе после рестарта новый telegram-пользователь получал бы свободный `user.id`, а строки `dialog_journal`/`memory_chunks` (где `user.id` — внешний ключ) теряли владельца. См. спринт 08, задача 2.1.
+
+```sql
+CREATE TABLE IF NOT EXISTS users (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    channel      TEXT    NOT NULL,    -- "telegram" | "console"
+    external_id  TEXT    NOT NULL,    -- telegram user id / console username
+    display_name TEXT,
+    created_at   TEXT    NOT NULL,    -- ISO 8601, UTC
+    UNIQUE(channel, external_id)
+);
+```
+
+Инварианты:
+
+1. `get_or_create(channel, external_id, display_name)` атомарен на уровне SQLite (`UNIQUE(channel, external_id)` + дополнительный `asyncio.Lock` в одном процессе) и возвращает `(user, created)`.
+2. Событие `UserCreated` публикуется **только** при реальном `INSERT` (`created=True`).
+3. `init()` создаёт таблицу идемпотентно и пишет `INFO`-лог с количеством существующих пользователей (sanity).
+4. Жизненный цикл (`init`/`close`) управляется в `app/main.py` / `app/console_main.py`.
+
 ## 5. Что НЕ хранится (по дизайну)
 
 - **Сырые сообщения диалога в `memory_chunks`** — туда идут только саммари при `/new` или фоновом восстановлении (CON-1). Полный диалог временно хранится в `dialog_journal` до архивации.
 - **Системные промпты** — они в `app/prompts/`, не в БД.
 - **Вызовы tools и observations** — они в логах, не в архивной памяти.
-- **Учётные записи Telegram / профили пользователей** — для MVP не нужны (`user_id` Telegram достаточно как ключ).
 
 ## 6. Что **может** появиться в архиве в будущем (НЕ MVP)
 
