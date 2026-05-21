@@ -1,6 +1,6 @@
 """Tool `weather` — получение погоды через wttr.in.
 
-См. `_skills/weather/SKILL.md` для подробностей.
+См. `app/skills/weather/SKILL.md` для подробностей.
 
 Использует wttr.in без API-ключа через curl.
 При ошибке сети или недоступности сервиса автоматически использует WebSearchTool для поиска погоды.

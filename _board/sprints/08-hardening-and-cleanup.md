@@ -1,0 +1,242 @@
+# Спринт 08. Hardening и зачистка техдолга после спринтов 03–05
+
+- **Источник:** ревизия закрытых спринтов 03/04/05 (запрос пользователя 20.05.2026); `_docs/current-state.md` §1.7 (legacy `file_contexts.db`); пробелы в acceptance criteria спринта 05 (Этап 6 — безопасные defaults) и спринта 04 (`UserRepository` без персистентности).
+- **Ветка:** `feature/08-hardening-and-cleanup` (запланированная; открыть после закрытия спринта 07; см. `_board/process.md` §2 п.1, п.2).
+- **Открыт:** —
+- **Закрыт:** —
+
+## 1. Цель спринта
+
+Спринты 03–05 закрыли функциональные пробелы (баги, консольный режим, события, безопасность, OCR), но оставили **четыре системных промаха**, замеченных при ревизии:
+
+1. **Безопасность по умолчанию выключена.** В спринте 05 (задача 6.1, риск 4) сознательно зафиксировано: «По умолчанию allowlist пустой (все разрешены) для MVP». На сегодня это значит, что опасные tools (`http_request`, `read_file`, `read_document`) исполняются без allowlist-проверки у любого пользователя «из коробки». Цель — переключить дефолт на «secure by default»: пустой allowlist = запрет, явное разрешение через `.env`.
+2. **`InputSanitizer` / `ResponseSanitizer` слабо покрыты тестами.** Спринт 05 (задачи 3.1, 7.1) проверил только базовые паттерны. Нет регрессий на типичные обходы (регистр, разрывы, unicode-эскейпы, base64).
+3. **`UserRepository` теряет состояние при рестарте.** Спринт 04 сознательно ограничился in-memory (§2 non-goal), но после спринта 06 (`dialog_journal` хранит `user.id`) рассинхрон стал реальным: после рестарта новый telegram-пользователь получит свободный `user.id`, журналы прежних сессий «потеряют владельца».
+4. **Legacy `file_contexts.db` висит в репозитории.** В спринте 06 контекст файлов мигрирован в `dialog_journal`, но `_docs/current-state.md` §1.7 фиксирует: «сохранён только для одноразовой миграции». Файл БД и миграционный код — кандидаты на удаление.
+
+Спринт сознательно ограничен зачисткой и hardening'ом — никаких новых фич. Поведение для пользователя меняется минимально (только дефолт безопасности).
+
+## 2. Скоуп и non-goals
+
+### В скоупе
+
+- Перевод `dangerous_tools_allowlist` в режим «secure by default» с миграцией для существующих пользователей (явный список в `.env.example`).
+- Расширение тестов `InputSanitizer` / `ResponseSanitizer` bypass-кейсами; добавление случаев в `tests/security/`.
+- Персистентность `UserRepository` через новую таблицу `users` в существующей `data/memory.db` (одно соединение с `SemanticMemory` / `DialogJournal`).
+- Удаление миграционного кода `app/services/file_contexts_migration.py` и БД-файла `data/file_contexts.db` после подтверждения, что нет производственных установок без миграции.
+- Регрессионный тест на длительность `/new` (DoD задачи 03.1.1: «< 30 секунд на 50+ сообщений» проверялся вручную, регрессии нет).
+- Документация: `_docs/security.md`, `_docs/current-state.md`, `_docs/memory.md`, `_docs/instructions.md` (упоминание secure-by-default).
+
+### Вне скоупа (non-goals)
+
+- Любые multi-agent изменения (это спринт 07).
+- Новый LLM-провайдер / web-адаптер / MAX-адаптер (`_docs/roadmap.md` Этапы 4–6).
+- Полный CI с матрицей версий Python / coverage gate (минимальный CI уже добавлен спринтом 06).
+- Изменение формата `memory_chunks` / `dialog_journal`.
+- Миграция `UserSettingsRegistry` на персистентное хранилище — отдельная задача (in-memory live override приемлем как кеш).
+
+## 3. Acceptance Criteria спринта
+
+- [ ] При пустом `DANGEROUS_TOOLS_ALLOWLIST` в `.env` опасные tools (`http_request`, `read_file`, `read_document`) **запрещены**; чтобы разрешить — нужно явно перечислить их в `.env`. Обновлены `.env.example` и `_docs/security.md`.
+- [ ] `tests/security/test_input_sanitizer.py` и `tests/security/test_response_sanitizer.py` содержат bypass-кейсы (минимум: разный регистр, разрывы пробелами/неразрывными пробелами, юникод-эскейпы вида `\u0069gnore`, base64-кодированные паттерны как сырая строка), все зелёные.
+- [ ] `UserRepository` сохраняет пользователей в SQLite (одно соединение с `SemanticMemory`/`DialogJournal`); после рестарта `get_or_create(channel, external_id)` возвращает того же `user.id`, что и до рестарта.
+- [ ] `data/file_contexts.db` и `app/services/file_contexts_migration.py` удалены; `_docs/current-state.md` §1.7 обновлён; `grep` по репозиторию не находит активных ссылок на `file_contexts.db`.
+- [ ] Регрессионный тест `tests/services/test_archiver.py::test_archive_completes_within_budget` (или эквивалент) проверяет, что `Archiver.archive` на синтетической сессии из 50 сообщений завершается за фиксированный бюджет с мок-LLM.
+- [ ] `pytest -q` и `flake8 app tests` зелёные.
+- [ ] Все задачи спринта — `Done`, сводная таблица актуальна.
+
+## 4. Этап 1. Secure-by-default для опасных tools
+
+Закрываем главный риск из спринта 05 — отключённую по умолчанию защиту.
+
+### Задача 1.1. Сменить дефолт `dangerous_tools_allowlist` на «запрет»
+
+- **Статус:** ToDo
+- **Приоритет:** high
+- **Объём:** S
+- **Зависит от:** —
+- **Связанные документы:** `_docs/security.md`, `_docs/tools.md`, `_board/sprints/05-security-ocr.md` Задача 6.1.
+- **Затрагиваемые файлы:** `app/config.py`, `app/tools/registry.py`, `.env.example`, `_docs/security.md`, `tests/tools/test_registry.py`.
+
+#### Описание
+
+1. В `Settings` определить смысл `dangerous_tools_allowlist`: пустой список (или отсутствие переменной) → **запрет** всех tools из списка `DANGEROUS_TOOLS`. Чтобы разрешить — нужно явно перечислить в `.env`.
+2. В `.env.example` добавить закомментированную строку `# DANGEROUS_TOOLS_ALLOWLIST=http_request,read_file,read_document` с поясняющим комментарием (по умолчанию — запрет, раскомментировать на свой страх и риск).
+3. В `ToolRegistry.execute` логировать `WARNING` при отказе с указанием tool и причиной.
+4. **Миграция** для существующих пользователей: на старте бота — если переменной нет в `.env`, вывести в лог `INFO` подсказку, что для обратной совместимости можно временно выставить allowlist со всеми тремя tools.
+
+#### Definition of Done
+
+- [ ] `tests/tools/test_registry.py` покрывает: пустой allowlist + dangerous tool → `ToolError`; явный allowlist разрешает; неопасный tool (например, `weather`) всегда разрешён.
+- [ ] `.env.example` и `_docs/security.md` обновлены; добавлена краткая инструкция «как мигрировать» в `_docs/current-state.md` §6 (история).
+- [ ] **Документация обновлена** — да.
+- [ ] **Тесты добавлены / обновлены** — да.
+- [ ] `git status` чист.
+
+### Задача 1.2. Bypass-тесты для `InputSanitizer` и `ResponseSanitizer`
+
+- **Статус:** ToDo
+- **Приоритет:** high
+- **Объём:** S
+- **Зависит от:** —
+- **Связанные документы:** `_docs/security.md`, `_board/sprints/05-security-ocr.md` Задачи 3.1, 7.1.
+- **Затрагиваемые файлы:** `tests/security/test_input_sanitizer.py`, `tests/security/test_response_sanitizer.py`, при необходимости — `app/security/input_sanitizer.py` / `app/security/response_sanitizer.py` для адаптации паттернов.
+
+#### Описание
+
+Расширить покрытие до bypass-кейсов:
+
+1. Разный регистр: `IGNORE all PREVIOUS instructions`, `IgNoRe AlL pReViOuS iNsTrUcTiOnS`.
+2. Разрывы пробелами/неразрывными пробелами: `ignore  all  previous`, `ignore\u00a0all\u00a0previous`.
+3. Юникод-эскейпы как сырая строка: `\u0069gnore all previous`.
+4. Base64-кодированные паттерны как сырая строка (sanity-check: НЕ декодируем, документируем как known limitation).
+5. Для `ResponseSanitizer`: пути с разделителем `\` (Windows-стиль) в логах; пути с `~/`.
+
+Каждый кейс — либо проходит (паттерн расширен), либо явно зафиксирован как known-limitation в `_docs/security.md` с TODO. Цель — не «всё ловить», а **закрыть слепые зоны на будущее**.
+
+#### Definition of Done
+
+- [ ] Параметризованный тест `pytest.mark.parametrize` минимум на 8 bypass-кейсов на каждый санитайзер.
+- [ ] Паттерны, которые тесты ловят, — обновлены в коде; не ловят — задокументированы в `_docs/security.md` § «Известные ограничения».
+- [ ] **Документация обновлена** — да.
+- [ ] **Тесты добавлены / обновлены** — да.
+- [ ] `git status` чист.
+
+## 5. Этап 2. Персистентность `UserRepository`
+
+Закрываем системный пробел спринта 04: рассинхрон с `dialog_journal`.
+
+### Задача 2.1. SQLite-реализация `UserRepository` с миграцией
+
+- **Статус:** ToDo
+- **Приоритет:** high
+- **Объём:** M
+- **Зависит от:** —
+- **Связанные документы:** `_docs/memory.md` (схема `data/memory.db`), `_docs/architecture.md` §3 (Users), `_docs/current-state.md` §1.5, `_docs/events.md` (UserCreated).
+- **Затрагиваемые файлы:** `app/users/repository.py`, `app/services/memory.py` (расшаривание SQLite-соединения), `app/main.py`, `app/console_main.py`, `tests/users/test_repository.py`, `_docs/memory.md`.
+
+#### Описание
+
+1. Завести таблицу `users(id INTEGER PRIMARY KEY AUTOINCREMENT, channel TEXT NOT NULL, external_id TEXT NOT NULL, display_name TEXT, created_at TEXT NOT NULL, UNIQUE(channel, external_id))` в существующей `data/memory.db`.
+2. `UserRepository` принимает `Connection` или `SemanticMemory` (через который шарится соединение) и работает синхронно через `asyncio.to_thread` (как в `SemanticMemory`).
+3. Контракт `get_or_create / get / get_by_external` сохраняется бит-в-бит; единственное отличие — `user.id` стабилен между рестартами.
+4. **Бэкап старых сессий**: добавить лог `INFO` при старте о текущем количестве пользователей в БД (sanity).
+5. `UserCreated` публикуется только при реальном `INSERT` (не при чтении существующего).
+
+#### Definition of Done
+
+- [ ] `tests/users/test_repository.py` дополнен кейсом «рестарт»: создаём пользователя, закрываем репозиторий, открываем новый поверх той же БД (`tmp_path`), `get_or_create` возвращает того же `user.id`.
+- [ ] `UserCreated` публикуется ровно один раз на каждого нового пользователя через все рестарты.
+- [ ] `_docs/memory.md` дополнен схемой `users`; `_docs/current-state.md` §1.5 обновлён.
+- [ ] **Документация обновлена** — да.
+- [ ] **Тесты добавлены / обновлены** — да.
+- [ ] `git status` чист.
+
+## 6. Этап 3. Удаление legacy `file_contexts.db`
+
+После спринта 06 (`dialog_journal` — единый источник истины для file_id/file_path/content) сама БД и миграционный код больше не нужны.
+
+### Задача 3.1. Удалить миграционный код и БД
+
+- **Статус:** ToDo
+- **Приоритет:** medium
+- **Объём:** S
+- **Зависит от:** —
+- **Связанные документы:** `_docs/current-state.md` §1.7, `_docs/memory.md` §2.6, `_board/sprints/06-reliability-and-observability.md` (Этап 3-bis).
+- **Затрагиваемые файлы:** `app/services/file_contexts_migration.py` (удалить), `app/main.py` / `app/console_main.py` (убрать вызов миграции), `data/file_contexts.db` (удалить из `.gitignore` уже не нужно, файл всё равно gitignored), `_docs/current-state.md`, `_docs/memory.md`.
+
+#### Описание
+
+1. Убедиться, что вызов миграции в `main.py`/`console_main.py` — единственное место использования модуля.
+2. Удалить `app/services/file_contexts_migration.py` и его импорт.
+3. Удалить из README/документации упоминания о миграции (или пометить как «исторический шаг, выполнен в спринте 06»).
+4. **Не удалять** автоматически `data/file_contexts.db` у пользователей: добавить в `_docs/current-state.md` §6 «История закрытий» инструкцию «можно безопасно удалить вручную после обновления».
+
+#### Definition of Done
+
+- [ ] `grep -rn "file_contexts" app/ tests/` возвращает только записи о новой таблице `file_contexts` в `ConversationStore` (если ещё используется) или ничего.
+- [ ] `pytest -q` зелёный без падений от отсутствия миграционного модуля.
+- [ ] `_docs/current-state.md` §1.7 обновлён: запись о legacy переведена в §6 «История закрытий» с указанием спринта 08.
+- [ ] **Документация обновлена** — да.
+- [ ] **Тесты добавлены / обновлены** — `n/a` (удаление мёртвого кода).
+- [ ] `git status` чист.
+
+## 7. Этап 4. Регрессионный тест на длительность `/new`
+
+DoD задачи 03.1.1 «< 30 секунд на 50+ сообщений» был проверен вручную. Регрессии нет — оптимизации параллельного embedding могут регрессировать без сигнала.
+
+### Задача 4.1. Регрессионный тест `Archiver.archive` с бюджетом
+
+- **Статус:** ToDo
+- **Приоритет:** medium
+- **Объём:** S
+- **Зависит от:** —
+- **Связанные документы:** `_docs/commands.md` § `/new`, `_docs/architecture.md` §5, `_board/sprints/03-bugs-and-console.md` Задача 1.1.
+- **Затрагиваемые файлы:** `tests/services/test_archiver.py` (расширение), `app/services/archiver.py` (без правок, если уже устроен под тест).
+
+#### Описание
+
+1. Сгенерировать синтетическую сессию из 50 сообщений (через `ConversationStore` напрямую).
+2. Запустить `Archiver.archive` с **мок-LLM** (детерминированные эмбеддинги, мгновенная суммаризация).
+3. Проверить, что вызов завершается за разумный бюджет на мок-LLM (например, `< 2.0` секунд) — не «реальные 30», а **отсутствие неявных O(N²) / sleep'ов**.
+4. Тест маркируется `@pytest.mark.slow` и пропускается на CI, если в `pyproject.toml` есть соответствующий маркер (или включается флагом).
+
+#### Definition of Done
+
+- [ ] Тест проходит локально и в CI, добавлен маркер.
+- [ ] При искусственном замедлении (`asyncio.sleep(5)`) тест падает — sanity.
+- [ ] **Документация обновлена** — `_docs/testing.md` (упомянуть маркер `slow`, если ещё не описан).
+- [ ] **Тесты добавлены / обновлены** — да.
+- [ ] `git status` чист.
+
+## 8. Этап 5. Финальная документация
+
+### Задача 5.1. Обновить `current-state.md` и `roadmap.md`
+
+- **Статус:** ToDo
+- **Приоритет:** low
+- **Объём:** XS
+- **Зависит от:** Задача 1.1, Задача 2.1, Задача 3.1.
+- **Связанные документы:** `_docs/current-state.md`, `_docs/roadmap.md`.
+- **Затрагиваемые файлы:** `_docs/current-state.md`, `_docs/roadmap.md`.
+
+#### Описание
+
+1. В `_docs/current-state.md` §1 добавить запись про secure-by-default allowlist и персистентный `UserRepository`.
+2. В §3 (архитектурные нюансы) — пункт про smock-by-default безопасность tools.
+3. В §6 (история закрытий) — две записи про спринт 08.
+4. В `_docs/roadmap.md` — если есть пункт про hardening, пометить закрытым; иначе ничего не добавлять.
+
+#### Definition of Done
+
+- [ ] Документы актуализированы.
+- [ ] **Документация обновлена** — да.
+- [ ] **Тесты добавлены / обновлены** — `n/a`.
+- [ ] `git status` чист.
+
+## 9. Риски и смягчение
+
+| # | Риск | Смягчение |
+|---|------|-----------|
+| 1 | Смена дефолта `dangerous_tools_allowlist` сломает существующих пользователей (внезапно перестанут работать `http_request` / `read_*`). | Подсказка в логах при старте + явная запись в `_docs/current-state.md` §6; `.env.example` содержит закомментированную строку с готовой миграцией. |
+| 2 | SQLite-`UserRepository` создаст гонки на `data/memory.db` (соединение шарится с `SemanticMemory`, `DialogJournal`). | Все операции через единственное соединение `SemanticMemory`, как уже сделано для `DialogJournal` в спринте 06; запись — через `asyncio.to_thread`. |
+| 3 | Удаление миграционного кода `file_contexts` лишит существующих пользователей одноразовой миграции. | Проверить, что миграция уже отработала у всех известных установок (вопрос пользователю в `progress.txt`); оставить инструкцию в `_docs/current-state.md` §6. |
+| 4 | Bypass-тесты обнажат слепые зоны санитайзеров — соблазн расширять паттерны бесконечно. | DoD явно разрешает зафиксировать known-limitations в `_docs/security.md` вместо немедленного «закрытия всего». |
+| 5 | Регрессионный тест на `/new` будет flaky на CI из-за фоновых процессов. | Бюджет с запасом (например, 2.0s при ожидаемых 50–100ms на мок-LLM); маркер `slow`, опциональный запуск в CI. |
+
+## 10. Сводная таблица задач спринта
+
+| #   | Задача                                                | Приоритет | Объём | Статус | Зависит от        |
+|-----|-------------------------------------------------------|:---------:|:-----:|:------:|:-----------------:|
+| 1.1 | Secure-by-default `dangerous_tools_allowlist`         | high      | S     | ToDo   | —                 |
+| 1.2 | Bypass-тесты для `InputSanitizer` / `ResponseSanitizer` | high    | S     | ToDo   | —                 |
+| 2.1 | SQLite-реализация `UserRepository` с миграцией        | high      | M     | ToDo   | —                 |
+| 3.1 | Удалить миграционный код и legacy `file_contexts.db`  | medium    | S     | ToDo   | —                 |
+| 4.1 | Регрессионный тест `Archiver.archive` с бюджетом      | medium    | S     | ToDo   | —                 |
+| 5.1 | Обновить `current-state.md` и `roadmap.md`            | low       | XS    | ToDo   | 1.1, 2.1, 3.1     |
+
+> Обновляется при каждом переходе статуса и при добавлении/удалении задач.
+
+## 11. История изменений спринта
+
+- **2026-05-20** — файл спринта создан (статус `ToDo`, ветка ещё не открыта). Открытие — после закрытия спринта 07; см. `_board/process.md` §2 п.1.

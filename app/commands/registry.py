@@ -218,6 +218,38 @@ async def cmd_search_engines(ctx: "CommandContext") -> "CommandResult":
     return CommandResult(text="\n".join(lines))
 
 
+_MODE_VALUES = ("OFF", "NORMAL", "DEEP")
+
+
+async def cmd_mode(ctx: "CommandContext", arg: str) -> "CommandResult":
+    """Команда /mode [off|normal|deep] — показать или сменить режим рефлексии.
+
+    См. `_docs/multi-agent.md` и `_docs/commands.md` § `/mode`.
+    """
+    from app.commands.context import CommandResult
+
+    default_mode = ctx.settings.agent_reflection_mode
+    per_user = ctx.user_settings.get_reflection_mode(ctx.user_id)
+    effective = per_user or default_mode
+
+    if not arg:
+        text = (
+            f"Режим рефлексии: {effective}\n"
+            f"Доступно: off, normal, deep\n"
+            f"Дефолт сервера: {default_mode}\n"
+            "Смени командой: /mode <off|normal|deep>"
+        )
+        return CommandResult(text=text)
+
+    value = arg.strip().upper()
+    if value not in _MODE_VALUES:
+        return CommandResult(
+            text=f"Неизвестный режим. Доступно: {', '.join(v.lower() for v in _MODE_VALUES)}."
+        )
+    ctx.user_settings.set_reflection_mode(ctx.user_id, value)
+    return CommandResult(text=f"Режим рефлексии переключён на {value}.")
+
+
 async def cmd_search_engine(ctx: "CommandContext", arg: str) -> "CommandResult":
     """Команда /search_engine <name> — переключить активный поисковик."""
     from app.commands.context import CommandResult
@@ -243,6 +275,7 @@ class CommandRegistry:
             "search_engines": cmd_search_engines,
             "search_engine": cmd_search_engine,
             "prompt": cmd_prompt,
+            "mode": cmd_mode,
             "new": cmd_new,
             "reset": cmd_reset,
         }
@@ -273,7 +306,7 @@ class CommandRegistry:
         cmd_func = self._commands[command_name]
 
         # Команды с аргументами
-        if command_name in ("model", "prompt", "search_engine"):
+        if command_name in ("model", "prompt", "search_engine", "mode"):
             return await cmd_func(ctx, args)
         # Команда /new с progress_callback
         if command_name == "new":

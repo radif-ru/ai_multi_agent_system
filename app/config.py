@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -43,14 +43,16 @@ class Settings(BaseSettings):
     agent_max_output_chars: int = 12000
     agent_max_context_chars: int = 8000
 
+    # --- Multi-agent (Planner + Critic), см. _docs/multi-agent.md ---
+    # OFF — только Executor; NORMAL — один проход Critic; DEEP — итеративный Critic.
+    agent_reflection_mode: Literal["OFF", "NORMAL", "DEEP"] = "OFF"
+    # Верхняя граница итераций Critic в режиме DEEP.
+    agent_reflection_max_iterations: int = 2
+
     # --- Memory (in-memory) ---
     history_max_messages: int = 20
     history_summary_threshold: int = 10
     session_log_max_messages: int = 1000
-    summarization_prompt: str = (
-        "Кратко и точно резюмируй ключевые факты и решения из этого диалога "
-        "в 2–4 предложениях. Ответ — только текст резюме, без вступлений."
-    )
     summarizer_chunk_messages: int = 30
 
     # --- Memory (long-term) ---
@@ -62,7 +64,7 @@ class Settings(BaseSettings):
     session_bootstrap_top_k: int = 3
 
     # --- Prompts ---
-    agent_system_prompt_path: Path = Path("_prompts/agent_system.md")
+    agent_system_prompt_path: Path = Path("app/prompts/agent_system.md")
 
     # --- Logging ---
     log_level: str = "DEBUG"
@@ -118,6 +120,20 @@ class Settings(BaseSettings):
     def _parse_search_engines_csv(cls, v):
         if isinstance(v, str):
             return [x.strip() for x in v.split(",") if x.strip()]
+        return v
+
+    @field_validator("agent_reflection_mode", mode="before")
+    @classmethod
+    def _normalize_reflection_mode(cls, v):
+        if isinstance(v, str):
+            return v.strip().upper()
+        return v
+
+    @field_validator("agent_reflection_max_iterations")
+    @classmethod
+    def _check_reflection_max_iterations(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("AGENT_REFLECTION_MAX_ITERATIONS must be > 0")
         return v
 
     @field_validator("embedding_dimensions")

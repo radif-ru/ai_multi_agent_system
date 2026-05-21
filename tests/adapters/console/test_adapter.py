@@ -140,3 +140,24 @@ async def test_console_adapter_handle_command_exit(mock_components):
     # Команда /exit должна прервать цикл, но в тесте мы проверяем только обработку
     # В реальном REPL это приведёт к break
     await adapter._handle_command("/exit")
+
+
+@pytest.mark.asyncio
+async def test_console_adapter_handle_mode_command(mock_components):
+    """Команда /mode <value> в консоли пишет per-user override в UserSettingsRegistry.
+
+    Console-адаптер дёргает ту же `CommandRegistry`, что и Telegram, но регрессия
+    важна — без неё разъезд между адаптерами заметим только в проде.
+    """
+    from app.services.model_registry import UserSettingsRegistry
+
+    real_user_settings = UserSettingsRegistry(
+        default_model="qwen3.5:4b", default_search_engine="duckduckgo"
+    )
+    components = {**mock_components, "user_settings": real_user_settings}
+    components["settings"].agent_reflection_mode = "OFF"
+
+    adapter = ConsoleAdapter(user_id=-1, chat_id=-1, **components)
+    await adapter._handle_command("/mode deep")
+
+    assert real_user_settings.get_reflection_mode(-1) == "DEEP"

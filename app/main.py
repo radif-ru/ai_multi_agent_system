@@ -19,7 +19,9 @@ from aiogram.types import BotCommand
 from app.adapters.telegram.handlers.commands import build_commands_router
 from app.adapters.telegram.handlers.errors import build_errors_router
 from app.adapters.telegram.handlers.messages import build_messages_router
+from app.agents.critic import CriticAgent
 from app.agents.executor import Executor
+from app.agents.planner import PlannerAgent
 from app.config import Settings
 from app.core import orchestrator as _orchestrator  # импорт для DI/тестов
 from app.core.logging_config import setup_logging
@@ -58,6 +60,7 @@ _BOT_COMMANDS: list[BotCommand] = [
     BotCommand(command="models", description="Список моделей"),
     BotCommand(command="model", description="Выбрать модель"),
     BotCommand(command="prompt", description="Задать системный промпт"),
+    BotCommand(command="mode", description="Режим рефлексии (off/normal/deep)"),
     BotCommand(command="new", description="Архивировать и открыть новую сессию"),
     BotCommand(command="reset", description="Очистить контекст и сбросить настройки"),
 ]
@@ -81,6 +84,8 @@ class _Components:
     tools: ToolRegistry
     archiver: Archiver
     executor: Executor
+    planner: PlannerAgent
+    critic: CriticAgent
     users: UserRepository
     event_bus: EventBus
 
@@ -96,9 +101,10 @@ async def _build_components(settings: Settings) -> _Components:
         session_log_max_messages=settings.session_log_max_messages,
         journal_db_path=settings.memory_db_path,
     )
+    prompts = PromptLoader(settings.agent_system_prompt_path)
     summarizer = Summarizer(
         llm=llm,
-        system_prompt=settings.summarization_prompt,
+        system_prompt=prompts.summarizer_prompt,
         chunk_messages=settings.summarizer_chunk_messages,
     )
 
@@ -143,9 +149,8 @@ async def _build_components(settings: Settings) -> _Components:
     except Exception as exc:  # noqa: BLE001
         logger.error("ошибка инициализации FileIdMapper: %s", exc)
 
-    skills = SkillRegistry("_skills")
+    skills = SkillRegistry("app/skills")
     skills.load()
-    prompts = PromptLoader(settings.agent_system_prompt_path)
     user_settings = UserSettingsRegistry(
         default_model=settings.ollama_default_model,
         default_search_engine=settings.search_engine_default,
@@ -183,6 +188,8 @@ async def _build_components(settings: Settings) -> _Components:
         user_settings=user_settings,
         summarizer=summarizer,
     )
+    planner = PlannerAgent(llm=llm, prompts=prompts, settings=settings)
+    critic = CriticAgent(llm=llm, prompts=prompts, settings=settings)
     event_bus = EventBus()
     users = UserRepository(event_bus=event_bus)
     archiver = Archiver(
@@ -256,6 +263,8 @@ async def _build_components(settings: Settings) -> _Components:
         tools=tools,
         archiver=archiver,
         executor=executor,
+        planner=planner,
+        critic=critic,
         users=users,
         event_bus=event_bus,
     )
@@ -289,6 +298,8 @@ def _wire_telegram(c: _Components) -> tuple[Bot, Dispatcher]:
             executor=c.executor,
             llm=c.llm,
             semantic_memory=c.semantic_memory,
+            planner=c.planner,
+            critic=c.critic,
         )
     )
     dispatcher.include_router(build_errors_router())

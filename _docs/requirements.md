@@ -52,10 +52,10 @@
 
 | ID    | Требование |
 |-------|------------|
-| FR-25 | Каталог `_skills/<name>/SKILL.md`. Первая строка `SKILL.md` — `Description: <одна фраза>`, остальное — markdown-инструкция. См. `skills.md`. |
+| FR-25 | Каталог `app/skills/<name>/SKILL.md`. Первая строка `SKILL.md` — `Description: <одна фраза>`, остальное — markdown-инструкция. См. `skills.md`. |
 | FR-26 | В системный промпт агента инжектируется список доступных скиллов в формате `- <name>: <description>` (только первая строка каждого `SKILL.md`). |
 | FR-27 | Tool `load_skill(name)` читает соответствующий `SKILL.md` и возвращает агенту его содержимое (без первой строки) как `observation`. |
-| FR-28 | Системный промпт агента и промпт суммаризации хранятся в `_prompts/` как markdown-файлы; путь главного промпта задаётся через `AGENT_SYSTEM_PROMPT_PATH` в `.env`. См. `prompts.md`. |
+| FR-28 | Системный промпт агента и промпт суммаризации хранятся в `app/prompts/` как markdown-файлы; путь главного промпта задаётся через `AGENT_SYSTEM_PROMPT_PATH` в `.env`. См. `prompts.md`. |
 
 ### 1.6 Конфигурация и логирование
 
@@ -129,8 +129,8 @@
 | FR-20, FR-24 | `app/tools/memory_search.py` + `app/services/memory.py` |
 | FR-21 | `app/services/conversation.py::ConversationStore` + `app/services/summarizer.py::Summarizer` (in-memory порог) |
 | FR-22, FR-23 | `app/services/memory.py::SemanticMemory` (`sqlite-vec`) + `app/services/archiver.py` (вызов на `/new`) |
-| FR-25..FR-27 | `app/services/skills.py::SkillRegistry` (читает `_skills/`); tool `load_skill` в `app/tools/load_skill.py` |
-| FR-28 | `app/services/prompts.py::PromptLoader` (читает `_prompts/`); инжекция в системный промпт агента |
+| FR-25..FR-27 | `app/services/skills.py::SkillRegistry` (читает `app/skills/`); tool `load_skill` в `app/tools/load_skill.py` |
+| FR-28 | `app/services/prompts.py::PromptLoader` (читает `app/prompts/`); инжекция в системный промпт агента |
 | FR-29..FR-31 | `app/config.py`, `.env.example`, `.gitignore`, корневой `README.md` |
 | FR-32, FR-33 | `app/services/llm.py` + `app/middlewares/logging_mw.py` |
 | FR-34..FR-39 | `app/adapters/telegram/files.py`, `app/tools/read_document.py`, `app/services/transcribe.py`, `app/services/vision.py`, `app/adapters/telegram/handlers/messages.py` (Document/Voice/Photo handlers) |

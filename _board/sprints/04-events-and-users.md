@@ -3,7 +3,7 @@
 - **Источник:** ТЗ пользователя «Эволюция архитектуры приложения»
 - **Ветка:** `feature/04-events-and-users` (от `main`; см. `process.md` §2, п.2).
 - **Открыт:** 2026-05-05
-- **Закрыт:** —
+- **Закрыт:** 2026-05-06
 
 ## 1. Цель спринта
 
@@ -325,6 +325,10 @@ In-memory шина с async pub/sub. Фундаментальное событи
 - **2026-05-05** — закрыта задача 2.2: добавлена публикация событий UserCreated (в UserRepository), MessageReceived и ResponseGenerated (в хендлерах Telegram и консоли), EventBus интегрирован в DI (main.py, console_main.py), обновлена документация _docs/events.md с контрактами событий.
 - **2026-05-05** — закрыта задача 2.3: создан conversation_subscriber.py с подписчиками MessageReceived и ResponseGenerated для записи в ConversationStore, подписчики зарегистрированы в main.py и console_main.py, удалены прямые вызовы add_user_message/add_assistant_message из хендлеров Telegram и консоли, обновлена документация _docs/events.md, обновлены тесты для работы с новой архитектурой.
 - **2026-05-05** — закрыта задача 2.4: создан summarizer_subscriber.py с подписчиком on_response_generated_summarize для in-session суммаризации, подписчик зарегистрирован в main.py и console_main.py после conversation_subscriber, удалены прямые вызовы summarizer.summarize из хендлеров Telegram и консоли, добавлены unit-тесты, обновлена документация _docs/memory.md §2.5.
+- **2026-05-06** — закрыта задача 3.1: `Archiver` принимает `EventBus` опциональным параметром и публикует `ConversationArchived(user, conversation_id, chunks, channel)` ровно один раз в конце успешного `archive`; при ошибке событие не публикуется; контракт `Archiver.archive` сохранён.
+- **2026-05-06** — закрыта задача 3.2: `_cleanup_tmp_images` вынесен в подписчика `on_conversation_archived_cleanup` (`app/services/tmp_cleanup.py`); регистрация подписчика — в `app/main.py`/`app/console_main.py`; из `cmd_new` прямой вызов очистки удалён; обновлены `_docs/architecture.md` §6.4 и `_docs/commands.md`.
+- **2026-05-06** — закрыта задача 4.1: финальная ревизия документации — `_docs/events.md` дополнен таблицей «кто публикует / кто подписан», `_docs/architecture.md` §1/§4/§5 синхронизированы с шиной и `UserRepository`, `_docs/current-state.md` §1 пополнен записями про модуль Users и `EventBus`, `_docs/roadmap.md` помечен в части событийной модели, `_board/plan.md` подготовлен к переводу спринта в «Закрытые».
+- **2026-05-06** — спринт закрыт (см. `_board/plan.md` § «Закрытые»).
 - **2026-05-05** — закрыта задача 3.1: добавлено событие ConversationArchived в events.py, Archiver принимает EventBus опциональным параметром и публикует событие при успешном архивировании, добавлены поля user и channel в CommandContext, обновлены точки входа (main.py, console_main.py) и хендлеры для передачи user/channel в archiver.archive(), добавлены unit-тесты для проверки публикации события, обновлена документация _docs/memory.md.
 - **2026-05-05** — закрыта задача 3.2: создан tmp_cleanup.py с функцией _cleanup_tmp_images и подписчиком on_conversation_archived_cleanup для очистки старых изображений при успешном архивировании, подписчик зарегистрирован в main.py и console_main.py, добавлены unit-тесты, обновлена документация _docs/events.md с информацией о подписчике.
 - **2026-05-05** — закрыта задача 4.1: обновлена документация _docs/events.md (сводная таблица событий и подписчиков), _docs/architecture.md (EventBus и UserRepository в схеме, события в потоках), _docs/current-state.md (записи о Users и EventBus, порядок подписчиков), _docs/roadmap.md (этап 6.5), _docs/agent-loop.md и _docs/memory.md (обновление упоминаний на событийную архитектуру), обновлён _board/plan.md (спринт 04 в Активные, перенумерация запланированных).

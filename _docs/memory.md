@@ -175,7 +175,7 @@ ConversationStore                       Executor.run
 ```
 история сессии        +- Summarizer.summarize ----------+
 [{role,content}, ...] |  (Ollama chat с системным       |  -> резюме (одна строка)
-                       +- _prompts/summarizer.md)        |
+                       +- app/prompts/summarizer.md)        |
                                                           |
                        +- chunk(summary,                  |
                        |   size=MEMORY_CHUNK_SIZE,        |  -> [chunk_1, chunk_2, ...]
@@ -385,7 +385,7 @@ CREATE INDEX IF NOT EXISTS ix_journal_message  ON dialog_journal(user_id, messag
 ## 5. Что НЕ хранится (по дизайну)
 
 - **Сырые сообщения диалога в `memory_chunks`** — туда идут только саммари при `/new` или фоновом восстановлении (CON-1). Полный диалог временно хранится в `dialog_journal` до архивации.
-- **Системные промпты** — они в `_prompts/`, не в БД.
+- **Системные промпты** — они в `app/prompts/`, не в БД.
 - **Вызовы tools и observations** — они в логах, не в архивной памяти.
 - **Учётные записи Telegram / профили пользователей** — для MVP не нужны (`user_id` Telegram достаточно как ключ).
 

@@ -75,16 +75,17 @@
 | `SEARCH_ENGINES_AVAILABLE`  | Список доступных поисковиков через запятую.                      | `duckduckgo`              |
 | `AGENT_MAX_STEPS`           | Лимит шагов агентного цикла.                                     | `10`                      |
 | `AGENT_MAX_OUTPUT_CHARS`    | Лимит размера ответа модели за один шаг (защита от мусора).     | `8000`                    |
+| `AGENT_REFLECTION_MODE`     | Режим multi-agent рефлексии (`OFF\|NORMAL\|DEEP`), см. `_docs/multi-agent.md`. | `OFF`     |
+| `AGENT_REFLECTION_MAX_ITERATIONS` | Верхняя граница итераций Critic в режиме `DEEP`.          | `2`                       |
 | `HISTORY_MAX_MESSAGES`      | Жёсткий лимит сообщений in-memory истории на пользователя.       | `20`                      |
 | `HISTORY_SUMMARY_THRESHOLD` | Порог in-session суммаризации (`> 0`, `<= HISTORY_MAX_MESSAGES`).| `10`                      |
-| `SUMMARIZATION_PROMPT`      | System prompt для in-memory суммаризации.                        | (см. `.env.example`)      |
 | `MEMORY_DB_PATH`            | Путь к `.db`-файлу с `sqlite-vec`. Каталог создаётся автоматически. | `data/memory.db`        |
 | `MEMORY_CHUNK_SIZE`         | Размер чанка саммари при `/new`, символы.                        | `1500`                    |
 | `MEMORY_CHUNK_OVERLAP`      | Перекрытие соседних чанков, символы.                             | `150`                     |
 | `MEMORY_SEARCH_TOP_K`       | Сколько чанков возвращать tool'ом `memory_search`.               | `5`                       |
 | `SESSION_BOOTSTRAP_ENABLED` | Авто-подгрузка архива в первый ход новой сессии (см. `_docs/memory.md` §3.6). | `true`         |
 | `SESSION_BOOTSTRAP_TOP_K`   | Сколько чанков подмешивать при авто-подгрузке.                   | `3`                       |
-| `AGENT_SYSTEM_PROMPT_PATH`  | Путь к markdown-файлу системного промпта агента.                 | `_prompts/agent_system.md`|
+| `AGENT_SYSTEM_PROMPT_PATH`  | Путь к markdown-файлу системного промпта агента.                 | `app/prompts/agent_system.md`|
 | `LOG_LEVEL`                 | Уровень логов (`DEBUG\|INFO\|WARNING\|ERROR`).                   | `DEBUG`                   |
 | `LOG_FILE`                  | Путь к файлу логов.                                              | `logs/agent.log`          |
 | `LOG_LLM_CONTEXT`           | Логировать полный JSON контекста перед LLM-запросом.             | `true`                    |

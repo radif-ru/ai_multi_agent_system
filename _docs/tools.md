@@ -152,7 +152,7 @@ class ToolRegistry:
 
 ### 4.6 `load_skill`
 
-- **Описание:** Загрузить полный текст скилла по имени из `_skills/`.
+- **Описание:** Загрузить полный текст скилла по имени из `app/skills/`.
 - **Args:** `{"name": "<строка>"}`.
 - **Return:** содержимое `SKILL.md` без первой строки (которая `Description: ...` уже инжектирована в промпт).
 - **Реализация:** `ctx.skills.get_body(name)`. Если скилла нет — `ToolError("skill not found: <name>")`.
@@ -204,11 +204,11 @@ class ToolRegistry:
 
 ## 6. Что НЕ tool, а skill
 
-Если задача — *«как именно решать класс задач»* (последовательность мыслей, шаблон формата, набор правил), это **skill**, а не tool. Skill живёт в `_skills/<name>/SKILL.md`, его агент подгружает через tool `load_skill`. См. `skills.md` §1 «Когда tool, а когда skill».
+Если задача — *«как именно решать класс задач»* (последовательность мыслей, шаблон формата, набор правил), это **skill**, а не tool. Skill живёт в `app/skills/<name>/SKILL.md`, его агент подгружает через tool `load_skill`. См. `skills.md` §1 «Когда tool, а когда skill».
 
 ## 7. Безопасность
 
-Все tools в MVP — **локальные**: `calculator`, `read_file` (whitelist каталогов), `http_request` (без bearer-токенов / cookies), `web_search` (только DuckDuckGo), `memory_search` (свой `.db`), `load_skill` (только `_skills/`).
+Все tools в MVP — **локальные**: `calculator`, `read_file` (whitelist каталогов), `http_request` (без bearer-токенов / cookies), `web_search` (только DuckDuckGo), `memory_search` (свой `.db`), `load_skill` (только `app/skills/`).
 
 В будущих спринтах появятся tools, требующие настоящего sandboxing'а (например, выполнение shell-команд, чтение из произвольного места ФС, запись в БД). Они будут идти отдельным контрактом `SandboxedTool` (см. `roadmap.md` Этап 11).
 

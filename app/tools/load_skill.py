@@ -1,4 +1,4 @@
-"""Tool `load_skill` — загрузка тела скилла из `_skills/`.
+"""Tool `load_skill` — загрузка тела скилла из `app/skills/`.
 
 См. `_docs/tools.md` §4.6 и `_docs/skills.md` §4.
 
@@ -17,7 +17,7 @@ from app.tools.errors import ToolError
 class LoadSkillTool(Tool):
     name = "load_skill"
     description = (
-        "Загрузить полный текст скилла по имени из `_skills/` "
+        "Загрузить полный текст скилла по имени из `app/skills/` "
         "(без первой строки `Description:`)."
     )
     args_schema: Mapping[str, Any] = {

@@ -13,7 +13,7 @@ from app.core.logging_config import JsonFormatter, SERVICE_NAME, setup_logging
 from app.utils.tracing import bind_trace_id, bind_user_id, reset_trace_id, reset_user_id
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_PROMPT = REPO_ROOT / "_prompts" / "agent_system.md"
+DEFAULT_PROMPT = REPO_ROOT / "app" / "prompts" / "agent_system.md"
 
 
 @pytest.fixture

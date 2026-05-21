@@ -168,6 +168,25 @@ def build_command_handlers(
         result = await registry.execute("search_engine", ctx, args=arg)
         await message.answer(result.text)
 
+    async def cmd_mode(message: Message, command: CommandObject) -> None:
+        user_id = _user_id(message)
+        chat_id = message.chat.id if message.chat is not None else user_id
+        ctx = _build_context(
+            user_id=user_id,
+            chat_id=chat_id,
+            settings=settings,
+            user_settings=user_settings,
+            prompts=prompts,
+            tools=tools,
+            skills=skills,
+            conversations=conversations,
+            archiver=archiver,
+            users=users,
+        )
+        arg = (command.args or "").strip()
+        result = await registry.execute("mode", ctx, args=arg)
+        await message.answer(result.text)
+
     async def cmd_prompt(message: Message, command: CommandObject) -> None:
         user_id = _user_id(message)
         chat_id = message.chat.id if message.chat is not None else user_id
@@ -268,6 +287,7 @@ def build_command_handlers(
         "search_engines": cmd_search_engines,
         "search_engine": cmd_search_engine,
         "prompt": cmd_prompt,
+        "mode": cmd_mode,
         "new": cmd_new,
         "reset": cmd_reset,
     }
@@ -312,6 +332,7 @@ def build_commands_router(
     router.message.register(handlers["search_engines"], Command("search_engines"))
     router.message.register(handlers["search_engine"], Command("search_engine"))
     router.message.register(handlers["prompt"], Command("prompt"))
+    router.message.register(handlers["mode"], Command("mode"))
     router.message.register(handlers["new"], Command("new"))
     router.message.register(handlers["reset"], Command("reset"))
     return router

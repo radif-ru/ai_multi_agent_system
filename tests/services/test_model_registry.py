@@ -88,3 +88,33 @@ def test_reset_clears_search_engine(reg: UserSettingsRegistry) -> None:
     reg.set_search_engine(42, "brave")
     reg.reset(42)
     assert reg.get_search_engine(42) == "duckduckgo"
+
+
+# --- Per-user reflection_mode, задача 1.1 спринта 07 ---
+
+
+def test_get_reflection_mode_none_by_default(reg: UserSettingsRegistry) -> None:
+    assert reg.get_reflection_mode(42) is None
+
+
+def test_set_and_get_reflection_mode(reg: UserSettingsRegistry) -> None:
+    reg.set_reflection_mode(42, "DEEP")
+    assert reg.get_reflection_mode(42) == "DEEP"
+    assert reg.get_reflection_mode(7) is None
+
+
+def test_reset_reflection_mode_returns_to_default(reg: UserSettingsRegistry) -> None:
+    reg.set_reflection_mode(42, "NORMAL")
+    reg.reset_reflection_mode(42)
+    assert reg.get_reflection_mode(42) is None
+
+
+def test_reset_reflection_mode_unknown_user_is_noop(reg: UserSettingsRegistry) -> None:
+    reg.reset_reflection_mode(999)
+    assert reg.get_reflection_mode(999) is None
+
+
+def test_full_reset_clears_reflection_mode(reg: UserSettingsRegistry) -> None:
+    reg.set_reflection_mode(42, "DEEP")
+    reg.reset(42)
+    assert reg.get_reflection_mode(42) is None

@@ -7,7 +7,7 @@ AI-агент с локальной LLM (Ollama), работающий в цик
 - Корневой `README.md` — пользовательское описание проекта (что это, как установить, какие команды).
 - `AGENTS.md` — поведенческие гайдлайны LLM-агента (общие, не проектные).
 - Документы в этой папке — формализация фактического состояния кода в `app/` на момент написания. **При расхождении с кодом приоритет у кода**, документ должен быть подправлен следующим коммитом.
-- `_skills/` и `_prompts/` — содержательные артефакты, которые подмешиваются в системный промпт агента в рантайме (см. `skills.md`, `prompts.md`).
+- `app/skills/` и `app/prompts/` — содержательные артефакты, которые подмешиваются в системный промпт агента в рантайме (см. `skills.md`, `prompts.md`).
 
 ## Навигация
 
@@ -22,11 +22,12 @@ AI-агент с локальной LLM (Ollama), работающий в цик
 
 - [`architecture.md`](./architecture.md) — компоненты, поток данных, агентный цикл, обработка ошибок, точки расширения под мульти-агент.
 - [`agent-loop.md`](./agent-loop.md) — формат JSON-ответа модели (`{thought, action, args}` / `{final_answer}`), правила цикла, лимиты, защита от зацикливания.
+- [`multi-agent.md`](./multi-agent.md) — мульти-агентная надстройка над Executor (Planner + Critic), режимы рефлексии `OFF | NORMAL | DEEP`, JSON-протоколы, fallback'ы, команда `/mode`.
 - [`memory.md`](./memory.md) — краткосрочная in-memory история и долгосрочная семантическая память на `sqlite-vec` (RAG), сценарий `/new`, журнал диалога `dialog_journal`.
 - [`events.md`](./events.md) — событийная шина (`EventBus`), типы событий (`UserCreated`, `MessageReceived`, `ResponseGenerated`, `ConversationArchived`), подписчики.
 - [`tools.md`](./tools.md) — реестр tools, контракт нового инструмента, текущий набор (calculator, read_file, http_request, web_search, memory_search, load_skill).
-- [`skills.md`](./skills.md) — формат `_skills/<name>/SKILL.md`, как агент решает их подгрузить, как описание инжектится в промпт.
-- [`prompts.md`](./prompts.md) — формат `_prompts/`, как файлы прокидываются через `.env`-пути.
+- [`skills.md`](./skills.md) — формат `app/skills/<name>/SKILL.md`, как агент решает их подгрузить, как описание инжектится в промпт.
+- [`prompts.md`](./prompts.md) — формат `app/prompts/`, как файлы прокидываются через `.env`-пути.
 - [`security.md`](./security.md) — `InputSanitizer`, `FileIdMapper`, `ResponseSanitizer`, allowlist для опасных tools.
 - [`stack.md`](./stack.md) — стек, версии, зависимости, переменные окружения, локальные требования.
 - [`project-structure.md`](./project-structure.md) — структура репозитория, назначение модулей, правила размещения файлов.
@@ -57,12 +58,12 @@ AI-агент с локальной LLM (Ollama), работающий в цик
 - `_board/` — процесс и текущие задачи (что делаем сейчас).
 - Точка входа для нового LLM-агента: `AGENTS.md` → `_docs/README.md` → `_board/README.md` → `_board/plan.md` → `_board/sprints/<active>.md` → `_board/process.md`.
 
-## Связь с `_skills/` и `_prompts/`
+## Связь с `app/skills/` и `app/prompts/`
 
 - `_docs/skills.md` — описывает **формат** скилла и как он инжектится в промпт.
-- `_skills/<name>/SKILL.md` — содержит **сам скилл** (markdown с инструкциями для агента).
+- `app/skills/<name>/SKILL.md` — содержит **сам скилл** (markdown с инструкциями для агента).
 - `_docs/prompts.md` — описывает **формат** системных промптов и их роль в цикле.
-- `_prompts/agent_system.md`, `_prompts/summarizer.md` — содержат **сами промпты**.
+- `app/prompts/agent_system.md`, `app/prompts/summarizer.md` — содержат **сами промпты**.
 
 ## Язык документации
 

@@ -165,3 +165,138 @@ def _parse_action(payload: dict[str, Any]) -> AgentDecision:
         return AgentDecision(kind="final", final_answer=thought)
 
     return AgentDecision(kind="action", thought=thought, action=action, args=args)
+
+
+# --------------------------------------------------------------------------
+# Multi-agent контракты (Planner / Critic). См. _docs/multi-agent.md.
+# --------------------------------------------------------------------------
+
+# Жёсткие лимиты плана — синхронизированы с `app/prompts/planner.md`
+# (см. задачу 2.1 спринта 07).
+PLAN_MIN_STEPS = 1
+PLAN_MAX_STEPS = 6
+PLAN_STEP_DESCRIPTION_MAX_CHARS = 200
+
+CriticVerdictLiteral = Literal["PASS", "REVISE"]
+
+
+@dataclass(frozen=True)
+class PlanStep:
+    """Один шаг линейного плана Planner'а."""
+
+    id: int
+    description: str
+
+
+@dataclass(frozen=True)
+class Plan:
+    """Линейный план шагов задачи (возврат Planner)."""
+
+    steps: tuple[PlanStep, ...]
+
+
+@dataclass(frozen=True)
+class CriticVerdict:
+    """Вердикт Critic'а по draft-ответу Executor'а."""
+
+    verdict: CriticVerdictLiteral
+    feedback: str
+
+
+def parse_planner_response(text: str) -> Plan:
+    """Распарсить JSON-ответ Planner'а в `Plan`.
+
+    Толерантен к markdown-fence обёртке (```json ... ```). Любые отклонения
+    от контракта нормализуются в `LLMBadResponse` (см. `_docs/multi-agent.md`).
+
+    Ожидаемый формат:
+        {"steps": [{"id": 1, "description": "..."}, {"id": 2, "description": "..."}]}
+    """
+
+    text = _strip_code_fence(text)
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise LLMBadResponse(f"planner: invalid JSON: {exc}") from exc
+
+    if not isinstance(payload, dict):
+        raise LLMBadResponse(
+            f"planner: expected JSON object, got {type(payload).__name__}"
+        )
+
+    raw_steps = payload.get("steps")
+    if not isinstance(raw_steps, list):
+        raise LLMBadResponse("planner: 'steps' must be a list")
+    if not (PLAN_MIN_STEPS <= len(raw_steps) <= PLAN_MAX_STEPS):
+        raise LLMBadResponse(
+            f"planner: 'steps' length must be in [{PLAN_MIN_STEPS}, {PLAN_MAX_STEPS}], "
+            f"got {len(raw_steps)}"
+        )
+
+    steps: list[PlanStep] = []
+    for idx, item in enumerate(raw_steps, start=1):
+        if not isinstance(item, dict):
+            raise LLMBadResponse(
+                f"planner: step #{idx} must be an object, got {type(item).__name__}"
+            )
+        step_id = item.get("id")
+        description = item.get("description")
+        if not isinstance(step_id, int) or isinstance(step_id, bool):
+            raise LLMBadResponse(
+                f"planner: step #{idx} 'id' must be an int, got {type(step_id).__name__}"
+            )
+        if not isinstance(description, str) or not description.strip():
+            raise LLMBadResponse(
+                f"planner: step #{idx} 'description' must be a non-empty string"
+            )
+        if len(description) > PLAN_STEP_DESCRIPTION_MAX_CHARS:
+            raise LLMBadResponse(
+                f"planner: step #{idx} 'description' exceeds "
+                f"{PLAN_STEP_DESCRIPTION_MAX_CHARS} chars"
+            )
+        steps.append(PlanStep(id=step_id, description=description))
+
+    return Plan(steps=tuple(steps))
+
+
+def parse_critic_response(text: str) -> CriticVerdict:
+    """Распарсить JSON-ответ Critic'а в `CriticVerdict`.
+
+    Толерантен к markdown-fence. Любые отклонения от контракта — `LLMBadResponse`.
+
+    Ожидаемый формат:
+        {"verdict": "PASS"|"REVISE", "feedback": "..."}
+    """
+
+    text = _strip_code_fence(text)
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise LLMBadResponse(f"critic: invalid JSON: {exc}") from exc
+
+    if not isinstance(payload, dict):
+        raise LLMBadResponse(
+            f"critic: expected JSON object, got {type(payload).__name__}"
+        )
+
+    verdict = payload.get("verdict")
+    if not isinstance(verdict, str):
+        raise LLMBadResponse("critic: 'verdict' must be a string")
+    verdict_norm = verdict.strip().upper()
+    if verdict_norm not in ("PASS", "REVISE"):
+        raise LLMBadResponse(
+            f"critic: 'verdict' must be 'PASS' or 'REVISE', got {verdict!r}"
+        )
+
+    feedback = payload.get("feedback", "")
+    if feedback is None:
+        feedback = ""
+    if not isinstance(feedback, str):
+        raise LLMBadResponse(
+            f"critic: 'feedback' must be a string, got {type(feedback).__name__}"
+        )
+
+    if verdict_norm == "REVISE" and not feedback.strip():
+        raise LLMBadResponse("critic: 'feedback' is required when verdict is REVISE")
+
+    return CriticVerdict(verdict=verdict_norm, feedback=feedback)

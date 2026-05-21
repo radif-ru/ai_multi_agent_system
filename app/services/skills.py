@@ -1,8 +1,8 @@
-"""SkillRegistry — сканирование `_skills/` и парсинг `SKILL.md`.
+"""SkillRegistry — сканирование `app/skills/` и парсинг `SKILL.md`.
 
 См. `_docs/skills.md` §3 (формат) и §4 (как агент использует).
 
-Каждая подпапка `_skills/<name>/` с файлом `SKILL.md` — отдельный скилл.
+Каждая подпапка `app/skills/<name>/` с файлом `SKILL.md` — отдельный скилл.
 Поддерживаются два формата:
 1. Legacy: первая строка `Description: <текст>`
 2. YAML frontmatter: `---\ndescription: ...\n---`

@@ -18,10 +18,11 @@ ai-multi-agent-system/
 │   ├── requirements.md       # FR / NFR / CON / ASM
 │   ├── architecture.md       # компоненты, поток данных, мульти-агент в перспективе
 │   ├── agent-loop.md         # формат JSON ответа модели и правила цикла
+│   ├── multi-agent.md        # Planner + Critic поверх Executor, режимы рефлексии
 │   ├── memory.md             # краткосрочная и долгосрочная память (sqlite-vec)
 │   ├── tools.md              # реестр инструментов и контракт нового tool
-│   ├── skills.md             # формат _skills/ и как агент их использует
-│   ├── prompts.md            # формат _prompts/ и плейсхолдеры
+│   ├── skills.md             # формат app/skills/ и как агент их использует
+│   ├── prompts.md            # формат app/prompts/ и плейсхолдеры
 │   ├── stack.md              # версии, зависимости, переменные окружения
 │   ├── instructions.md       # правила разработки (стиль, git, async, тесты)
 │   ├── project-structure.md  # этот файл
@@ -39,12 +40,12 @@ ai-multi-agent-system/
 │       ├── 00-bootstrap.md
 │       └── 01-mvp-agent.md
 │
-├── _skills/                  # markdown-скиллы для агента (по одной подпапке на скилл)
+├── app/skills/                  # markdown-скиллы для агента (по одной подпапке на скилл)
 │   ├── README.md             # формат и шаблон SKILL.md
 │   └── <skill-name>/
 │       └── SKILL.md          # первая строка `Description: ...`, далее markdown-инструкция
 │
-├── _prompts/                 # системные промпты в markdown
+├── app/prompts/                 # системные промпты в markdown
 │   ├── README.md             # роль каждого файла, как меняется через .env
 │   ├── agent_system.md       # главный промпт агентного цикла (с {{TOOLS_DESCRIPTION}}, {{SKILLS_DESCRIPTION}})
 │   └── summarizer.md         # промпт для in-memory суммаризации и архивирования
@@ -96,8 +97,8 @@ ai-multi-agent-system/
 │   │   ├── summarizer.py     # Summarizer: сжатие истории через LLM
 │   │   ├── memory.py         # SemanticMemory: sqlite-vec обёртка (init/insert/search)
 │   │   ├── archiver.py       # Archiver: оркестратор /new (summary → chunk → embed → insert)
-│   │   ├── skills.py         # SkillRegistry: парсинг _skills/, описания и тела
-│   │   ├── prompts.py        # PromptLoader: чтение _prompts/, подстановка плейсхолдеров
+│   │   ├── skills.py         # SkillRegistry: парсинг app/skills/, описания и тела
+│   │   ├── prompts.py        # PromptLoader: чтение app/prompts/, подстановка плейсхолдеров
 │   │   ├── model_registry.py # UserSettingsRegistry: per-user model + system_prompt
 │   │   ├── transcribe.py     # Transcriber: обёртка над faster-whisper для транскрипции речи
 │   │   ├── vision.py         # Vision: обёртка над OllamaClient.chat с поддержкой images
@@ -169,8 +170,8 @@ ai-multi-agent-system/
     │   ├── test_summarizer.py
     │   ├── test_memory.py
     │   ├── test_archiver.py
-    │   ├── test_skills.py
-    │   ├── test_prompts.py
+    │   ├── testpp/skills.py
+    │   ├── testpp/prompts.py
     │   └── test_model_registry.py
     ├── security/
     │   ├── __init__.py
@@ -202,9 +203,9 @@ ai-multi-agent-system/
 | `_board/plan.md` | Индекс спринтов (активные, закрытые, запланированные). Сами задачи — в `sprints/<NN>-<short-name>.md`. |
 | `_board/sprints/` | Каталог файлов спринтов (по одному на спринт); история сохраняется. |
 | `_board/process.md` | Свод правил процесса: легенды, правила спринтов и задач, шаблоны, пошаговый алгоритм (§1–§12). |
-| `_skills/*/SKILL.md` | Markdown-инструкции для агента (по одной подпапке на скилл; первая строка — `Description: ...`). |
-| `_prompts/agent_system.md` | Главный системный промпт цикла, с плейсхолдерами `{{TOOLS_DESCRIPTION}}` / `{{SKILLS_DESCRIPTION}}`. |
-| `_prompts/summarizer.md` | Промпт для in-memory суммаризации и для `/new`-архивирования. |
+| `app/skills/*/SKILL.md` | Markdown-инструкции для агента (по одной подпапке на скилл; первая строка — `Description: ...`). |
+| `app/prompts/agent_system.md` | Главный системный промпт цикла, с плейсхолдерами `{{TOOLS_DESCRIPTION}}` / `{{SKILLS_DESCRIPTION}}`. |
+| `app/prompts/summarizer.md` | Промпт для in-memory суммаризации и для `/new`-архивирования. |
 | `data/` | Runtime-данные (БД `sqlite-vec`); путь по умолчанию для `MEMORY_DB_PATH`. В `.gitignore`. |
 | `app/__main__.py` | Запуск `asyncio.run(main())`. |
 | `app/main.py` | Собирает все сервисы, `Bot`, `Dispatcher`, регистрирует роутеры/middleware, стартует polling. |
@@ -226,8 +227,8 @@ ai-multi-agent-system/
 | `app/services/summarizer.py` | `Summarizer`: тонкая обёртка над `OllamaClient.chat`. Используется и для in-session порога, и для `/new`. |
 | `app/services/memory.py` | `SemanticMemory`: обёртка над `sqlite3 + sqlite_vec.load`; `init`, `insert`, `search`. |
 | `app/services/archiver.py` | `Archiver`: оркестратор `/new` (см. `memory.md` §3.3). |
-| `app/services/skills.py` | `SkillRegistry`: парсинг `_skills/`, `list_descriptions`, `get_body`. |
-| `app/services/prompts.py` | `PromptLoader`: чтение `_prompts/`, подстановка плейсхолдеров. |
+| `app/services/skills.py` | `SkillRegistry`: парсинг `app/skills/`, `list_descriptions`, `get_body`. |
+| `app/services/prompts.py` | `PromptLoader`: чтение `app/prompts/`, подстановка плейсхолдеров. |
 | `app/services/model_registry.py` | `UserSettingsRegistry`: per-user активная модель + system_prompt (in-memory). |
 | `app/services/transcribe.py` | `Transcriber`: обёртка над faster-whisper для транскрипции голосовых сообщений. |
 | `app/services/vision.py` | `Vision`: обёртка над OllamaClient.chat с поддержкой параметра `images`. |
@@ -253,7 +254,7 @@ ai-multi-agent-system/
 
 - **Слои не протекают**: handler не знает про HTTP / sqlite, агентный цикл не знает про aiogram, tool не знает про LLM. Все зависимости — через DI (передача в конструктор / `ToolContext`).
 - **Один tool — один файл.** `app/tools/<name>.py` для каждого инструмента.
-- **Один skill — одна подпапка.** `_skills/<name>/SKILL.md`.
+- **Один skill — одна подпапка.** `app/skills/<name>/SKILL.md`.
 - **DI через aiogram `workflow_data`**: `dp["settings"]`, `dp["llm"]`, `dp["registry"]`, `dp["conversation"]`, `dp["summarizer"]`, `dp["memory"]`, `dp["archiver"]`, `dp["skills"]`, `dp["prompts"]`, `dp["tools"]`, `dp["executor"]`. Хендлеры получают их через параметры (aiogram 3 умеет инжектить по имени).
 - **Тесты рядом с тем, что тестируют**: `tests/services/` зеркалит `app/services/`, `tests/tools/` — `app/tools/`, и т. д.
 - **Адаптеры изолированы**: при добавлении web/MAX в `app/adapters/<channel>/` корневая структура не меняется, только подкаталог; единая точка входа — `core/orchestrator.py::handle_user_task`.

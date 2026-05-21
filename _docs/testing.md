@@ -107,7 +107,7 @@ addopts = "-ra -q"
 - Падение `Summarizer` → `Archiver` бросает понятную ошибку, **не** очищает store.
 - Падение `embed` на втором чанке → транзакция откатывается (если решим использовать транзакции; иначе — все ранее вставленные чанки помечаются для отката).
 
-### 3.9 Unit — `SkillRegistry` (`tests/services/test_skills.py`)
+### 3.9 Unit — `SkillRegistry` (`tests/services/testpp/skills.py`)
 
 - Сканирование `tmp_path`-каталога с `<name>/SKILL.md` корректно находит все скиллы.
 - Первая строка `Description: ...` парсится в `description`; остальное — в `body`.
@@ -115,7 +115,7 @@ addopts = "-ra -q"
 - `get_body(name)` для несуществующего → `KeyError` или `SkillNotFound`.
 - `SKILL.md` без первой строки `Description:` → ошибка валидации при загрузке.
 
-### 3.10 Unit — `PromptLoader` (`tests/services/test_prompts.py`)
+### 3.10 Unit — `PromptLoader` (`tests/services/testpp/prompts.py`)
 
 - При старте читает указанный путь в строку.
 - Несуществующий путь → `FileNotFoundError`.
@@ -184,8 +184,8 @@ def fake_message(mocker):
 | `httpx`     | `httpx.MockTransport` или `respx` для `http_request`-tool.                                |
 | `sqlite-vec`| **Не мокаем** — поднимаем реальную БД на `tmp_path`. Если extension не грузится в окружении — `pytest.skip`. |
 | Файлы логов | Временный каталог через `tmp_path`; не проверяем содержимое в CI, только что пишет.       |
-| `_skills/`  | Подменяем путь на `tmp_path` с тестовыми `SKILL.md`.                                      |
-| `_prompts/` | Подменяем путь на `tmp_path` с тестовыми markdown-файлами.                                |
+| `app/skills/`  | Подменяем путь на `tmp_path` с тестовыми `SKILL.md`.                                      |
+| `app/prompts/` | Подменяем путь на `tmp_path` с тестовыми markdown-файлами.                                |
 
 ## 5. Покрытие
 
@@ -211,5 +211,5 @@ pytest tests/tools -q -v
 - Реальный Telegram (визуальная проверка).
 - Реальный Ollama (smoke-чек после деплоя).
 - Скорость моделей (это not testable).
-- Содержание `_skills/<name>/SKILL.md` (это контент, не код).
-- Содержание `_prompts/agent_system.md` (это контент; покрываем `PromptLoader`, который его читает и подставляет плейсхолдеры).
+- Содержание `app/skills/<name>/SKILL.md` (это контент, не код).
+- Содержание `app/prompts/agent_system.md` (это контент; покрываем `PromptLoader`, который его читает и подставляет плейсхолдеры).

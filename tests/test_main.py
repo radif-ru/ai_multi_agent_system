@@ -17,7 +17,7 @@ from app import main as main_module
 from app.main import main
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_PROMPT = REPO_ROOT / "_prompts" / "agent_system.md"
+DEFAULT_PROMPT = REPO_ROOT / "app" / "prompts" / "agent_system.md"
 
 ENV_KEYS = (
     "TELEGRAM_BOT_TOKEN",
@@ -31,7 +31,6 @@ ENV_KEYS = (
     "AGENT_MAX_OUTPUT_CHARS",
     "HISTORY_MAX_MESSAGES",
     "HISTORY_SUMMARY_THRESHOLD",
-    "SUMMARIZATION_PROMPT",
     "MEMORY_DB_PATH",
     "MEMORY_CHUNK_SIZE",
     "MEMORY_CHUNK_OVERLAP",
