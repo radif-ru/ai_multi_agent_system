@@ -22,6 +22,7 @@ AI-агент с локальной LLM (Ollama), работающий в цик
 
 - [`architecture.md`](./architecture.md) — компоненты, поток данных, агентный цикл, обработка ошибок, точки расширения под мульти-агент.
 - [`agent-loop.md`](./agent-loop.md) — формат JSON-ответа модели (`{thought, action, args}` / `{final_answer}`), правила цикла, лимиты, защита от зацикливания.
+- [`multi-agent.md`](./multi-agent.md) — мульти-агентная надстройка над Executor (Planner + Critic), режимы рефлексии `OFF | NORMAL | DEEP`, JSON-протоколы, fallback'ы, команда `/mode`.
 - [`memory.md`](./memory.md) — краткосрочная in-memory история и долгосрочная семантическая память на `sqlite-vec` (RAG), сценарий `/new`, журнал диалога `dialog_journal`.
 - [`events.md`](./events.md) — событийная шина (`EventBus`), типы событий (`UserCreated`, `MessageReceived`, `ResponseGenerated`, `ConversationArchived`), подписчики.
 - [`tools.md`](./tools.md) — реестр tools, контракт нового инструмента, текущий набор (calculator, read_file, http_request, web_search, memory_search, load_skill).

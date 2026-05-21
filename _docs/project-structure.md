@@ -18,6 +18,7 @@ ai-multi-agent-system/
 │   ├── requirements.md       # FR / NFR / CON / ASM
 │   ├── architecture.md       # компоненты, поток данных, мульти-агент в перспективе
 │   ├── agent-loop.md         # формат JSON ответа модели и правила цикла
+│   ├── multi-agent.md        # Planner + Critic поверх Executor, режимы рефлексии
 │   ├── memory.md             # краткосрочная и долгосрочная память (sqlite-vec)
 │   ├── tools.md              # реестр инструментов и контракт нового tool
 │   ├── skills.md             # формат app/skills/ и как агент их использует
