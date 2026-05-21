@@ -80,7 +80,7 @@ clear_global_mapper()  # Очистить (для тестов)
 - `clear()` — очищает in-memory кеш маппингов; записи журнала не трогает.
 - `close()` — закрывает SQLite-соединение.
 
-**Хранилище (с задачи 06.3-bis.3):** колонки `file_id`/`file_path` в таблице `dialog_journal` (`data/memory.db`) — единая БД с журналом диалога; запись делает подписчик `on_message_received_journal` при публикации `MessageReceived` из Telegram-хендлеров. In-memory кеш в `FileIdMapper` — для быстрого доступа. Старая БД `data/file_contexts.db` упразднена (см. `_docs/memory.md` §2.6.1, миграция в `app/services/file_contexts_migration.py`).
+**Хранилище (с задачи 06.3-bis.3):** колонки `file_id`/`file_path` в таблице `dialog_journal` (`data/memory.db`) — единая БД с журналом диалога; запись делает подписчик `on_message_received_journal` при публикации `MessageReceived` из Telegram-хендлеров. In-memory кеш в `FileIdMapper` — для быстрого доступа. Старая БД `data/file_contexts.db` упразднена (см. `_docs/memory.md` §2.6.1); миграционный модуль удалён в спринте 08.
 
 ### 2.1 Интеграция
 

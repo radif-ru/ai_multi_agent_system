@@ -75,7 +75,7 @@
 
 ### 1.7 Журнал диалога и observability (Спринт 06)
 
-- **DialogJournal** — `app/services/dialog_journal.py` — append-only журнал текстовых и файловых сообщений (`MessageReceived`/`ResponseGenerated`) в той же `data/memory.db` (таблица `dialog_journal`, индекс `ix_journal_message` по `message_id`). API: `init/append/pending_conversations/read_conversation/mark_archived`. Подписчики — `app/services/dialog_journal_subscriber.py` (DI в `app/main.py` и `app/console_main.py`); ошибки журнала не валят основной поток. Журнал — единый источник истины для контекста файлов: `ConversationStore.get_file_context` и `FileIdMapper` читают `content`/`file_id`/`file_path` из `dialog_journal` по `(user_id, message_id)`. `data/file_contexts.db` сохранён только для одноразовой миграции (`app/services/file_contexts_migration.py`).
+- **DialogJournal** — `app/services/dialog_journal.py` — append-only журнал текстовых и файловых сообщений (`MessageReceived`/`ResponseGenerated`) в той же `data/memory.db` (таблица `dialog_journal`, индекс `ix_journal_message` по `message_id`). API: `init/append/pending_conversations/read_conversation/mark_archived`. Подписчики — `app/services/dialog_journal_subscriber.py` (DI в `app/main.py` и `app/console_main.py`); ошибки журнала не валят основной поток. Журнал — единый источник истины для контекста файлов: `ConversationStore.get_file_context` и `FileIdMapper` читают `content`/`file_id`/`file_path` из `dialog_journal` по `(user_id, message_id)`. Старая БД `data/file_contexts.db` упразднена; миграционный модуль удалён в спринте 08 (см. §6.5).
 - **Автоматическое восстановление при старте** — `app/services/journal_recovery.py::recover_pending_journals` запускается в `asyncio.create_task` параллельно с polling и архивирует «зависшие» сессии из `dialog_journal`, для которых процесс не успел вызвать `Archiver.archive(...)`. После успешной архивации `cmd_new` помечает строки журнала через `mark_archived(...)`. См. `_docs/memory.md` §4.
 - **Структурное JSON-логирование** — `app/core/logging_config.py::JsonFormatter` + `ContextFilter`. Каждая запись содержит `trace_id` и `user_id` из `contextvars` (`app/utils/tracing.py` — `new_trace_id/bind_trace_id/get_trace_id/reset_trace_id`); изоляция между `asyncio.Task` сохраняется. `LoggingMiddleware` (`app/middlewares/logging_mw.py`) и `ConsoleAdapter.run` биндят `trace_id`/`user_id` на каждый Telegram-event / команду и сбрасывают их в `finally`. На границах внешних вызовов пишутся структурные `external.call`/`external.ok`/`external.fail` с полями `service`/`duration_ms`/`status` (`app/services/llm.py`, `transcribe.py`, `vision.py`, `ocr.py`, `app/tools/http_request.py`, `web_search.py`); секреты маскируются через `app/utils/secrets.py::mask_secrets`. См. `_docs/observability.md` §1–§4.
 - **Error tracking через GlitchTip / Sentry** — `app/observability/__init__.py::setup_sentry` (off-by-default: при пустом `SENTRY_DSN` ничего не инициализируется). `_before_send` подмешивает `trace_id`/`user_id` в `tags`/`extra`/`user`. Self-hosted GlitchTip разворачивается через `docker-compose.observability.yml` (postgres + redis + web/worker/migrate). См. `_docs/observability.md` §5.
@@ -187,3 +187,11 @@
 ```
 DANGEROUS_TOOLS_ALLOWLIST=http_request,read_file
 ```
+
+### 6.5 Удалён legacy `file_contexts` миграционный код (закрыто в спринте 08, задача 3.1)
+
+**Дата:** 2026-05-21.
+
+**Исходная проблема:** после спринта 06 контекст файлов мигрирован в `dialog_journal`; миграционный модуль `app/services/file_contexts_migration.py` и его вызов в точках входа сохранялись «на всякий случай», но мёртвый код в активной кодовой базе.
+
+**Решение:** удалены `app/services/file_contexts_migration.py`, `tests/services/test_file_contexts_migration.py` и блок вызова миграции из `app/main.py` / `app/console_main.py`. Документация (`_docs/memory.md` §2.6.1, §4.1; `_docs/security.md` §2) обновлена. У существующих установок резервный файл `data/file_contexts.db.migrated-<ts>` (если был) можно безопасно удалить вручную.
