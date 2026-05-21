@@ -10,7 +10,7 @@
 
 | ID | Название | Файл | Ветка | Статус | Открыт | Закрыт |
 |:--:|----------|------|-------|:------:|:------:|:------:|
-| 08 | Hardening и зачистка техдолга после спринтов 03–05 | [`sprints/08-hardening-and-cleanup.md`](./sprints/08-hardening-and-cleanup.md) | `feature/08-hardening-and-cleanup` | Active | 2026-05-21 | — |
+| 08 | Hardening и зачистка техдолга после спринтов 03–05 | [`sprints/08-hardening-and-cleanup.md`](./sprints/08-hardening-and-cleanup.md) | `feature/08-hardening-and-cleanup` | Progress | 2026-05-21 | — |
 
 ### Закрытые
 
@@ -45,7 +45,7 @@
 | 05. Усиление безопасности и OCR-рефакторинг | Closed | 0 / 0 / 13 | `sprints/05-security-ocr.md` |
 | 06. Надёжность диалога и observability | Closed | 0 / 0 / 24 | `sprints/06-reliability-and-observability.md` |
 | 07. Multi-agent (Planner + Critic) | Closed | 0 / 0 / 13 | `sprints/07-multi-agent.md` |
-| 08. Hardening и зачистка техдолга | Closed | 0 / 0 / 9 | `sprints/08-hardening-and-cleanup.md` |
+| 08. Hardening и зачистка техдолга | Progress | 3 / 0 / 9 | `sprints/08-hardening-and-cleanup.md` |
 
 > Таблицу обновлять одновременно с переходами статусов в файлах спринтов (см. `process.md` §7.3 и §7.9).
 
