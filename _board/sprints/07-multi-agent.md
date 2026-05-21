@@ -282,7 +282,7 @@
 
 ### Задача 5.1. Новый `_docs/multi-agent.md`
 
-- **Статус:** Progress
+- **Статус:** Done
 - **Приоритет:** high
 - **Объём:** M
 - **Зависит от:** Задача 4.1, Задача 4.2.
@@ -295,11 +295,11 @@
 
 #### Definition of Done
 
-- [ ] Файл создан, добавлен в навигацию `_docs/README.md` и в `_docs/project-structure.md`.
-- [ ] Ссылки прогнаны `grep`-ом, обновлены все живые упоминания (см. `_board/process.md` §8 п.6).
-- [ ] **Документация обновлена** — да, это и есть задача.
-- [ ] **Тесты добавлены / обновлены** — `n/a`.
-- [ ] `git status` чист.
+- [x] Файл создан, добавлен в навигацию `_docs/README.md` и в `_docs/project-structure.md`.
+- [x] Ссылки прогнаны `grep`-ом, обновлены все живые упоминания (см. `_board/process.md` §8 п.6) — все ссылки на `multi-agent.md` в `architecture.md`/`agent-loop.md`/`commands.md`/`stack.md`/`orchestrator.py` теперь разрешаются.
+- [x] **Документация обновлена** — да, это и есть задача.
+- [x] **Тесты добавлены / обновлены** — `n/a`.
+- [x] `git status` чист.
 
 ### Задача 5.2. Обновить `current-state.md` и `roadmap.md`
 
@@ -405,7 +405,7 @@
 | 4.1 | Расширить `core.handle_user_task`                     | high      | L     | Done   | 2.2, 3.2, 1.1     |
 | 4.2 | Команда `/mode`                                       | medium    | S     | Done   | 1.1, 4.1          |
 | 4.3 | Сквозной интеграционный тест оркестратора             | medium    | S     | Done   | 4.1, 4.2          |
-| 5.1 | Новый `_docs/multi-agent.md`                          | high      | M     | Progress | 4.1, 4.2        |
+| 5.1 | Новый `_docs/multi-agent.md`                          | high      | M     | Done   | 4.1, 4.2          |
 | 5.2 | Обновить `current-state.md` и `roadmap.md`            | medium    | S     | ToDo   | 5.1               |
 | 6.1 | Перенести `_prompts/`/`_skills/` в `app/`             | medium    | S     | Done   | —                 |
 | 6.2 | Унифицировать источник промпта суммаризации              | medium    | XS    | Done   | 6.1               |
@@ -439,3 +439,5 @@
 - **2026-05-21** — добавлена задача 07.6.2 (по запросу пользователя): унифицировать источник промпта суммаризации (`Settings.summarization_prompt` → `app/prompts/summarizer.md`).
 - **2026-05-21** — задача 07.6.2 взята в работу (`ToDo` → `Progress`).
 - **2026-05-21** — закрыта задача 07.6.2: `Summarizer` получает промпт из `PromptLoader.summarizer_prompt` в `app/main.py`/`app/console_main.py`; удалены `Settings.summarization_prompt`, `SUMMARIZATION_PROMPT` из `.env.example`, `_docs/stack.md`, `tests/test_config.py`, `tests/test_main.py`; 508 passed, flake8 зелёный.
+- **2026-05-21** — задача 07.5.1 взята в работу (`ToDo` → `Progress`).
+- **2026-05-21** — закрыта задача 07.5.1: создан `_docs/multi-agent.md` (роли Planner/Executor/Critic, JSON-контракты, режимы OFF/NORMAL/DEEP, fallback'ы, поток, логирование, команда `/mode`); добавлен в навигацию `_docs/README.md` и в `_docs/project-structure.md`.
