@@ -356,6 +356,32 @@
 - [x] **Тесты добавлены / обновлены** — обновлены пути в `tests/test_config.py`, `tests/test_logging_config.py`, `tests/test_main.py`; новых тестов не требуется (рефакторинг расположения файлов, поведение не меняется).
 - [x] `git status` чист.
 
+### Задача 6.2. Унифицировать источник промпта суммаризации (`app/prompts/summarizer.md`)
+
+- **Статус:** ToDo
+- **Приоритет:** medium
+- **Объём:** XS
+- **Зависит от:** 6.1 (перенос `app/prompts/`)
+- **Связанные документы:** `_docs/prompts.md`, `_docs/memory.md`, `_docs/stack.md` (таблица env), `app/prompts/README.md`.
+- **Затрагиваемые файлы:** `app/config.py` (поле `summarization_prompt`), `app/main.py`, `app/console_main.py`, `.env.example`, `tests/test_config.py`, `tests/test_main.py`, `_docs/stack.md`.
+
+#### Описание
+
+Сейчас параллельно существуют два источника промпта суммаризации: короткая строка `Settings.summarization_prompt` (env `SUMMARIZATION_PROMPT`) и markdown-файл `app/prompts/summarizer.md`. Реально работает первый, второй — мёртвый: `PromptLoader.summarizer_prompt` никем не вызывается, в `Summarizer` инжектится `settings.summarization_prompt`. Это противоречит документации (`_docs/prompts.md` §2 описывает `app/prompts/summarizer.md` как официальный источник) и неудобно для правки многострочного промпта через `.env`.
+
+1. В `app/main.py` и `app/console_main.py` заменить `system_prompt=settings.summarization_prompt` на `system_prompt=prompts.summarizer_prompt`.
+2. Удалить поле `summarization_prompt` из `Settings`, ключ `SUMMARIZATION_PROMPT` из `.env.example`, упоминание в `_docs/stack.md`, упоминания в списках env-ключей в тестах (`tests/test_config.py`, `tests/test_main.py`).
+3. Содержимое `app/prompts/summarizer.md` уже содержит расширенный промпт (создан в задаче 02.4.4) — менять не нужно.
+
+#### Definition of Done
+
+- [ ] `Summarizer` получает промпт из `PromptLoader.summarizer_prompt`; `Settings.summarization_prompt` отсутствует.
+- [ ] `SUMMARIZATION_PROMPT` отсутствует в `.env.example`, `_docs/stack.md`, тестах.
+- [ ] `pytest -q` зелёный; `flake8 app tests` зелёный.
+- [ ] **Документация обновлена** — `_docs/stack.md`.
+- [ ] **Тесты добавлены / обновлены** — обновлены списки env-ключей в `tests/test_config.py`, `tests/test_main.py`; новых тестов на поведение не требуется (контракт `Summarizer` не меняется).
+- [ ] `git status` чист.
+
 ## 10. Риски и смягчение
 
 | # | Риск | Смягчение |
@@ -382,6 +408,7 @@
 | 5.1 | Новый `_docs/multi-agent.md`                          | high      | M     | ToDo   | 4.1, 4.2          |
 | 5.2 | Обновить `current-state.md` и `roadmap.md`            | medium    | S     | ToDo   | 5.1               |
 | 6.1 | Перенести `_prompts/`/`_skills/` в `app/`             | medium    | S     | Done   | —                 |
+| 6.2 | Унифицировать источник промпта суммаризации              | medium    | XS    | ToDo   | 6.1               |
 
 > Обновляется при каждом переходе статуса и при добавлении/удалении задач.
 
@@ -409,3 +436,4 @@
 - **2026-05-20** — добавлен Этап 6 «Перенос ассетов агента в `app/`» и задача 07.6.1 (внеочередно, по запросу пользователя): `_prompts/` → `app/prompts/`, `_skills/` → `app/skills/`.
 - **2026-05-20** — задача 07.6.1 взята в работу (`ToDo` → `Progress`).
 - **2026-05-21** — закрыта задача 07.6.1: `_prompts/` → `app/prompts/`, `_skills/` → `app/skills/`; обновлены дефолты в `Settings` и `PromptLoader`, DI в `app/main.py`/`app/console_main.py`, `.env.example`, документация (`_docs/*`, `_board/process.md`, `README.md`) и тесты (`tests/test_config.py`, `tests/test_logging_config.py`, `tests/test_main.py`); 508 passed, flake8 зелёный.
+- **2026-05-21** — добавлена задача 07.6.2 (по запросу пользователя): унифицировать источник промпта суммаризации (`Settings.summarization_prompt` → `app/prompts/summarizer.md`).
