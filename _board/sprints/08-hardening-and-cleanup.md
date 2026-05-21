@@ -249,7 +249,42 @@ DoD задачи 03.1.1 «< 30 секунд на 50+ сообщений» был
 - [x] **Тесты добавлены / обновлены** — да.
 - [x] `git status` чист.
 
-## 10. Риски и смягчение
+## 10. Этап 7. Фикс user_id в LoggingMiddleware
+
+Закрываем баг наблюдаемости: во всех JSON-записях `agent.log` поле `user_id` равно `null`, хотя `LoggingMiddleware` обязан биндить `user_id` в contextvars.
+
+### Задача 7.1. Извлекать `user_id`/`chat_id` из `data` для `Update`
+
+- **Статус:** Progress
+- **Приоритет:** medium
+- **Объём:** XS
+- **Зависит от:** —
+- **Связанные документы:** `_docs/observability.md` §2, `_docs/architecture.md` §3.12.
+- **Затрагиваемые файлы:** `app/middlewares/logging_mw.py`, `tests/test_middleware_logging.py`, `_docs/observability.md`.
+
+#### Описание
+
+`LoggingMiddleware` зарегистрирован через `dispatcher.update.middleware(...)` и получает объект `Update`, у которого нет атрибутов `from_user`/`chat` — они есть только у вложенных событий (`Message`, `CallbackQuery` и т.д.). В результате `_extract_ids` возвращает `(None, None)`, `bind_user_id(None)` — и каждая JSON-запись в `logs/agent.log` получает `"user_id": null`.
+
+Aiogram в inner-middleware на `dispatcher.update` уже заполняет в `data` ключи `event_from_user` и `event_chat` (через встроенный `UserContextMiddleware`) до вызова нашего middleware — берём их оттуда, с фолбэком на атрибуты события.
+
+Шаги:
+
+1. В `_extract_ids` добавить параметр `data: dict[str, Any]`, читать `data.get("event_from_user")` / `data.get("event_chat")` в первую очередь.
+2. Передать `data` в вызов `_extract_ids` из `__call__`.
+3. Добавить регрессионный тест: событие без `from_user`/`chat` (например, `MagicMock(spec=[])`), `data={"event_from_user": ..., "event_chat": ...}` → `bind_user_id` получает корректный `id`, INFO-строка содержит `user=<id>`.
+4. В `_docs/observability.md` §2 уточнить, откуда middleware берёт `user_id`.
+
+#### Definition of Done
+
+- [ ] `tests/test_middleware_logging.py` содержит тест-кейс «Update без `from_user`, `data` с `event_from_user`», падающий до фикса и зелёный после.
+- [ ] Существующие тесты `test_middleware_logging.py` остаются зелёными.
+- [ ] `_docs/observability.md` §2 обновлён: явно указано, что `LoggingMiddleware` читает `event_from_user`/`event_chat` из `data`.
+- [ ] **Документация обновлена** — да.
+- [ ] **Тесты добавлены / обновлены** — да.
+- [ ] `git status` чист.
+
+## 11. Риски и смягчение
 
 | # | Риск | Смягчение |
 |---|------|-----------|
@@ -260,7 +295,7 @@ DoD задачи 03.1.1 «< 30 секунд на 50+ сообщений» был
 | 5 | Регрессионный тест на `/new` будет flaky на CI из-за фоновых процессов. | Бюджет с запасом (например, 2.0s при ожидаемых 50–100ms на мок-LLM); маркер `slow`, опциональный запуск в CI. |
 | 6 | `logger.exception` в `run()` может задвоить вывод (stderr + JSON-handler). | На текущей конфигурации `setup_logging` ставит один root handler; задвоения нет. Если появится — переключить уровень exception на `error` без stacktrace. |
 
-## 11. Сводная таблица задач спринта
+## 12. Сводная таблица задач спринта
 
 | #   | Задача                                                | Приоритет | Объём | Статус | Зависит от        |
 |-----|-------------------------------------------------------|:---------:|:-----:|:------:|:-----------------:|
@@ -271,10 +306,11 @@ DoD задачи 03.1.1 «< 30 секунд на 50+ сообщений» был
 | 4.1 | Регрессионный тест `Archiver.archive` с бюджетом      | medium    | S     | ToDo   | —                 |
 | 5.1 | Обновить `current-state.md` и `roadmap.md`            | low       | XS    | ToDo   | 1.1, 2.1, 3.1, 6.1 |
 | 6.1 | Логировать необработанные исключения в `run()`        | medium    | XS    | Done   | —                 |
+| 7.1 | Фикс `user_id` в `LoggingMiddleware`                  | medium    | XS    | Progress | —               |
 
 > Обновляется при каждом переходе статуса и при добавлении/удалении задач.
 
-## 12. История изменений спринта
+## 13. История изменений спринта
 
 - **2026-05-20** — файл спринта создан (статус `ToDo`, ветка ещё не открыта). Открытие — после закрытия спринта 07; см. `_board/process.md` §2 п.1.
 - **2026-05-21** — спринт открыт, ветка `feature/08-hardening-and-cleanup` создана от `main`. Добавлен Этап 6 / Задача 6.1 (top-level логирование необработанных исключений) на основании рабочей правки `app/main.py` от 21.05.2026.
