@@ -382,33 +382,12 @@ CREATE INDEX IF NOT EXISTS ix_journal_message  ON dialog_journal(user_id, messag
 
 **Smoke-сценарий «kill -9 → старт»** (ожидаемое поведение): отправили текст пользователю → подписчик `on_message_received_journal` записал строку в `dialog_journal` (`archived_at IS NULL`); процесс прервали (`kill -9`, краш, рестарт хоста); следующий старт через `python -m app` → `recover_pending_journals` поднимает сессию через `Archiver` → строка получает `archived_at`, чанк попадает в `memory_chunks` и виден в `MemorySearchTool`. Unit-тесты на алгоритм — `tests/services/test_journal_recovery.py`.
 
-### 4.5 Таблица `users`
-
-Хранилище пользователей вынесено в SQLite в той же `data/memory.db` (отдельное соединение, без `sqlite-vec`). Реализация — `app/users/repository.py::UserRepository`. Цель — стабильный `user.id` между рестартами процесса: иначе после рестарта новый telegram-пользователь получал бы свободный `user.id`, а строки `dialog_journal`/`memory_chunks` (где `user.id` — внешний ключ) теряли владельца. См. спринт 08, задача 2.1.
-
-```sql
-CREATE TABLE IF NOT EXISTS users (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    channel      TEXT    NOT NULL,    -- "telegram" | "console"
-    external_id  TEXT    NOT NULL,    -- telegram user id / console username
-    display_name TEXT,
-    created_at   TEXT    NOT NULL,    -- ISO 8601, UTC
-    UNIQUE(channel, external_id)
-);
-```
-
-Инварианты:
-
-1. `get_or_create(channel, external_id, display_name)` атомарен на уровне SQLite (`UNIQUE(channel, external_id)` + дополнительный `asyncio.Lock` в одном процессе) и возвращает `(user, created)`.
-2. Событие `UserCreated` публикуется **только** при реальном `INSERT` (`created=True`).
-3. `init()` создаёт таблицу идемпотентно и пишет `INFO`-лог с количеством существующих пользователей (sanity).
-4. Жизненный цикл (`init`/`close`) управляется в `app/main.py` / `app/console_main.py`.
-
 ## 5. Что НЕ хранится (по дизайну)
 
 - **Сырые сообщения диалога в `memory_chunks`** — туда идут только саммари при `/new` или фоновом восстановлении (CON-1). Полный диалог временно хранится в `dialog_journal` до архивации.
 - **Системные промпты** — они в `app/prompts/`, не в БД.
 - **Вызовы tools и observations** — они в логах, не в архивной памяти.
+- **Учётные записи Telegram / профили пользователей** — для MVP не нужны (`user_id` Telegram достаточно как ключ).
 
 ## 6. Что **может** появиться в архиве в будущем (НЕ MVP)
 
@@ -432,3 +411,36 @@ CREATE TABLE IF NOT EXISTS users (
 - Падение `OllamaClient.embed` на одном из чанков → транзакция откатывается, в `memory_chunks` нет «осиротевших» строк.
 
 Тесты используют `tmp_path` для `.db`-файла; `OllamaClient` мокается, `sqlite-vec` грузится по-настоящему (это часть проверки, что окружение работает).
+
+## 4.5 Таблица users (UserRepository, спринт 08)
+
+Таблица `users` хранит пользователей в `data/memory.db` и обеспечивает персистентность `UserRepository` между рестартами.
+
+### Схема
+
+```sql
+CREATE TABLE IF NOT EXISTS users (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    channel       TEXT    NOT NULL,    -- "telegram" | "console"
+    external_id   TEXT    NOT NULL,    -- telegram user_id | console username
+    display_name  TEXT,                -- имя пользователя (опционально)
+    created_at    TEXT    NOT NULL,    -- ISO 8601
+    UNIQUE(channel, external_id)
+);
+CREATE INDEX IF NOT EXISTS ix_users_channel_external ON users(channel, external_id);
+```
+
+### Инварианты
+
+- `user.id` стабилен между рестартами (AUTOINCREMENT гарантирует монотонное возрастание)
+- Уникальность по `(channel, external_id)` гарантирует, что один и тот же пользователь в одном канале не может иметь несколько записей
+- `created_at` фиксирует момент первого появления пользователя в системе
+
+### Использование
+
+`UserRepository` использует эту таблицу для реализации `get_or_create(channel, external_id, display_name)`:
+- При первом вызове для новой пары `(channel, external_id)` создаётся запись с новым `id`
+- При последующих вызовах возвращается существующая запись с тем же `id`
+- Это позволяет связывать записи в `dialog_journal` (которые ссылаются на `user_id`) с конкретным пользователем даже после рестарта
+
+Таблица создаётся при первом вызове `UserRepository.init()` в точках входа (`app/main.py`, `app/console_main.py`).
