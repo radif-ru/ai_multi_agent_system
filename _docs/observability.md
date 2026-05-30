@@ -64,7 +64,7 @@ finally:
 
 Где устанавливается:
 
-- **Telegram**: `LoggingMiddleware` (`app/middlewares/logging_mw.py`) — на каждый `Update` генерируется новый `trace_id` и биндится `user_id`; оба сбрасываются в `finally` (в том числе при исключении в handler).
+- **Telegram**: `LoggingMiddleware` (`app/middlewares/logging_mw.py`) — на каждый `Update` генерируется новый `trace_id` и биндится `user_id`; оба сбрасываются в `finally` (в том числе при исключении в handler). `user_id`/`chat_id` берутся из `data["event_from_user"]` / `data["event_chat"]` — их подкладывает встроенный `UserContextMiddleware` aiogram до вызова inner-middleware на `dispatcher.update` (у самого `Update` атрибутов `from_user`/`chat` нет, они есть только у вложенных событий).
 - **Console adapter**: `ConsoleAdapter.run` (`app/adapters/console/adapter.py`) — на каждую введённую команду или текст свежий `trace_id`, сбрасывается после обработки.
 - **Фоновая архивация (recovery)**: планируется как отдельная задача (см. спринт 06 этап 4.3 / будущие спринты) — пока `recover_pending_journals` пишет логи без `trace_id` (`null`).
 

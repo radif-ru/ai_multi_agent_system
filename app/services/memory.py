@@ -107,6 +107,63 @@ class SemanticMemory:
             )
         return await asyncio.to_thread(self._insert_sync, text, embedding, metadata)
 
+    async def insert_batch(
+        self,
+        items: list[tuple[str, list[float], dict[str, Any]]],
+    ) -> list[int]:
+        """Вставить несколько чанков в одной транзакции.
+
+        Args:
+            items: список кортежей (text, embedding, metadata)
+
+        Returns:
+            Список rowid вставленных записей в том же порядке.
+        """
+        if not items:
+            return []
+        for _, embedding, _ in items:
+            if len(embedding) != self._dim:
+                raise ValueError(
+                    f"embedding dimension mismatch: got {len(embedding)}, expected {self._dim}"
+                )
+        return await asyncio.to_thread(self._insert_batch_sync, items)
+
+    def _insert_batch_sync(
+        self,
+        items: list[tuple[str, list[float], dict[str, Any]]],
+    ) -> list[int]:
+        conn = self._require_conn()
+        rowids: list[int] = []
+        try:
+            for text, embedding, metadata in items:
+                created_at = metadata.get("created_at") or _now_iso()
+                cur = conn.execute(
+                    """
+                    INSERT INTO memory_chunks
+                        (user_id, chat_id, conversation_id, chunk_index, created_at, text)
+                    VALUES (?, ?, ?, ?, ?, ?);
+                    """,
+                    (
+                        int(metadata["user_id"]),
+                        int(metadata["chat_id"]),
+                        str(metadata["conversation_id"]),
+                        int(metadata["chunk_index"]),
+                        created_at,
+                        text,
+                    ),
+                )
+                rowid = cur.lastrowid
+                conn.execute(
+                    "INSERT INTO memory_vec (rowid, embedding) VALUES (?, ?);",
+                    (rowid, _serialize_vector(embedding)),
+                )
+                rowids.append(int(rowid or 0))
+            conn.commit()
+            return rowids
+        except Exception:
+            conn.rollback()
+            raise
+
     def _insert_sync(
         self,
         text: str,

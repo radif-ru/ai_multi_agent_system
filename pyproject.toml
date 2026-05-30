@@ -1,4 +1,7 @@
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "-ra -q"
+addopts = "-ra -q -m 'not slow'"
+markers = [
+    "slow: помечает тесты с бюджетом по времени (пропускаются по умолчанию; запустить с `-m slow`; см. `_docs/testing.md`)",
+]

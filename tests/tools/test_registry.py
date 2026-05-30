@@ -151,6 +151,25 @@ async def test_dangerous_tool_allowed_when_in_allowlist():
     assert result == "ok"
 
 
+async def test_dangerous_tool_block_logs_warning(caplog):
+    """При отказе опасного tool в логах есть WARNING с указанием tool."""
+    settings = Settings(dangerous_tools_allowlist=[])
+    ctx = SimpleNamespace(
+        user_id=1, chat_id=1, conversation_id="c", settings=settings,
+        llm=None, semantic_memory=None, skills=None,
+    )
+    reg = ToolRegistry([_DangerousTool()])
+    with caplog.at_level("WARNING", logger="app.tools.registry"):
+        with pytest.raises(ToolError):
+            await reg.execute("http_request", {}, ctx)
+    assert any(
+        r.levelname == "WARNING"
+        and "http_request" in r.message
+        and "not_in_allowlist" in r.message
+        for r in caplog.records
+    )
+
+
 async def test_non_dangerous_tool_not_affected_by_allowlist():
     """Обычный tool не проверяется по allowlist."""
     settings = Settings(dangerous_tools_allowlist=[])

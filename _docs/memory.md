@@ -134,7 +134,7 @@ ConversationStore                       Executor.run
 
 #### 2.6.1 Унифицированное хранение в `dialog_journal`
 
-С задачи 06.3-bis.2 контекст файла лежит в той же таблице `dialog_journal` (см. §4.1), что и текст диалога: колонка `message_id` хранит ID сообщения Telegram, `kind` — тип файла, `content` — текст `goal`, `file_id`/`file_path` — данные для `FileIdMapper`. Отдельная база `data/file_contexts.db` упразднена и переименована при одноразовой миграции в `data/file_contexts.db.migrated-<ts>` (см. §4.1 и `app/services/file_contexts_migration.py`).
+С задачи 06.3-bis.2 контекст файла лежит в той же таблице `dialog_journal` (см. §4.1), что и текст диалога: колонка `message_id` хранит ID сообщения Telegram, `kind` — тип файла, `content` — текст `goal`, `file_id`/`file_path` — данные для `FileIdMapper`. Отдельная база `data/file_contexts.db` упразднена; одноразовый миграционный модуль удалён в спринте 08 (задача 3.1) — файл `data/file_contexts.db.migrated-<ts>` (если остался) можно безопасно удалить вручную.
 
 Аудит использования полей в `dialog_journal` для reply-сценария:
 
@@ -184,12 +184,11 @@ ConversationStore                       Executor.run
 для каждого чанка:    +- OllamaClient.embed(chunk_i)     |  -> вектор[EMBEDDING_DIMENSIONS]
                        |  (модель EMBEDDING_MODEL)         |
                                                           |
-                       +- SemanticMemory.insert(           |
-                       |    chunk_i, vector_i,            |  -> запись в sqlite-vec
-                       |    metadata={                    |
-                       |      conversation_id, chat_id,   |
+                       +- SemanticMemory.insert_batch(    |
+                       |    [(chunk_i, vector_i, {         |  -> запись в sqlite-vec
+                       |      conversation_id, chat_id,   |     (одна транзакция для всех)
                        |      user_id, chunk_index,       |
-                       |      created_at                  |
+                       |      created_at}), ...]           |
                        |    })                            |
                                                           v
                        ConversationStore.clear(user_id) +
@@ -201,6 +200,17 @@ ConversationStore                       Executor.run
 ```
 Архивировано N чанков, новая сессия открыта.
 ```
+
+#### 3.3.1 API SemanticMemory
+
+| Метод | Описание |
+|-------|----------|
+| `init()` | Создать таблицы `memory_chunks` и `memory_vec`; загрузить расширение `sqlite-vec`. Идемпотентен. |
+| `close()` | Закрыть соединение с БД. |
+| `insert(text, embedding, metadata) -> int` | Вставить один чанк. Возвращает rowid вставленной записи. |
+| `insert_batch(items: list[tuple[str, list[float], dict]]]) -> list[int]` | Вставить несколько чанков в одной транзакции. Возвращает список rowid в том же порядке. Оптимизация для массовой вставки (используется в `Archiver`). |
+| `delete(rowid)` | Удалить чанк по rowid (удаляет из обеих таблиц). |
+| `search(embedding, top_k, scope_user_id) -> list[dict]` | KNN-поиск по векторам. Возвращает до `top_k` наиболее похожих чанков для указанного `user_id`. |
 
 ### 3.4 Поиск по архиву (tool `memory_search`)
 
@@ -345,7 +355,7 @@ CREATE INDEX IF NOT EXISTS ix_journal_message  ON dialog_journal(user_id, messag
     WHERE message_id IS NOT NULL;
 ```
 
-Колонка `message_id` добавлена в задаче 06.3-bis.1: она нужна, чтобы свести воедино журнал и старую таблицу `file_contexts` (PK там был `(user_id, message_id)`) — после этапа 3-bis `ConversationStore.get_file_context` и `FileIdMapper` читают из `dialog_journal` по этому же ключу, а `data/file_contexts.db` мигрируется один раз и удаляется. Миграция реализована в `app/services/file_contexts_migration.py::migrate_file_contexts_to_journal(...)`: при старте процесса (см. `app/main.py`/`app/console_main.py`) она читает старую таблицу, добавляет строки в `dialog_journal` с `conversation_id = "legacy"`, `archived_at = now()` (эти строки уже «закрыты» и не подбираются фоновой архивацией) и переименовывает источник в `data/file_contexts.db.migrated-<ts>`.
+Колонка `message_id` добавлена в задаче 06.3-bis.1, чтобы свести воедино журнал и старую таблицу `file_contexts` (PK там был `(user_id, message_id)`) — `ConversationStore.get_file_context` и `FileIdMapper` читают из `dialog_journal` по этому же ключу. Миграционный модуль `app/services/file_contexts_migration.py` и поддерживавший его код в точках входа удалены в спринте 08 (задача 3.1); резервный файл `data/file_contexts.db.migrated-<ts>` можно безопасно удалить вручную.
 
 ### 4.2 API
 
@@ -411,3 +421,36 @@ CREATE INDEX IF NOT EXISTS ix_journal_message  ON dialog_journal(user_id, messag
 - Падение `OllamaClient.embed` на одном из чанков → транзакция откатывается, в `memory_chunks` нет «осиротевших» строк.
 
 Тесты используют `tmp_path` для `.db`-файла; `OllamaClient` мокается, `sqlite-vec` грузится по-настоящему (это часть проверки, что окружение работает).
+
+## 4.5 Таблица users (UserRepository, спринт 08)
+
+Таблица `users` хранит пользователей в `data/memory.db` и обеспечивает персистентность `UserRepository` между рестартами.
+
+### Схема
+
+```sql
+CREATE TABLE IF NOT EXISTS users (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    channel       TEXT    NOT NULL,    -- "telegram" | "console"
+    external_id   TEXT    NOT NULL,    -- telegram user_id | console username
+    display_name  TEXT,                -- имя пользователя (опционально)
+    created_at    TEXT    NOT NULL,    -- ISO 8601
+    UNIQUE(channel, external_id)
+);
+CREATE INDEX IF NOT EXISTS ix_users_channel_external ON users(channel, external_id);
+```
+
+### Инварианты
+
+- `user.id` стабилен между рестартами (AUTOINCREMENT гарантирует монотонное возрастание)
+- Уникальность по `(channel, external_id)` гарантирует, что один и тот же пользователь в одном канале не может иметь несколько записей
+- `created_at` фиксирует момент первого появления пользователя в системе
+
+### Использование
+
+`UserRepository` использует эту таблицу для реализации `get_or_create(channel, external_id, display_name)`:
+- При первом вызове для новой пары `(channel, external_id)` создаётся запись с новым `id`
+- При последующих вызовах возвращается существующая запись с тем же `id`
+- Это позволяет связывать записи в `dialog_journal` (которые ссылаются на `user_id`) с конкретным пользователем даже после рестарта
+
+Таблица создаётся при первом вызове `UserRepository.init()` в точках входа (`app/main.py`, `app/console_main.py`).
