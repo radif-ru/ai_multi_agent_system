@@ -56,7 +56,7 @@ AI-агент с локальной LLM (Ollama), работающий в цик
 
 - `_docs/` — спецификация и состояние проекта (что и как).
 - `_board/` — процесс и текущие задачи (что делаем сейчас).
-- Точка входа для нового LLM-агента: `AGENTS.md` → `_docs/README.md` → `_board/README.md` → `_board/plan.md` → `_board/sprints/<active>.md` → `_board/process.md`.
+- Точка входа для нового LLM-агента: `AGENTS.md` → `_docs/README.md` → `_board/README.md` → `_board/process.md` → `_board/plan.md` → `_board/sprints/<active>.md`. Перед любыми правками кода обязателен `_docs/current-state.md` (gate; см. `_board/process.md` §7.1).
 
 ## Связь с `app/skills/` и `app/prompts/`
 
